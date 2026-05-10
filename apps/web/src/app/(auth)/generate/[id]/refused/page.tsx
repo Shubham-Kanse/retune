@@ -141,8 +141,7 @@ export default function RefusedPage() {
 
         {/* Right to contest */}
         <section className="mt-12 rt-card p-6">
-          <p className="rt-label">GDPR Article 22</p>
-          <h3 className="mt-2 text-base font-medium">Your right to contest</h3>
+          <h3 className="mt-2 text-base font-medium">Contest this decision</h3>
           <p className="mt-2 max-w-prose text-sm text-muted-foreground">
             Every refusal is contestable. We commit to a 30-day human-review SLA for any decision
             you ask us to revisit.
@@ -152,9 +151,9 @@ export default function RefusedPage() {
               <MessageSquare className="h-4 w-4" />
               Contest this decision
             </Link>
-            <a href="mailto:gdpr@retuned.cv" className="rt-btn-ghost">
+            <a href="mailto:support@retuned.cv" className="rt-btn-ghost">
               <Mail className="h-4 w-4" />
-              Email gdpr@retuned.cv
+              Email support@retuned.cv
             </a>
             <Link href={`/generate/${id}/audit`} className="rt-btn-ghost">
               <RotateCcw className="h-4 w-4" />

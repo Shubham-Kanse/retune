@@ -78,8 +78,8 @@ export default function PrivacyPage() {
               We retain your personal information for as long as necessary to provide the Service
               and fulfill the purposes outlined in this Privacy Policy. You can request deletion of
               your account and associated data at any time by emailing{" "}
-              <a href="mailto:privacy@retune.dev" className="text-primary underline">
-                privacy@retune.dev
+              <a href="mailto:support@retuned.cv" className="text-primary underline">
+                support@retuned.cv
               </a>
               .
             </p>
@@ -121,20 +121,14 @@ export default function PrivacyPage() {
           </section>
 
           <section>
-            <h2 className="text-xl font-semibold">7. GDPR & CCPA Compliance</h2>
+            <h2 className="text-xl font-semibold">7. Your Rights</h2>
             <p>
-              <strong>If you are in the EU:</strong> You have rights under the General Data
-              Protection Regulation (GDPR), including the right to access, rectify, delete, and port
-              your data. Contact us at{" "}
-              <a href="mailto:privacy@retune.dev" className="text-primary underline">
-                privacy@retune.dev
+              You have the right to access, correct, or delete your personal data at any time.
+              Contact us at{" "}
+              <a href="mailto:support@retuned.cv" className="text-primary underline">
+                support@retuned.cv
               </a>{" "}
               to exercise these rights.
-            </p>
-            <p>
-              <strong>If you are in California:</strong> You have rights under the California
-              Consumer Privacy Act (CCPA), including the right to know, delete, and opt-out of data
-              sales. We do not sell your personal information.
             </p>
           </section>
 
@@ -163,14 +157,14 @@ export default function PrivacyPage() {
               contact us at:
             </p>
             <p className="mt-4 space-y-1">
-              <strong>Retuned Inc.</strong>
+              <strong>Retuned</strong>
               <br />
               Email:{" "}
-              <a href="mailto:privacy@retune.dev" className="text-primary underline">
-                privacy@retune.dev
+              <a href="mailto:support@retuned.cv" className="text-primary underline">
+                support@retuned.cv
               </a>
               <br />
-              Address: San Francisco, CA
+              Address: India
             </p>
           </section>
         </div>

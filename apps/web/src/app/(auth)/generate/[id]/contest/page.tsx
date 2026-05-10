@@ -47,7 +47,6 @@ export default function ContestPage() {
     <div className="max-w-2xl mx-auto py-10 px-4 space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <span className="rt-label block mb-1">GDPR Article 22</span>
           <h1 className="text-xl font-semibold tracking-tight">Contest Automated Decision</h1>
         </div>
         <Link href={`/applications/${id}`} className="rt-btn-ghost text-sm px-3 py-1.5">
@@ -59,8 +58,7 @@ export default function ContestPage() {
         <div className="rt-card p-6 space-y-4">
           <p className="text-sm font-medium">Your contest has been logged and will be reviewed.</p>
           <p className="text-sm text-muted-foreground">
-            Under GDPR Article 22, you have the right to obtain human intervention in automated
-            decisions. A member of our team will review your contest and respond within 30 days.
+            A member of our team will review your contest and respond within 30 days.
           </p>
           <div className="pt-2 flex gap-3">
             <Link href={`/applications/${id}`} className="rt-btn text-sm px-4 py-2 inline-block">

@@ -2,10 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@retune/db", "@retune/auth", "@retune/agent", "@retune/billing"],
-  serverExternalPackages: ["bcrypt", "bcryptjs", "postgres", "@electric-sql/pglite"],
+  serverExternalPackages: ["bcrypt", "bcryptjs", "postgres", "@electric-sql/pglite", "@temporalio/client", "@temporalio/worker", "@temporalio/workflow", "@temporalio/activity"],
   outputFileTracingIncludes: {
-    // Bundle the ontology JSON assets with every API route that runs the pipeline.
-    // Required for `standalone` output and any containerised deployment.
     "/api/generate/[id]/stream": ["../../packages/agent/assets/**"],
   },
   experimental: {
@@ -21,7 +19,6 @@ const nextConfig: NextConfig = {
   images: {
     formats: ["image/webp", "image/avif"],
   },
-  output: "standalone",
   poweredByHeader: false,
   compress: true,
 };

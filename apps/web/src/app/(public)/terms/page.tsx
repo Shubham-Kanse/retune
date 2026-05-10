@@ -152,8 +152,8 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold">11. Governing Law</h2>
             <p>
               These terms and conditions are governed by and construed in accordance with the laws
-              of California, and you irrevocably submit to the exclusive jurisdiction of the courts
-              in that location.
+              of India, and you irrevocably submit to the exclusive jurisdiction of the courts in
+              India.
             </p>
           </section>
 
@@ -206,14 +206,14 @@ export default function TermsPage() {
             <h2 className="text-xl font-semibold">15. Contact Information</h2>
             <p>If you have any questions about these Terms of Service, please contact us at:</p>
             <p className="mt-4 space-y-1">
-              <strong>Retuned Inc.</strong>
+              <strong>Retuned</strong>
               <br />
               Email:{" "}
-              <a href="mailto:support@retune.dev" className="text-primary underline">
-                support@retune.dev
+              <a href="mailto:support@retuned.cv" className="text-primary underline">
+                support@retuned.cv
               </a>
               <br />
-              Address: San Francisco, CA
+              Address: India
             </p>
           </section>
         </div>

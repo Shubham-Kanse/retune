@@ -94,13 +94,13 @@ export default function AuditPage() {
         </Link>
         <div className="mt-4 flex items-center justify-between gap-4">
           <div>
-            <p className="rt-label">GDPR Article 22 audit</p>
+            <p className="rt-label">Audit trail</p>
             <h1 className="mt-2 text-3xl font-semibold tracking-tight">
               How I thought about this.
             </h1>
             <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-              Every specialist that ran, every conflict raised, every token spent. Replayable for
-              transparency and contestable per Article 22.
+              Every specialist that ran, every conflict raised, every token spent. Fully replayable
+              for transparency.
             </p>
           </div>
           {result?.verdict && (
@@ -190,15 +190,14 @@ export default function AuditPage() {
           </section>
         )}
 
-        {/* Rights footer */}
+        {/* Contest footer */}
         <section className="mt-12 rt-card p-6">
           <div className="flex items-start gap-3">
             <Brain className="h-5 w-5 text-muted-foreground" />
             <div>
-              <h3 className="text-sm font-medium">Your rights under GDPR Article 22</h3>
+              <h3 className="text-sm font-medium">Contest this decision</h3>
               <p className="mt-2 max-w-prose text-sm text-muted-foreground">
-                You have the right to contest this automated decision, request human review, and
-                receive a plain-language explanation of every factor that influenced the outcome.
+                You have the right to contest this automated decision and request human review.
               </p>
               <div className="mt-4 flex gap-2">
                 <Link href={`/generate/${id}/contest`} className="rt-btn-ghost">

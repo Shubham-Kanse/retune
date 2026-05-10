@@ -19,8 +19,18 @@ import { motion, useInView } from "motion/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { LegalLinks, LegalLinksBlock } from "@/components/ui/legal-links";
+import { createClient } from "@/lib/supabase/client";
+import { ColorOrb } from "@/components/ui/color-orb";
 
 const ease = [0.16, 1, 0.3, 1] as const;
+
+function useIsLoggedIn() {
+  const [loggedIn, setLoggedIn] = useState(false);
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => setLoggedIn(!!data.user));
+  }, []);
+  return loggedIn;
+}
 
 // Soft icon colours matching dashboard
 const COLORS = {
@@ -65,6 +75,7 @@ function RetunedLogoMark({ size = 20, className = "" }: { size?: number; classNa
 
 function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const loggedIn = useIsLoggedIn();
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -81,7 +92,7 @@ function Nav() {
       >
         <Link href="/" className="flex items-center gap-2 px-2 text-[#2d8a5e]">
           <RetunedLogoMark size={18} />
-          <span className="text-sm font-semibold text-[#1a1a1a]">Retuned</span>
+          <span className="font-serif text-lg font-medium tracking-tight text-[#1a1a1a]">Retuned</span>
         </Link>
 
         <div className="hidden md:flex items-center gap-1">
@@ -100,8 +111,8 @@ function Nav() {
           ))}
         </div>
 
-        <Link href="/signup" className="rt-btn text-xs px-4 py-2">
-          Go to app
+        <Link href={loggedIn ? "/dashboard" : "/signup"} className="rt-btn text-xs px-4 py-2">
+          {loggedIn ? "Dashboard" : "Go to app"}
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </div>
@@ -110,6 +121,7 @@ function Nav() {
 }
 
 function Hero() {
+  const loggedIn = useIsLoggedIn();
   return (
     <section className="pt-32 pb-16 px-6 md:px-12">
       <div className="max-w-5xl mx-auto text-center">
@@ -117,9 +129,18 @@ function Hero() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1, ease }}
-          className="inline-flex items-center gap-2 bg-white border border-[#e5e2dd] rounded-full px-4 py-1.5 mb-10 shadow-sm rt-float"
+          className="inline-flex items-center gap-2 bg-white border border-[#e5e2dd] rounded-full px-3 py-1.5 mb-10 shadow-sm rt-float"
         >
-          <span className="w-2 h-2 rounded-full rt-pulse" style={{ background: COLORS.teal }} />
+          <ColorOrb
+            dimension="22px"
+            spinDuration={8}
+            tones={{
+              base: "oklch(95% 0.02 160)",
+              accent1: "oklch(65% 0.18 160)",
+              accent2: "oklch(72% 0.14 200)",
+              accent3: "oklch(70% 0.16 140)",
+            }}
+          />
           <span className="text-xs text-[#6b6b6b]">Replaces the $300/hr resume coach</span>
         </motion.div>
 
@@ -140,8 +161,7 @@ function Hero() {
           transition={{ duration: 0.6, delay: 0.45, ease }}
           className="mt-8 text-base md:text-lg text-[#6b6b6b] max-w-xl mx-auto leading-relaxed"
         >
-          Paste a job description. Get a tailored resume, cover letter, and application strategy —
-          with provenance for every claim. If it can&apos;t do the work credibly, it refuses.
+          Paste a job description. Get a tailored resume, cover letter, and application strategy, with provenance for every claim. If it can&apos;t do the work credibly, it refuses.
         </motion.p>
 
         <motion.div
@@ -150,8 +170,8 @@ function Hero() {
           transition={{ duration: 0.5, delay: 0.6, ease }}
           className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3"
         >
-          <Link href="/signup" className="rt-btn text-base px-8 py-3.5">
-            Start generating
+          <Link href={loggedIn ? "/dashboard" : "/signup"} className="rt-btn text-base px-8 py-3.5">
+            {loggedIn ? "Go to Dashboard" : "Start generating"}
             <ArrowRight className="w-4 h-4" />
           </Link>
           <a href="#how-it-works" className="rt-btn-ghost text-sm px-6 py-3">
@@ -171,7 +191,7 @@ function Hero() {
           </span>
           <span className="flex items-center gap-1.5">
             <Shield className="w-3.5 h-3.5" style={{ color: COLORS.blue }} />
-            GDPR compliant
+            Privacy first
           </span>
           <span className="flex items-center gap-1.5">
             <Target className="w-3.5 h-3.5" style={{ color: COLORS.purple }} />
@@ -205,21 +225,21 @@ function LiveDemo() {
         >
           {/* Card 1 — Paste */}
           <div className="bg-white border border-[#e5e2dd] rounded-2xl p-5 shadow-sm rt-card-lift">
-            <p className="text-[10px] font-medium tracking-[0.12em] uppercase text-[#9a9690] mb-1">01 — Paste</p>
+            <p className="text-[10px] font-medium tracking-[0.12em] uppercase text-[#9a9690] mb-1">01 / Paste</p>
             <p className="font-serif text-base text-[#1a1a1a] mb-4">Drop in the job URL.</p>
             <PastePhase key={`p-${tick}`} />
           </div>
 
           {/* Card 2 — Pipeline */}
           <div className="bg-white border border-[#e5e2dd] rounded-2xl p-5 shadow-sm rt-card-lift">
-            <p className="text-[10px] font-medium tracking-[0.12em] uppercase text-[#9a9690] mb-1">02 — Generate</p>
+            <p className="text-[10px] font-medium tracking-[0.12em] uppercase text-[#9a9690] mb-1">02 / Generate</p>
             <p className="font-serif text-base text-[#1a1a1a] mb-4">Pipeline runs in seconds.</p>
             <PipelinePhase key={`pl-${tick}`} compact startDelay={2800} />
           </div>
 
           {/* Card 3 — Document */}
           <div className="bg-white border border-[#e5e2dd] rounded-2xl p-5 shadow-sm rt-card-lift">
-            <p className="text-[10px] font-medium tracking-[0.12em] uppercase text-[#9a9690] mb-1">03 — Download</p>
+            <p className="text-[10px] font-medium tracking-[0.12em] uppercase text-[#9a9690] mb-1">03 / Download</p>
             <p className="font-serif text-base text-[#1a1a1a] mb-4">Package ready to ship.</p>
             <DocumentPhase key={`d-${tick}`} compact startDelay={6500} />
           </div>
@@ -362,7 +382,7 @@ function PipelinePhase({ compact, startDelay = 0 }: { compact?: boolean; startDe
       {isComplete && (
         <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="mt-2 flex items-center gap-1.5 bg-[#d4f5e0] rounded-lg px-3 py-2">
           <Check className="w-3 h-3" style={{ color: COLORS.green }} />
-          <span className="text-[11px] font-medium" style={{ color: COLORS.brand }}>SHIP — quality gate passed</span>
+          <span className="text-[11px] font-medium" style={{ color: COLORS.brand }}>SHIP · quality gate passed</span>
         </motion.div>
       )}
     </div>
@@ -434,7 +454,7 @@ function HowItWorks() {
       iconBg: "#fef3c7",
       title: (
         <>
-          Upload your resume — the system extracts your{" "}
+          Upload your resume and the system extracts your{" "}
           <span className="inline-flex items-center gap-1 bg-[#fed7aa] rounded px-1.5 py-0.5 text-[#9a3412]">
             voice fingerprint
           </span>{" "}
@@ -452,7 +472,7 @@ function HowItWorks() {
           <span className="inline-flex items-center gap-1 bg-[#d4f5e0] rounded px-1.5 py-0.5 text-[#2d8a5e]">
             job description
           </span>{" "}
-          — the cognitive system maps every requirement to your real experience.
+          . The cognitive system maps every requirement to your real experience.
         </>
       ),
     },
@@ -467,7 +487,7 @@ function HowItWorks() {
             <Sparkles className="w-3.5 h-3.5" />
             produce
           </span>{" "}
-          your package — resume, cover letter, strategy, and GDPR audit trail.
+          your package: resume, cover letter, strategy, and full audit trail.
         </>
       ),
     },
@@ -541,19 +561,19 @@ function Features() {
       icon: <Target className="w-4 h-4" style={{ color: COLORS.purple }} />,
       iconBg: "#f3e8ff",
       title: "Zero fabrication.",
-      desc: "Every bullet has provenance — traced back to your actual experience. The system refuses to ship claims it can't verify.",
+      desc: "Every bullet has provenance, traced back to your actual experience. The system refuses to ship claims it cannot verify.",
     },
     {
       icon: <Shield className="w-4 h-4" style={{ color: COLORS.blue }} />,
       iconBg: "#e0f2fe",
-      title: "GDPR Article 22 audit.",
+      title: "Full audit trail.",
       desc: "Every decision logged. Every specialist traced. A full audit packet you can read, contest, or replay end-to-end.",
     },
     {
       icon: <Sparkles className="w-4 h-4" style={{ color: COLORS.teal }} />,
       iconBg: "#ccfbf1",
       title: "Voice preservation.",
-      desc: "Your writing style is fingerprinted. Generated bullets match your vocabulary, sentence length, and verb quality — not generic AI tone.",
+      desc: "Your writing style is fingerprinted. Generated bullets match your vocabulary, sentence length, and verb quality, not generic AI tone.",
     },
   ];
 
@@ -577,7 +597,7 @@ function Features() {
           transition={{ duration: 0.5, delay: 0.1, ease }}
           className="text-center text-[#6b6b6b] text-base mb-14 max-w-lg mx-auto"
         >
-          18 specialists coordinate like a senior hiring expert thinks — comprehension, strategy,
+          18 specialists coordinate like a senior hiring expert thinks: comprehension, strategy,
           production, critique, decision.
         </motion.p>
 
@@ -635,7 +655,7 @@ function Outputs() {
       iconBg: "#e0f2fe",
       title: "Audit + Strategy",
       items: [
-        "GDPR Article 22 audit packet (every decision traced)",
+        "Full audit trail (every decision traced)",
         "Callback probability with confidence interval",
         "Recruiter outreach templates + referral routes",
         "Right to contest every automated decision",
@@ -750,7 +770,7 @@ function Differentiator() {
                 { text: "Provenance for every claim", color: COLORS.teal },
                 { text: "Refuses when quality is low", color: COLORS.red },
                 { text: "Voice-matched to your style", color: COLORS.purple },
-                { text: "GDPR audit trail included", color: COLORS.blue },
+                { text: "Full audit trail included", color: COLORS.blue },
                 { text: "Calibrated callback prediction", color: COLORS.amber },
               ].map((item, i) => (
                 <div
@@ -798,21 +818,22 @@ function Pricing() {
           transition={{ duration: 0.5, delay: 0.1, ease }}
           className="text-center text-[#6b6b6b] text-base mb-14"
         >
-          Try with 2 generations. Upgrade when you&apos;re serious about every application.
+          Try with 3 generations. Upgrade when you&apos;re serious about every application.
         </motion.p>
 
-        <div className="grid md:grid-cols-2 gap-5">
+        <div className="grid md:grid-cols-3 gap-5">
           {[
             {
               name: "Starter",
               price: "$0",
-              period: "",
+              period: "forever",
               desc: "See what the system produces",
+              credits: "30 credits",
               features: [
-                "2 full generations",
+                "3 resume generations",
+                "3 refinements per application",
                 "Resume DOCX + PDF",
                 "Cover letter + strategy",
-                "GDPR audit packet",
                 "ATS scoring report",
               ],
               cta: "Get started",
@@ -821,19 +842,37 @@ function Pricing() {
             },
             {
               name: "Pro",
-              price: "$19",
+              price: "$20",
               period: "/mo",
               desc: "For active job seekers",
+              credits: "500 credits",
               features: [
-                "Unlimited generations",
+                "~50 resume generations",
+                "10 refinements per application",
                 "Everything in Starter",
-                "AI refinements per application",
-                "Outcome tracking + calibration",
                 "Priority generation queue",
+                "Application strategy insights",
               ],
               cta: "Get Pro",
               href: "/signup",
               highlighted: true,
+            },
+            {
+              name: "Max",
+              price: "$50",
+              period: "/mo",
+              desc: "For power users",
+              credits: "1,500 credits",
+              features: [
+                "~150 resume generations",
+                "Unlimited refinements",
+                "Everything in Pro",
+                "Early access to new features",
+                "Priority email support",
+              ],
+              cta: "Go Max",
+              href: "/signup",
+              highlighted: false,
             },
           ].map((plan, i) => (
             <motion.div
@@ -875,6 +914,9 @@ function Pricing() {
                   )}
                 </div>
               </div>
+              <p className={`text-xs font-medium mb-4 ${plan.highlighted ? "text-white/70" : "text-[#2d8a5e]"}`}>
+                {plan.credits}
+              </p>
               <ul className="space-y-2.5 mb-8 flex-1">
                 {plan.features.map((f) => (
                   <li key={f} className="flex items-start gap-2.5">
@@ -936,7 +978,7 @@ function Testimonials() {
             className="text-center text-white/60 text-base max-w-xl mx-auto mb-14"
           >
             Retuned thinks about your application the way a senior coach + recruiter + hiring
-            manager would — then decides honestly whether the output is good enough to ship.
+            manager would, then decides honestly whether the output is good enough to ship.
           </motion.p>
 
           <div className="grid md:grid-cols-3 gap-6">
@@ -944,7 +986,7 @@ function Testimonials() {
               {
                 stat: "≤ 60s",
                 label: "Generation time",
-                desc: "Full cognitive cycle — comprehension through decision",
+                desc: "Full cognitive cycle, comprehension through decision",
               },
               {
                 stat: "≥ 92%",
@@ -979,6 +1021,7 @@ function Testimonials() {
 function CTA() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-60px" });
+  const loggedIn = useIsLoggedIn();
 
   return (
     <section className="py-24 px-6 md:px-12" ref={ref}>
@@ -999,16 +1042,15 @@ function CTA() {
           transition={{ duration: 0.5, delay: 0.1, ease }}
           className="text-[#6b6b6b] text-base mb-8 max-w-md mx-auto"
         >
-          2 generations to try. See how a cognitive system handles your next job application —
-          provenance, quality gates, and all.
+          3 generations to try. See how a cognitive system handles your next job application, provenance, quality gates, and all.
         </motion.p>
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.5, delay: 0.2, ease }}
         >
-          <Link href="/signup" className="rt-btn text-base px-8 py-3.5">
-            Start generating
+          <Link href={loggedIn ? "/dashboard" : "/signup"} className="rt-btn text-base px-8 py-3.5">
+            {loggedIn ? "Go to Dashboard" : "Start generating"}
             <ArrowRight className="w-4 h-4" />
           </Link>
         </motion.div>
@@ -1022,6 +1064,7 @@ function MintBar() {
 }
 
 function Footer() {
+  const loggedIn = useIsLoggedIn();
   return (
     <footer className="rt-dark-section">
       <div className="max-w-6xl mx-auto px-6 md:px-12 py-16">
@@ -1029,17 +1072,17 @@ function Footer() {
           <div>
             <div className="flex items-center gap-2 mb-4 text-white">
               <RetunedLogoMark size={18} />
-              <span className="text-base font-semibold">Retuned</span>
+              <span className="font-serif text-xl font-medium tracking-tight">Retuned</span>
             </div>
             <p className="text-sm text-white/60 max-w-xs leading-relaxed mt-4">
               The multi-mind cognitive system that replaces the $300/hr resume coach. Ships when it
               can do the work. Refuses when it can&apos;t.
             </p>
             <Link
-              href="/signup"
+              href={loggedIn ? "/dashboard" : "/signup"}
               className="inline-flex items-center gap-2 mt-6 bg-white text-[#2d8a5e] text-sm font-medium px-5 py-2.5 rounded-full hover:bg-white/90 transition-colors"
             >
-              Start generating
+              {loggedIn ? "Go to Dashboard" : "Start generating"}
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>

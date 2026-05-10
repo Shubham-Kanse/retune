@@ -27,7 +27,7 @@ const PRIVACY_CONTENT = (
     </section>
     <section>
       <h2 className="text-base font-semibold mb-2">4. Data Retention</h2>
-      <p>We retain your data as long as necessary to provide the Service. You can request deletion at any time by emailing <a href="mailto:privacy@retune.dev" className="underline">privacy@retune.dev</a>. Deletion is processed within 30 days.</p>
+      <p>We retain your data as long as necessary to provide the Service. You can request deletion at any time by emailing <a href="mailto:support@retuned.cv" className="underline">support@retuned.cv</a>. Deletion is processed within 30 days.</p>
     </section>
     <section>
       <h2 className="text-base font-semibold mb-2">5. Data Security</h2>
@@ -42,12 +42,12 @@ const PRIVACY_CONTENT = (
       </ul>
     </section>
     <section>
-      <h2 className="text-base font-semibold mb-2">7. GDPR & CCPA</h2>
-      <p>EU users have rights under GDPR (access, rectify, delete, port). California users have rights under CCPA. We do not sell your personal information. Contact <a href="mailto:privacy@retune.dev" className="underline">privacy@retune.dev</a>.</p>
+      <h2 className="text-base font-semibold mb-2">7. Your Rights</h2>
+      <p>You have the right to access, correct, or delete your personal data. We do not sell your personal information. Contact <a href="mailto:support@retuned.cv" className="underline">support@retuned.cv</a>.</p>
     </section>
     <section>
       <h2 className="text-base font-semibold mb-2">8. Contact</h2>
-      <p>Retuned Inc. · <a href="mailto:privacy@retune.dev" className="underline">privacy@retune.dev</a> · San Francisco, CA</p>
+      <p>Retuned · <a href="mailto:support@retuned.cv" className="underline">support@retuned.cv</a> · India</p>
     </section>
   </div>
 );
@@ -93,11 +93,11 @@ const TERMS_CONTENT = (
     </section>
     <section>
       <h2 className="text-base font-semibold mb-2">8. Governing Law</h2>
-      <p>These terms are governed by the laws of California.</p>
+      <p>These terms are governed by the laws of India.</p>
     </section>
     <section>
       <h2 className="text-base font-semibold mb-2">9. Contact</h2>
-      <p>Retuned Inc. · <a href="mailto:support@retune.dev" className="underline">support@retune.dev</a> · San Francisco, CA</p>
+      <p>Retuned · <a href="mailto:support@retuned.cv" className="underline">support@retuned.cv</a> · India</p>
     </section>
   </div>
 );
