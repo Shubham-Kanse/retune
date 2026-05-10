@@ -1,0 +1,11 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /dashboard
+Disallow: /generate/
+Disallow: /applications/
+Disallow: /profile
+Disallow: /settings
+Disallow: /onboarding
+
+Sitemap: https://retune.so/sitemap.xml

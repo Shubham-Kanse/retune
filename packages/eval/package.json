@@ -1,0 +1,28 @@
+{
+  "name": "@retune/eval",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./canonical": "./src/canonical/loader.ts",
+    "./metrics": "./src/metrics/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/**/*.test.ts",
+    "eval": "tsx src/runner.ts",
+    "eval:baseline": "tsx src/runner.ts --baseline-only"
+  },
+  "dependencies": {
+    "@retune/agent": "workspace:*",
+    "@retune/types": "workspace:*",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@retune/tsconfig": "workspace:*",
+    "@types/node": "^22.10.10",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.3"
+  }
+}

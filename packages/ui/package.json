@@ -1,0 +1,19 @@
+{
+  "name": "@retune/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tokens": "./src/tokens/index.ts",
+    "./cognitive": "./src/cognitive/index.ts"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@retune/tsconfig": "workspace:*",
+    "@types/react": "^19.0.0",
+    "typescript": "^5.7.0"
+  }
+}

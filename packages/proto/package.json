@@ -1,0 +1,25 @@
+{
+  "name": "@retune/proto",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Source-of-truth gRPC contracts for the TS workbench Python ML service boundary.",
+  "exports": {
+    ".": "./gen/ts/ml_pb.ts"
+  },
+  "scripts": {
+    "lint": "buf lint",
+    "generate": "buf generate",
+    "generate:py": "bash ../../apps/ml/scripts/gen-grpc.sh",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.12.0"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "^1.69.0",
+    "@bufbuild/protoc-gen-es": "^2.12.0",
+    "@retune/tsconfig": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}

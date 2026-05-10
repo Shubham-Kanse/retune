@@ -1,0 +1,301 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #faf8f5;
+  --color-foreground: #1a1a1a;
+  --color-card: #ffffff;
+  --color-muted: #f0ede8;
+  --color-muted-foreground: #6b6b6b;
+  --color-border: #e5e2dd;
+  --color-accent: #2d8a5e;
+  --color-accent-foreground: #ffffff;
+  --color-brand: #2d8a5e;
+  --color-brand-foreground: #ffffff;
+  --color-brand-light: #d4f5e0;
+  --color-destructive: #dc2626;
+  --color-ring: #2d8a5e;
+  --font-family-sans: var(--font-inter, "Inter"), system-ui, -apple-system, sans-serif;
+  --font-family-serif: var(--font-eb-garamond, "EB Garamond"), Georgia, serif;
+  --font-family-mono: "JetBrains Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #faf8f5;
+  color: #1a1a1a;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: #b3d4ff;
+  color: #1a1a1a;
+}
+
+/* Primary CTA button — dark green */
+.rt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #2d8a5e;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  border: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  font-family: "Inter", system-ui, sans-serif;
+}
+.rt-btn:hover {
+  background: #236e4a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(26, 58, 42, 0.3);
+}
+.rt-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Ghost button */
+.rt-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: transparent;
+  color: #1a1a1a;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid #e5e2dd;
+  border-radius: 9999px;
+  transition: all 0.2s;
+  cursor: pointer;
+  font-family: "Inter", system-ui, sans-serif;
+}
+.rt-btn-ghost:hover {
+  background: #f0ede8;
+  border-color: #d5d2cd;
+}
+
+/* Destructive button */
+.rt-btn-destructive {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid #fecaca;
+  border-radius: 9999px;
+  transition: all 0.2s;
+  cursor: pointer;
+  font-family: "Inter", system-ui, sans-serif;
+}
+.rt-btn-destructive:hover {
+  background: #fee2e2;
+}
+
+/* Card */
+.rt-card {
+  background: #ffffff;
+  border-radius: 1.25rem;
+  border: 1px solid #e5e2dd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Input */
+.rt-input,
+.rt-textarea {
+  background: #ffffff;
+  border: 1px solid #e5e2dd;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: #1a1a1a;
+  font-size: 0.875rem;
+  font-family: "Inter", system-ui, sans-serif;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.rt-input::placeholder,
+.rt-textarea::placeholder {
+  color: #999;
+}
+.rt-input:focus,
+.rt-textarea:focus {
+  outline: none;
+  border-color: #2d8a5e;
+  box-shadow: 0 0 0 3px rgba(26, 58, 42, 0.08);
+}
+
+/* Label */
+.rt-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #6b6b6b;
+}
+
+/* Icon button */
+.rt-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid #e5e2dd;
+  background: #ffffff;
+  color: #1a1a1a;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.rt-icon-btn:hover {
+  background: #f0ede8;
+  border-color: #d5d2cd;
+}
+
+/* Pulse dot */
+@keyframes pulse-green {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+  }
+}
+.rt-pulse {
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+/* Scroll strip */
+@keyframes scroll-x {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+.rt-scroll-strip {
+  animation: scroll-x 28s linear infinite;
+}
+.rt-scroll-strip:hover {
+  animation-play-state: paused;
+}
+
+/* Feature card mint */
+.rt-feature-card {
+  background: #f8fffe;
+  border: 1px solid #e5e2dd;
+  border-radius: 1.5rem;
+  padding: 2.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rt-feature-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.07);
+}
+
+/* Dark section (footer, testimonials) */
+.rt-dark-section {
+  background: linear-gradient(180deg, #2d8a5e 0%, #0f2a1c 100%);
+  color: #ffffff;
+}
+
+/* Mint accent bar */
+.rt-mint-bar {
+  height: 4px;
+  background: linear-gradient(90deg, #86efac, #4ade80, #86efac);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Nav pill */
+.rt-nav-pill {
+  background: #ffffff;
+  border: 1px solid #e5e2dd;
+  border-radius: 9999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Drop zone active */
+.rt-drop-active {
+  border-color: #2d8a5e !important;
+  background: rgba(26, 58, 42, 0.03);
+}
+
+/* Icon shine on hover */
+@keyframes iconShine {
+  0% {
+    filter: brightness(1) drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: brightness(1.4) drop-shadow(0 0 6px currentColor);
+  }
+  100% {
+    filter: brightness(1) drop-shadow(0 0 0 transparent);
+  }
+}
+
+/* Icon shine utility class */
+.icon-shine {
+  transition: filter 0.3s ease;
+}
+.icon-shine:hover {
+  animation: iconShine 1.2s ease-in-out;
+}
+
+/* Float animation for hero elements */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+.rt-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Points badge glow — heartbeat pulse */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.7;
+    text-shadow: 0 0 0 transparent;
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 6px rgba(45, 138, 94, 0.4);
+  }
+}
+
+/* Hover lift for landing page cards */
+.rt-card-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.rt-card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.07);
+}

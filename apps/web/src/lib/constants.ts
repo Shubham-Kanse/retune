@@ -1,0 +1,9 @@
+export const ATS_THRESHOLD = 85;
+export const ATS_PREFERRED_THRESHOLD = 70;
+export const FREE_GENERATIONS_LIMIT = 2;
+export const FREE_REFINEMENTS_PER_APPLICATION = 5;
+export const MIN_JD_TEXT_LENGTH = 50;
+export const MIN_JD_URL_LENGTH = 10;
+export const MAX_JD_LENGTH = 15000;
+export const AUTOSAVE_DELAY_MS = 2000;
+export const MAX_FILE_SIZE_MB = 10;

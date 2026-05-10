@@ -1,0 +1,23 @@
+# buf code generation config.
+#
+# Generates:
+#   gen/ts/        — @bufbuild/protobuf message types (TS)
+#                    These give us strongly-typed message shapes shared
+#                    by the @retune/agent ML client and any future TS
+#                    consumer of ml.proto.
+#
+# Python codegen runs out-of-band via `apps/ml/scripts/gen-grpc.sh` so
+# the Python toolchain (uv + grpcio-tools) doesn't pollute the JS deps.
+# Both must stay in sync — CI runs `buf lint` + the Python script.
+
+version: v2
+
+inputs:
+  - directory: proto
+
+plugins:
+  - local: protoc-gen-es
+    out: gen/ts
+    opt:
+      - target=ts
+      - import_extension=js

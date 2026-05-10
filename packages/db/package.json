@@ -1,0 +1,32 @@
+{
+  "name": "@retune/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./types": "./src/types.ts",
+    "./pg": "./src/pg/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "db:pg:generate": "drizzle-kit generate --config=drizzle.config.pg.ts",
+    "db:pg:push": "drizzle-kit push --config=drizzle.config.pg.ts",
+    "db:pg:check": "drizzle-kit check --config=drizzle.config.pg.ts",
+    "db:migrate": "tsx scripts/migrate.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.4.5",
+    "@paralleldrive/cuid2": "^2.2.2",
+    "drizzle-orm": "^0.38.3",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@retune/tsconfig": "workspace:*",
+    "drizzle-kit": "^0.30.4",
+    "tsx": "^4.20.7",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.0"
+  }
+}

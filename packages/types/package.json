@@ -1,0 +1,30 @@
+{
+  "name": "@retune/types",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./blackboard": "./src/blackboard.ts",
+    "./evidence": "./src/evidence.ts",
+    "./confidence": "./src/confidence.ts",
+    "./goal": "./src/goal.ts",
+    "./conflict": "./src/conflict.ts",
+    "./narrative-arc": "./src/narrative-arc.ts",
+    "./voice": "./src/voice.ts",
+    "./honesty": "./src/honesty.ts",
+    "./persona": "./src/persona.ts",
+    "./market": "./src/market.ts",
+    "./ml": "./src/ml-contracts.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@retune/tsconfig": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}

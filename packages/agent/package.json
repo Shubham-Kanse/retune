@@ -1,0 +1,40 @@
+{
+  "name": "@retune/agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./web": "./src/web-exports.ts",
+    "./cron": "./src/cron/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "find tests -name '*.test.ts' -print0 | xargs -0 tsx --test"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.81.0",
+    "@bufbuild/protobuf": "^2.12.0",
+    "@connectrpc/connect": "^2.1.1",
+    "@connectrpc/connect-fastify": "^2.1.1",
+    "@connectrpc/connect-node": "^2.1.1",
+    "@retune/db": "workspace:*",
+    "@retune/proto": "workspace:*",
+    "@retune/types": "workspace:*",
+    "@temporalio/activity": "^1.17.0",
+    "@temporalio/client": "^1.17.0",
+    "@temporalio/common": "^1.17.0",
+    "@temporalio/testing": "^1.17.0",
+    "@temporalio/worker": "^1.17.0",
+    "@temporalio/workflow": "^1.17.0",
+    "drizzle-orm": "^0.38.4",
+    "openai": "^6.36.0",
+    "p-limit": "^7.3.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@retune/tsconfig": "workspace:*",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.3"
+  }
+}

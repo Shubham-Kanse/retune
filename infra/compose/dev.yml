@@ -1,0 +1,90 @@
+# Retune local-development stack — full prod parity except for scale.
+#
+# Start everything:
+#   docker compose -f infra/compose/dev.yml up
+#
+# Just the ML service:
+#   docker compose -f infra/compose/dev.yml up ml-service
+#
+# Reset state:
+#   docker compose -f infra/compose/dev.yml down -v
+#
+# This file is ADDITIVE to the existing root `docker-compose.yml`, which
+# remains the production deploy artifact for the current SQLite-backed
+# product. The Postgres migration ships in commit #2.
+
+name: retune-dev
+
+services:
+  # ─── Postgres (with pgvector) — episodic memory + structured store ───
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: retune-postgres
+    environment:
+      POSTGRES_USER: retune
+      POSTGRES_PASSWORD: retune
+      POSTGRES_DB: retune
+    ports:
+      - "5432:5432"
+    volumes:
+      - retune_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U retune -d retune"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ─── Redis — hot cache + ratelimit + temporal queue backing ───
+  redis:
+    image: redis:7-alpine
+    container_name: retune-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ─── Temporal — durable workflow engine ───
+  # Single-node dev mode. Production uses a managed cluster.
+  temporal:
+    image: temporalio/auto-setup:1.25.2
+    container_name: retune-temporal
+    environment:
+      DB: postgres12
+      DB_PORT: 5432
+      POSTGRES_USER: retune
+      POSTGRES_PWD: retune
+      POSTGRES_SEEDS: postgres
+      DYNAMIC_CONFIG_FILE_PATH: /etc/temporal/dynamic_config.yaml
+    ports:
+      - "7233:7233"   # gRPC
+      - "8233:8233"   # Web UI (Temporal 1.25+)
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./temporal-dynamic-config.yaml:/etc/temporal/dynamic_config.yaml:ro
+
+  # ─── ML compute layer ───
+  ml-service:
+    build:
+      context: ../../apps/ml
+      dockerfile: Dockerfile
+    container_name: retune-ml
+    environment:
+      RETUNE_ML_HOST: 0.0.0.0
+      RETUNE_ML_PORT: "8000"
+      RETUNE_ML_LOG_LEVEL: INFO
+      RETUNE_ML_USE_STUBS: "true"
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  retune_pg_data:

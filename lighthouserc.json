@@ -1,0 +1,19 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["http://localhost:3000/login", "http://localhost:3000/dashboard"],
+      "startServerCommand": "pnpm --filter @retune/web start",
+      "startServerReadyPattern": "Ready",
+      "startServerReadyTimeout": 30000
+    },
+    "assert": {
+      "assertions": {
+        "categories:performance": ["error", { "minScore": 0.9 }],
+        "categories:accessibility": ["error", { "minScore": 0.9 }],
+        "categories:best-practices": ["warn", { "minScore": 0.85 }],
+        "interactive": ["warn", { "maxNumericValue": 5000 }],
+        "largest-contentful-paint": ["error", { "maxNumericValue": 2500 }]
+      }
+    }
+  }
+}

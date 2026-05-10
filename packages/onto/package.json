@@ -1,0 +1,28 @@
+{
+  "name": "@retune/onto",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SOTA cognitive-neural knowledge graph for retune. JSON-LD canonical, Neo4j Cypher + TypeScript materializations. Cross-referenced to UBERON, ChEBI, GO, DOID, MFOEM, NIFSTD.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./jsonld": "./src/cognitive.jsonld",
+    "./types": "./src/types.ts",
+    "./cypher": "./src/cypher.ts",
+    "./runtime": "./src/runtime.ts"
+  },
+  "scripts": {
+    "build": "tsx scripts/build.ts",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@retune/tsconfig": "workspace:*",
+    "@types/node": "^22.10.10",
+    "tsx": "^4.21.0",
+    "typescript": "^5.7.3"
+  }
+}

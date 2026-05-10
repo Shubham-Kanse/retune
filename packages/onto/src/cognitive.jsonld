@@ -1,0 +1,1291 @@
+{
+  "@context": {
+    "retune": "https://retune.dev/onto/cognitive/v1#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "owl": "http://www.w3.org/2002/07/owl#",
+    "skos": "http://www.w3.org/2004/02/skos/core#",
+    "dcterms": "http://purl.org/dc/terms/",
+    "uberon": "http://purl.obolibrary.org/obo/UBERON_",
+    "chebi": "http://purl.obolibrary.org/obo/CHEBI_",
+    "go": "http://purl.obolibrary.org/obo/GO_",
+    "doid": "http://purl.obolibrary.org/obo/DOID_",
+    "mfoem": "http://purl.obolibrary.org/obo/MFOEM_",
+    "cogpo": "http://purl.org/cogpo/",
+    "nlx": "http://uri.neuinfo.org/nif/nifstd/nlx_",
+    "id": "@id",
+    "type": "@type",
+    "label": "rdfs:label",
+    "definition": "skos:definition",
+    "comment": "rdfs:comment",
+    "broader": { "@id": "skos:broader", "@type": "@id" },
+    "exactMatch": { "@id": "skos:exactMatch", "@type": "@id", "@container": "@set" },
+    "closeMatch": { "@id": "skos:closeMatch", "@type": "@id", "@container": "@set" },
+    "tagsRegion": { "@id": "retune:tagsRegion", "@type": "@id", "@container": "@set" },
+    "usesNeurotransmitter": { "@id": "retune:usesNeurotransmitter", "@type": "@id" },
+    "embodiesCellType": { "@id": "retune:embodiesCellType", "@type": "@id" },
+    "coversThinking": { "@id": "retune:coversThinking", "@type": "@id", "@container": "@set" },
+    "participatesIn": { "@id": "retune:participatesIn", "@type": "@id", "@container": "@set" },
+    "actsAt": { "@id": "retune:actsAt", "@type": "@id" },
+    "actionClass": { "@id": "retune:actionClass", "@type": "@id" },
+    "emitsGoal": { "@id": "retune:emitsGoal", "@type": "@id", "@container": "@set" },
+    "emitsConflict": { "@id": "retune:emitsConflict", "@type": "@id", "@container": "@set" },
+    "emitsEvent": { "@id": "retune:emitsEvent", "@type": "@id", "@container": "@set" },
+    "surfacedBy": { "@id": "retune:surfacedBy", "@container": "@set" },
+    "auditedBy": { "@id": "retune:auditedBy", "@container": "@set" },
+    "documentedAt": "retune:documentedAt",
+    "version": "dcterms:hasVersion"
+  },
+
+  "@id": "https://retune.dev/onto/cognitive/v1",
+  "@type": "owl:Ontology",
+  "version": "0.1.0",
+  "label": "retune Cognitive-Neural Ontology",
+  "comment": "Single source of truth for cognitive and neural primitives in retune. Markdown taxonomies in technical-2.0.md/prd-2.0.md are derived views of this graph.",
+
+  "@graph": [
+    { "id": "retune:Class.Layer", "type": "owl:Class", "label": "Layer" },
+    { "id": "retune:Class.Specialist", "type": "owl:Class", "label": "Specialist" },
+    { "id": "retune:Class.BrainRegion", "type": "owl:Class", "label": "BrainRegion" },
+    { "id": "retune:Class.Network", "type": "owl:Class", "label": "FunctionalNetwork" },
+    { "id": "retune:Class.CellType", "type": "owl:Class", "label": "NeuronCellType" },
+    { "id": "retune:Class.GliaType", "type": "owl:Class", "label": "GliaType" },
+    { "id": "retune:Class.Neurotransmitter", "type": "owl:Class", "label": "Neurotransmitter" },
+    { "id": "retune:Class.ThinkingComponent", "type": "owl:Class", "label": "ThinkingComponent" },
+    { "id": "retune:Class.MindsetAxis", "type": "owl:Class", "label": "MindsetAxis" },
+    { "id": "retune:Class.ThoughtMode", "type": "owl:Class", "label": "ThoughtMode" },
+    { "id": "retune:Class.ActionClass", "type": "owl:Class", "label": "ActionClass" },
+    { "id": "retune:Class.OscillationBand", "type": "owl:Class", "label": "OscillationBand" },
+    {
+      "id": "retune:Class.PlasticityMechanism",
+      "type": "owl:Class",
+      "label": "PlasticityMechanism"
+    },
+    { "id": "retune:Class.PathologyMode", "type": "owl:Class", "label": "PathologyMode" },
+    { "id": "retune:Class.EmotionalState", "type": "owl:Class", "label": "EmotionalState" },
+    { "id": "retune:Class.GoalKind", "type": "owl:Class", "label": "GoalKind" },
+    { "id": "retune:Class.ConflictMonitor", "type": "owl:Class", "label": "ConflictMonitor" },
+    { "id": "retune:Class.SseEventKind", "type": "owl:Class", "label": "SseEventKind" },
+
+    { "id": "retune:layer.substrate", "type": "retune:Class.Layer", "label": "substrate" },
+    { "id": "retune:layer.comprehension", "type": "retune:Class.Layer", "label": "comprehension" },
+    { "id": "retune:layer.reflection", "type": "retune:Class.Layer", "label": "reflection" },
+    { "id": "retune:layer.strategy", "type": "retune:Class.Layer", "label": "strategy" },
+    { "id": "retune:layer.production", "type": "retune:Class.Layer", "label": "production" },
+    { "id": "retune:layer.critique", "type": "retune:Class.Layer", "label": "critique" },
+    { "id": "retune:layer.decision", "type": "retune:Class.Layer", "label": "decision" },
+    { "id": "retune:layer.crossCutting", "type": "retune:Class.Layer", "label": "cross-cutting" },
+    { "id": "retune:layer.meta", "type": "retune:Class.Layer", "label": "meta" },
+
+    {
+      "id": "retune:region.dlpfc",
+      "type": "retune:Class.BrainRegion",
+      "label": "Dorsolateral PFC",
+      "exactMatch": ["uberon:0013528"],
+      "closeMatch": ["nlx:1001"],
+      "documentedAt": "technical-2.0.md#28.1"
+    },
+    {
+      "id": "retune:region.vmpfc",
+      "type": "retune:Class.BrainRegion",
+      "label": "Ventromedial PFC",
+      "exactMatch": ["uberon:0009834"]
+    },
+    {
+      "id": "retune:region.vlpfc_right",
+      "type": "retune:Class.BrainRegion",
+      "label": "Right ventrolateral PFC",
+      "closeMatch": ["uberon:0006057"]
+    },
+    {
+      "id": "retune:region.acc",
+      "type": "retune:Class.BrainRegion",
+      "label": "Anterior cingulate cortex",
+      "exactMatch": ["uberon:0009835"]
+    },
+    {
+      "id": "retune:region.frontopolar",
+      "type": "retune:Class.BrainRegion",
+      "label": "Frontopolar cortex",
+      "closeMatch": ["uberon:0002795"]
+    },
+    {
+      "id": "retune:region.broca",
+      "type": "retune:Class.BrainRegion",
+      "label": "Broca's area",
+      "exactMatch": ["uberon:0006481"]
+    },
+    {
+      "id": "retune:region.premotor",
+      "type": "retune:Class.BrainRegion",
+      "label": "Premotor cortex",
+      "exactMatch": ["uberon:0002810"]
+    },
+    {
+      "id": "retune:region.motor",
+      "type": "retune:Class.BrainRegion",
+      "label": "Primary motor cortex",
+      "exactMatch": ["uberon:0001384"]
+    },
+    {
+      "id": "retune:region.wernicke",
+      "type": "retune:Class.BrainRegion",
+      "label": "Wernicke's area",
+      "exactMatch": ["uberon:0006482"]
+    },
+    {
+      "id": "retune:region.angular_gyrus",
+      "type": "retune:Class.BrainRegion",
+      "label": "Angular gyrus",
+      "exactMatch": ["uberon:0002687"]
+    },
+    {
+      "id": "retune:region.tpj_right",
+      "type": "retune:Class.BrainRegion",
+      "label": "Right temporoparietal junction",
+      "closeMatch": ["uberon:0008933"]
+    },
+    {
+      "id": "retune:region.sts",
+      "type": "retune:Class.BrainRegion",
+      "label": "Superior temporal sulcus",
+      "exactMatch": ["uberon:0002112"]
+    },
+    {
+      "id": "retune:region.temporal",
+      "type": "retune:Class.BrainRegion",
+      "label": "Temporal cortex",
+      "exactMatch": ["uberon:0001870"]
+    },
+    {
+      "id": "retune:region.insula",
+      "type": "retune:Class.BrainRegion",
+      "label": "Insular cortex",
+      "exactMatch": ["uberon:0002022"]
+    },
+    {
+      "id": "retune:region.dmn",
+      "type": "retune:Class.BrainRegion",
+      "label": "Default mode network composite",
+      "closeMatch": ["cogpo:network/dmn"]
+    },
+    {
+      "id": "retune:region.arcuate",
+      "type": "retune:Class.BrainRegion",
+      "label": "Arcuate fasciculus",
+      "exactMatch": ["uberon:0035020"]
+    },
+    {
+      "id": "retune:region.cerebellum",
+      "type": "retune:Class.BrainRegion",
+      "label": "Cerebellum",
+      "exactMatch": ["uberon:0002037"]
+    },
+    {
+      "id": "retune:region.hippocampus",
+      "type": "retune:Class.BrainRegion",
+      "label": "Hippocampus",
+      "exactMatch": ["uberon:0002421"]
+    },
+    {
+      "id": "retune:region.amygdala",
+      "type": "retune:Class.BrainRegion",
+      "label": "Amygdala",
+      "exactMatch": ["uberon:0001876"]
+    },
+    {
+      "id": "retune:region.nucleus_accumbens",
+      "type": "retune:Class.BrainRegion",
+      "label": "Nucleus accumbens",
+      "exactMatch": ["uberon:0001882"]
+    },
+    {
+      "id": "retune:region.vta",
+      "type": "retune:Class.BrainRegion",
+      "label": "Ventral tegmental area",
+      "exactMatch": ["uberon:0002691"]
+    },
+    {
+      "id": "retune:region.locus_coeruleus",
+      "type": "retune:Class.BrainRegion",
+      "label": "Locus coeruleus",
+      "exactMatch": ["uberon:0002148"]
+    },
+    {
+      "id": "retune:region.ras",
+      "type": "retune:Class.BrainRegion",
+      "label": "Reticular activating system",
+      "exactMatch": ["uberon:0001891"]
+    },
+    {
+      "id": "retune:region.thalamus",
+      "type": "retune:Class.BrainRegion",
+      "label": "Thalamus",
+      "exactMatch": ["uberon:0001897"]
+    },
+    {
+      "id": "retune:region.corpus_callosum",
+      "type": "retune:Class.BrainRegion",
+      "label": "Corpus callosum",
+      "exactMatch": ["uberon:0002336"]
+    },
+    {
+      "id": "retune:region.ofc",
+      "type": "retune:Class.BrainRegion",
+      "label": "Orbitofrontal cortex",
+      "exactMatch": ["uberon:0004167"]
+    },
+
+    {
+      "id": "retune:network.dmn",
+      "type": "retune:Class.Network",
+      "label": "Default Mode Network",
+      "closeMatch": ["cogpo:network/dmn"],
+      "tagsRegion": ["retune:region.dmn"]
+    },
+    {
+      "id": "retune:network.salience",
+      "type": "retune:Class.Network",
+      "label": "Salience Network",
+      "closeMatch": ["cogpo:network/salience"],
+      "tagsRegion": ["retune:region.acc", "retune:region.insula"]
+    },
+    {
+      "id": "retune:network.cen",
+      "type": "retune:Class.Network",
+      "label": "Central Executive Network",
+      "closeMatch": ["cogpo:network/cen"],
+      "tagsRegion": ["retune:region.dlpfc", "retune:region.vmpfc", "retune:region.frontopolar"]
+    },
+    {
+      "id": "retune:network.dan",
+      "type": "retune:Class.Network",
+      "label": "Dorsal Attention Network",
+      "closeMatch": ["cogpo:network/dan"],
+      "tagsRegion": ["retune:region.dlpfc"]
+    },
+    {
+      "id": "retune:network.van",
+      "type": "retune:Class.Network",
+      "label": "Ventral Attention Network",
+      "closeMatch": ["cogpo:network/van"],
+      "tagsRegion": ["retune:region.tpj_right", "retune:region.vlpfc_right"]
+    },
+
+    {
+      "id": "retune:cellType.pyramidal_projection",
+      "type": "retune:Class.CellType",
+      "label": "pyramidal_projection",
+      "definition": "Long-range excitatory; emits goals to other layers",
+      "closeMatch": ["nlx:154003"]
+    },
+    {
+      "id": "retune:cellType.local_excitatory",
+      "type": "retune:Class.CellType",
+      "label": "local_excitatory",
+      "definition": "Within-layer goal emission"
+    },
+    {
+      "id": "retune:cellType.local_inhibitory",
+      "type": "retune:Class.CellType",
+      "label": "local_inhibitory",
+      "definition": "Suppresses content (lateral inhibition)"
+    },
+    {
+      "id": "retune:cellType.feedforward_inhibitory",
+      "type": "retune:Class.CellType",
+      "label": "feedforward_inhibitory",
+      "definition": "Gates downstream by cost / safety"
+    },
+    {
+      "id": "retune:cellType.modulatory",
+      "type": "retune:Class.CellType",
+      "label": "modulatory",
+      "definition": "Updates priors / scales weights, not direct content emission"
+    },
+    {
+      "id": "retune:cellType.monitor",
+      "type": "retune:Class.CellType",
+      "label": "monitor",
+      "definition": "Listener; emits conflicts on blackboard writes"
+    },
+    {
+      "id": "retune:cellType.gating",
+      "type": "retune:Class.CellType",
+      "label": "gating",
+      "definition": "Selects / arbitrates among candidates"
+    },
+    {
+      "id": "retune:cellType.relay",
+      "type": "retune:Class.CellType",
+      "label": "relay",
+      "definition": "Cross-process / cross-language transport"
+    },
+
+    {
+      "id": "retune:gliaType.astrocyte",
+      "type": "retune:Class.GliaType",
+      "label": "astrocyte",
+      "definition": "Metabolic + ionic homeostasis + tripartite synapse",
+      "closeMatch": ["nlx:147803"]
+    },
+    {
+      "id": "retune:gliaType.oligodendrocyte",
+      "type": "retune:Class.GliaType",
+      "label": "oligodendrocyte",
+      "definition": "Myelination -> conduction speed",
+      "closeMatch": ["nlx:147802"]
+    },
+    {
+      "id": "retune:gliaType.microglia",
+      "type": "retune:Class.GliaType",
+      "label": "microglia",
+      "definition": "Immune surveillance + synaptic pruning",
+      "closeMatch": ["nlx:147807"]
+    },
+    {
+      "id": "retune:gliaType.ependymal",
+      "type": "retune:Class.GliaType",
+      "label": "ependymal",
+      "definition": "CSF circulation + waste clearance",
+      "closeMatch": ["nlx:147805"]
+    },
+
+    {
+      "id": "retune:nt.glutamate",
+      "type": "retune:Class.Neurotransmitter",
+      "label": "glutamate",
+      "exactMatch": ["chebi:14321"]
+    },
+    {
+      "id": "retune:nt.gaba",
+      "type": "retune:Class.Neurotransmitter",
+      "label": "GABA",
+      "exactMatch": ["chebi:16865"]
+    },
+    {
+      "id": "retune:nt.dopamine",
+      "type": "retune:Class.Neurotransmitter",
+      "label": "dopamine",
+      "exactMatch": ["chebi:18243"]
+    },
+    {
+      "id": "retune:nt.norepinephrine",
+      "type": "retune:Class.Neurotransmitter",
+      "label": "norepinephrine",
+      "exactMatch": ["chebi:18357"]
+    },
+    {
+      "id": "retune:nt.serotonin",
+      "type": "retune:Class.Neurotransmitter",
+      "label": "serotonin",
+      "exactMatch": ["chebi:28790"]
+    },
+    {
+      "id": "retune:nt.acetylcholine",
+      "type": "retune:Class.Neurotransmitter",
+      "label": "acetylcholine",
+      "exactMatch": ["chebi:15355"]
+    },
+    {
+      "id": "retune:nt.mixed",
+      "type": "retune:Class.Neurotransmitter",
+      "label": "mixed",
+      "definition": "Multiple modulators in concert"
+    },
+
+    {
+      "id": "retune:thinking.perception",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Perception",
+      "closeMatch": ["cogpo:concept/perception"]
+    },
+    {
+      "id": "retune:thinking.attention",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Attention",
+      "closeMatch": ["cogpo:concept/attention"]
+    },
+    {
+      "id": "retune:thinking.workingMemory",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Working memory",
+      "closeMatch": ["cogpo:concept/working_memory"]
+    },
+    {
+      "id": "retune:thinking.semanticMemory",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Semantic memory",
+      "closeMatch": ["cogpo:concept/semantic_memory"]
+    },
+    {
+      "id": "retune:thinking.episodicMemory",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Episodic memory",
+      "closeMatch": ["cogpo:concept/episodic_memory"]
+    },
+    {
+      "id": "retune:thinking.proceduralMemory",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Procedural memory",
+      "closeMatch": ["cogpo:concept/procedural_memory"]
+    },
+    {
+      "id": "retune:thinking.categorisation",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Categorisation",
+      "closeMatch": ["cogpo:concept/categorization"]
+    },
+    {
+      "id": "retune:thinking.problemSolving",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Problem solving",
+      "closeMatch": ["cogpo:concept/problem_solving"]
+    },
+    {
+      "id": "retune:thinking.mentalSimulation",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Mental simulation",
+      "closeMatch": ["cogpo:concept/mental_imagery"]
+    },
+    {
+      "id": "retune:thinking.reasoning",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Reasoning",
+      "closeMatch": ["cogpo:concept/reasoning"]
+    },
+    {
+      "id": "retune:thinking.planning",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Planning",
+      "closeMatch": ["cogpo:concept/planning"]
+    },
+    {
+      "id": "retune:thinking.decision",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Decision",
+      "closeMatch": ["cogpo:concept/decision_making"]
+    },
+    {
+      "id": "retune:thinking.production",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Production",
+      "closeMatch": ["cogpo:concept/language_production"]
+    },
+    {
+      "id": "retune:thinking.critique",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Critique",
+      "closeMatch": ["cogpo:concept/error_monitoring"]
+    },
+    {
+      "id": "retune:thinking.metacognition",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Metacognition",
+      "closeMatch": ["cogpo:concept/metacognition"]
+    },
+    {
+      "id": "retune:thinking.affect",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Affect",
+      "closeMatch": ["cogpo:concept/emotion"]
+    },
+    {
+      "id": "retune:thinking.actionSelection",
+      "type": "retune:Class.ThinkingComponent",
+      "label": "Action selection",
+      "closeMatch": ["cogpo:concept/response_selection"]
+    },
+
+    {
+      "id": "retune:mindset.growthFixed",
+      "type": "retune:Class.MindsetAxis",
+      "label": "Growth vs fixed mindset",
+      "comment": "Dweck (2006). Surface: HonestyCalibrationTable sparkline + voice fingerprint reset."
+    },
+    {
+      "id": "retune:mindset.selfEfficacy",
+      "type": "retune:Class.MindsetAxis",
+      "label": "Self-efficacy",
+      "comment": "Bandura. Implementation: MotivationModulator value."
+    },
+    {
+      "id": "retune:mindset.locusOfControl",
+      "type": "retune:Class.MindsetAxis",
+      "label": "Locus of control",
+      "comment": "Rotter. Implementation: dismiss-history weighting; passive third-person voice."
+    },
+    {
+      "id": "retune:mindset.goalOrientation",
+      "type": "retune:Class.MindsetAxis",
+      "label": "Goal orientation",
+      "comment": "Mastery vs performance. Implementation: outcome log accepts learning_takeaway."
+    },
+    {
+      "id": "retune:mindset.selfImage",
+      "type": "retune:Class.MindsetAxis",
+      "label": "Self-image / identity",
+      "comment": "Voice fingerprint baseline + WellBeingMonitor.self_image_divergence."
+    },
+
+    {
+      "id": "retune:thought.verbal",
+      "type": "retune:Class.ThoughtMode",
+      "label": "Verbal / inner speech"
+    },
+    {
+      "id": "retune:thought.visual",
+      "type": "retune:Class.ThoughtMode",
+      "label": "Visual / imagery"
+    },
+    {
+      "id": "retune:thought.conceptual",
+      "type": "retune:Class.ThoughtMode",
+      "label": "Conceptual / non-verbal"
+    },
+    {
+      "id": "retune:thought.counterfactual",
+      "type": "retune:Class.ThoughtMode",
+      "label": "Counterfactual"
+    },
+    {
+      "id": "retune:thought.prospective",
+      "type": "retune:Class.ThoughtMode",
+      "label": "Prospective (future)"
+    },
+    {
+      "id": "retune:thought.retrospective",
+      "type": "retune:Class.ThoughtMode",
+      "label": "Retrospective (past)"
+    },
+    {
+      "id": "retune:thought.selfReferential",
+      "type": "retune:Class.ThoughtMode",
+      "label": "Self-referential"
+    },
+    {
+      "id": "retune:thought.otherReferential",
+      "type": "retune:Class.ThoughtMode",
+      "label": "Other-referential"
+    },
+
+    { "id": "retune:action.reflexive", "type": "retune:Class.ActionClass", "label": "Reflexive" },
+    { "id": "retune:action.habitual", "type": "retune:Class.ActionClass", "label": "Habitual" },
+    {
+      "id": "retune:action.goalDirected",
+      "type": "retune:Class.ActionClass",
+      "label": "Goal-directed"
+    },
+    {
+      "id": "retune:action.communicative",
+      "type": "retune:Class.ActionClass",
+      "label": "Communicative"
+    },
+
+    {
+      "id": "retune:osc.delta",
+      "type": "retune:Class.OscillationBand",
+      "label": "Delta (0.5-4 Hz)",
+      "comment": "SSE heartbeat"
+    },
+    {
+      "id": "retune:osc.theta",
+      "type": "retune:Class.OscillationBand",
+      "label": "Theta (4-8 Hz)",
+      "comment": "Orchestrator tick cadence P50"
+    },
+    {
+      "id": "retune:osc.alpha",
+      "type": "retune:Class.OscillationBand",
+      "label": "Alpha (8-12 Hz)",
+      "comment": "Frontend rAF / activation aggregation window"
+    },
+    {
+      "id": "retune:osc.gamma",
+      "type": "retune:Class.OscillationBand",
+      "label": "Gamma (30-100 Hz)",
+      "comment": "SSE backpressure window"
+    },
+
+    {
+      "id": "retune:plasticity.ltp",
+      "type": "retune:Class.PlasticityMechanism",
+      "label": "Long-term potentiation",
+      "exactMatch": ["go:0060079"]
+    },
+    {
+      "id": "retune:plasticity.ltd",
+      "type": "retune:Class.PlasticityMechanism",
+      "label": "Long-term depression",
+      "exactMatch": ["go:0060080"]
+    },
+    {
+      "id": "retune:plasticity.stdp",
+      "type": "retune:Class.PlasticityMechanism",
+      "label": "Spike-timing-dependent plasticity"
+    },
+    {
+      "id": "retune:plasticity.homeostatic",
+      "type": "retune:Class.PlasticityMechanism",
+      "label": "Homeostatic plasticity",
+      "closeMatch": ["go:0099560"]
+    },
+    {
+      "id": "retune:plasticity.consolidation",
+      "type": "retune:Class.PlasticityMechanism",
+      "label": "Sleep / offline consolidation"
+    },
+
+    {
+      "id": "retune:pathology.seizure",
+      "type": "retune:Class.PathologyMode",
+      "label": "Seizure (runaway excitation)",
+      "closeMatch": ["doid:1826"]
+    },
+    {
+      "id": "retune:pathology.tonicInhibition",
+      "type": "retune:Class.PathologyMode",
+      "label": "Tonic inhibition (silence)"
+    },
+    {
+      "id": "retune:pathology.synapticLoss",
+      "type": "retune:Class.PathologyMode",
+      "label": "Synaptic loss (dead specialist)"
+    },
+    {
+      "id": "retune:pathology.excitotoxicity",
+      "type": "retune:Class.PathologyMode",
+      "label": "Excitotoxicity (overload)",
+      "closeMatch": ["go:0048169"]
+    },
+    {
+      "id": "retune:pathology.hallucination",
+      "type": "retune:Class.PathologyMode",
+      "label": "Hallucinatory firing (fabrication)"
+    },
+
+    {
+      "id": "retune:emotion.calm",
+      "type": "retune:Class.EmotionalState",
+      "label": "calm",
+      "comment": "valence=+0.5, arousal=0.20",
+      "closeMatch": ["mfoem:000167"]
+    },
+    {
+      "id": "retune:emotion.engaged",
+      "type": "retune:Class.EmotionalState",
+      "label": "engaged",
+      "comment": "valence=+0.6, arousal=0.55",
+      "closeMatch": ["mfoem:000048"]
+    },
+    {
+      "id": "retune:emotion.uncertain",
+      "type": "retune:Class.EmotionalState",
+      "label": "uncertain",
+      "comment": "valence=0.0,  arousal=0.40",
+      "closeMatch": ["mfoem:000201"]
+    },
+    {
+      "id": "retune:emotion.strained",
+      "type": "retune:Class.EmotionalState",
+      "label": "strained",
+      "comment": "valence=-0.4, arousal=0.65",
+      "closeMatch": ["mfoem:000064"]
+    },
+    {
+      "id": "retune:emotion.distressed",
+      "type": "retune:Class.EmotionalState",
+      "label": "distressed",
+      "comment": "valence=-0.8, arousal=0.85",
+      "closeMatch": ["mfoem:000146"]
+    },
+
+    { "id": "retune:goal.analyze_jd", "type": "retune:Class.GoalKind", "label": "analyze_jd" },
+    {
+      "id": "retune:goal.analyze_profile",
+      "type": "retune:Class.GoalKind",
+      "label": "analyze_profile"
+    },
+    {
+      "id": "retune:goal.analyze_company",
+      "type": "retune:Class.GoalKind",
+      "label": "analyze_company"
+    },
+    {
+      "id": "retune:goal.extract_spans",
+      "type": "retune:Class.GoalKind",
+      "label": "extract_spans"
+    },
+    {
+      "id": "retune:goal.classify_discourse",
+      "type": "retune:Class.GoalKind",
+      "label": "classify_discourse"
+    },
+    {
+      "id": "retune:goal.strip_discourse_boilerplate",
+      "type": "retune:Class.GoalKind",
+      "label": "strip_discourse_boilerplate"
+    },
+    {
+      "id": "retune:goal.calibrate_cultural_vector",
+      "type": "retune:Class.GoalKind",
+      "label": "calibrate_cultural_vector"
+    },
+    {
+      "id": "retune:goal.extract_voice_fingerprint",
+      "type": "retune:Class.GoalKind",
+      "label": "extract_voice_fingerprint"
+    },
+    {
+      "id": "retune:goal.calibrate_honesty",
+      "type": "retune:Class.GoalKind",
+      "label": "calibrate_honesty"
+    },
+    {
+      "id": "retune:goal.scan_credibility",
+      "type": "retune:Class.GoalKind",
+      "label": "scan_credibility"
+    },
+    {
+      "id": "retune:goal.audit_fairness",
+      "type": "retune:Class.GoalKind",
+      "label": "audit_fairness"
+    },
+    { "id": "retune:goal.map_gaps", "type": "retune:Class.GoalKind", "label": "map_gaps" },
+    {
+      "id": "retune:goal.solve_evidence",
+      "type": "retune:Class.GoalKind",
+      "label": "solve_evidence"
+    },
+    { "id": "retune:goal.propose_arcs", "type": "retune:Class.GoalKind", "label": "propose_arcs" },
+    { "id": "retune:goal.select_arc", "type": "retune:Class.GoalKind", "label": "select_arc" },
+    {
+      "id": "retune:goal.compose_resume",
+      "type": "retune:Class.GoalKind",
+      "label": "compose_resume"
+    },
+    {
+      "id": "retune:goal.model_recruiter_beliefs",
+      "type": "retune:Class.GoalKind",
+      "label": "model_recruiter_beliefs"
+    },
+    {
+      "id": "retune:goal.estimate_outcome",
+      "type": "retune:Class.GoalKind",
+      "label": "estimate_outcome"
+    },
+    {
+      "id": "retune:goal.decide_refuse_or_ship",
+      "type": "retune:Class.GoalKind",
+      "label": "decide_refuse_or_ship"
+    },
+    {
+      "id": "retune:goal.infer_emotional_state",
+      "type": "retune:Class.GoalKind",
+      "label": "infer_emotional_state"
+    },
+    {
+      "id": "retune:goal.compute_mood_fingerprint",
+      "type": "retune:Class.GoalKind",
+      "label": "compute_mood_fingerprint"
+    },
+    {
+      "id": "retune:goal.update_motivation_modulator",
+      "type": "retune:Class.GoalKind",
+      "label": "update_motivation_modulator"
+    },
+    {
+      "id": "retune:goal.narrate_layer",
+      "type": "retune:Class.GoalKind",
+      "label": "narrate_layer"
+    },
+    {
+      "id": "retune:goal.request_user_input",
+      "type": "retune:Class.GoalKind",
+      "label": "request_user_input"
+    },
+
+    {
+      "id": "retune:conflict.coherence",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "coherence"
+    },
+    {
+      "id": "retune:conflict.number_plausibility",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "number_plausibility"
+    },
+    {
+      "id": "retune:conflict.scope_vs_title",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "scope_vs_title"
+    },
+    {
+      "id": "retune:conflict.repetition",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "repetition"
+    },
+    {
+      "id": "retune:conflict.voice_drift",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "voice_drift"
+    },
+    {
+      "id": "retune:conflict.novelty_ood",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "novelty_ood"
+    },
+    {
+      "id": "retune:conflict.threat_prompt_injection",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "threat_prompt_injection"
+    },
+    {
+      "id": "retune:conflict.well_being",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "well_being"
+    },
+    {
+      "id": "retune:conflict.cost_runaway",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "cost_runaway"
+    },
+    {
+      "id": "retune:conflict.fabrication",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "fabrication"
+    },
+    {
+      "id": "retune:conflict.fairness_concern",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "fairness_concern"
+    },
+    {
+      "id": "retune:conflict.critic_divergence",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "critic_divergence"
+    },
+    {
+      "id": "retune:conflict.hidden_disqualifier_blocker",
+      "type": "retune:Class.ConflictMonitor",
+      "label": "hidden_disqualifier_blocker"
+    },
+
+    { "id": "retune:event.tick_start", "type": "retune:Class.SseEventKind", "label": "tick_start" },
+    {
+      "id": "retune:event.specialist_picked",
+      "type": "retune:Class.SseEventKind",
+      "label": "specialist_picked"
+    },
+    {
+      "id": "retune:event.blackboard_write",
+      "type": "retune:Class.SseEventKind",
+      "label": "blackboard_write"
+    },
+    {
+      "id": "retune:event.goal_emitted",
+      "type": "retune:Class.SseEventKind",
+      "label": "goal_emitted"
+    },
+    {
+      "id": "retune:event.goal_satisfied",
+      "type": "retune:Class.SseEventKind",
+      "label": "goal_satisfied"
+    },
+    {
+      "id": "retune:event.goal_abandoned",
+      "type": "retune:Class.SseEventKind",
+      "label": "goal_abandoned"
+    },
+    {
+      "id": "retune:event.conflict_emitted",
+      "type": "retune:Class.SseEventKind",
+      "label": "conflict_emitted"
+    },
+    {
+      "id": "retune:event.listener_concern",
+      "type": "retune:Class.SseEventKind",
+      "label": "listener_concern"
+    },
+    {
+      "id": "retune:event.cost_charge",
+      "type": "retune:Class.SseEventKind",
+      "label": "cost_charge"
+    },
+    {
+      "id": "retune:event.outcome_predicted",
+      "type": "retune:Class.SseEventKind",
+      "label": "outcome_predicted"
+    },
+    {
+      "id": "retune:event.narrative_paragraph",
+      "type": "retune:Class.SseEventKind",
+      "label": "narrative_paragraph"
+    },
+    {
+      "id": "retune:event.emotional_state_changed",
+      "type": "retune:Class.SseEventKind",
+      "label": "emotional_state_changed"
+    },
+    { "id": "retune:event.tick_end", "type": "retune:Class.SseEventKind", "label": "tick_end" },
+    { "id": "retune:event.complete", "type": "retune:Class.SseEventKind", "label": "complete" },
+    { "id": "retune:event.error", "type": "retune:Class.SseEventKind", "label": "error" },
+    {
+      "id": "retune:event.external_abort",
+      "type": "retune:Class.SseEventKind",
+      "label": "external_abort"
+    },
+
+    {
+      "id": "retune:specialist.Orchestrator",
+      "type": "retune:Class.Specialist",
+      "label": "Orchestrator",
+      "actsAt": "retune:layer.substrate",
+      "embodiesCellType": "retune:cellType.gating",
+      "usesNeurotransmitter": "retune:nt.mixed",
+      "tagsRegion": ["retune:region.dlpfc"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": [
+        "retune:thinking.attention",
+        "retune:thinking.workingMemory",
+        "retune:thinking.planning"
+      ],
+      "participatesIn": ["retune:network.cen", "retune:network.dan"]
+    },
+    {
+      "id": "retune:specialist.BudgetController",
+      "type": "retune:Class.Specialist",
+      "label": "BudgetController",
+      "actsAt": "retune:layer.substrate",
+      "embodiesCellType": "retune:cellType.feedforward_inhibitory",
+      "usesNeurotransmitter": "retune:nt.norepinephrine",
+      "tagsRegion": ["retune:region.ras", "retune:region.amygdala"],
+      "actionClass": "retune:action.reflexive",
+      "coversThinking": ["retune:thinking.attention"]
+    },
+    {
+      "id": "retune:specialist.JdSpanExtractor",
+      "type": "retune:Class.Specialist",
+      "label": "JdSpanExtractor",
+      "actsAt": "retune:layer.comprehension",
+      "embodiesCellType": "retune:cellType.local_excitatory",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.temporal"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.perception"],
+      "emitsGoal": ["retune:goal.extract_spans"]
+    },
+    {
+      "id": "retune:specialist.TitleSchemaRetriever",
+      "type": "retune:Class.Specialist",
+      "label": "TitleSchemaRetriever",
+      "actsAt": "retune:layer.comprehension",
+      "embodiesCellType": "retune:cellType.pyramidal_projection",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.angular_gyrus"],
+      "actionClass": "retune:action.habitual",
+      "coversThinking": ["retune:thinking.semanticMemory", "retune:thinking.categorisation"]
+    },
+    {
+      "id": "retune:specialist.CompanySchemaRetriever",
+      "type": "retune:Class.Specialist",
+      "label": "CompanySchemaRetriever",
+      "actsAt": "retune:layer.comprehension",
+      "embodiesCellType": "retune:cellType.pyramidal_projection",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.angular_gyrus"],
+      "actionClass": "retune:action.habitual",
+      "coversThinking": ["retune:thinking.semanticMemory", "retune:thinking.categorisation"]
+    },
+    {
+      "id": "retune:specialist.DiscourseClassifier",
+      "type": "retune:Class.Specialist",
+      "label": "DiscourseClassifier",
+      "actsAt": "retune:layer.comprehension",
+      "embodiesCellType": "retune:cellType.local_excitatory",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.wernicke"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.perception", "retune:thinking.categorisation"],
+      "emitsGoal": ["retune:goal.classify_discourse"]
+    },
+    {
+      "id": "retune:specialist.BoilerplateStripper",
+      "type": "retune:Class.Specialist",
+      "label": "BoilerplateStripper",
+      "actsAt": "retune:layer.comprehension",
+      "embodiesCellType": "retune:cellType.local_inhibitory",
+      "usesNeurotransmitter": "retune:nt.gaba",
+      "tagsRegion": ["retune:region.acc"],
+      "actionClass": "retune:action.habitual",
+      "coversThinking": ["retune:thinking.attention", "retune:thinking.proceduralMemory"],
+      "emitsGoal": ["retune:goal.strip_discourse_boilerplate"]
+    },
+    {
+      "id": "retune:specialist.CulturalCalibrator",
+      "type": "retune:Class.Specialist",
+      "label": "CulturalCalibrator",
+      "actsAt": "retune:layer.comprehension",
+      "embodiesCellType": "retune:cellType.modulatory",
+      "usesNeurotransmitter": "retune:nt.mixed",
+      "tagsRegion": ["retune:region.tpj_right", "retune:region.sts"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.semanticMemory"],
+      "emitsGoal": ["retune:goal.calibrate_cultural_vector"]
+    },
+    {
+      "id": "retune:specialist.VoiceFingerprintExtractor",
+      "type": "retune:Class.Specialist",
+      "label": "VoiceFingerprintExtractor",
+      "actsAt": "retune:layer.reflection",
+      "embodiesCellType": "retune:cellType.modulatory",
+      "usesNeurotransmitter": "retune:nt.mixed",
+      "tagsRegion": ["retune:region.broca", "retune:region.arcuate"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.proceduralMemory", "retune:thinking.episodicMemory"],
+      "emitsGoal": ["retune:goal.extract_voice_fingerprint"]
+    },
+    {
+      "id": "retune:specialist.HonestyCalibrator",
+      "type": "retune:Class.Specialist",
+      "label": "HonestyCalibrator",
+      "actsAt": "retune:layer.reflection",
+      "embodiesCellType": "retune:cellType.modulatory",
+      "usesNeurotransmitter": "retune:nt.serotonin",
+      "tagsRegion": ["retune:region.ofc"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.reasoning", "retune:thinking.metacognition"],
+      "emitsGoal": ["retune:goal.calibrate_honesty"]
+    },
+    {
+      "id": "retune:specialist.CredibilityScanner",
+      "type": "retune:Class.Specialist",
+      "label": "CredibilityScanner",
+      "actsAt": "retune:layer.reflection",
+      "embodiesCellType": "retune:cellType.local_excitatory",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.sts", "retune:region.acc"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.reasoning", "retune:thinking.critique"],
+      "emitsGoal": ["retune:goal.scan_credibility"]
+    },
+    {
+      "id": "retune:specialist.GapMapper",
+      "type": "retune:Class.Specialist",
+      "label": "GapMapper",
+      "actsAt": "retune:layer.strategy",
+      "embodiesCellType": "retune:cellType.local_excitatory",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.dlpfc"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.workingMemory", "retune:thinking.problemSolving"],
+      "emitsGoal": ["retune:goal.map_gaps"]
+    },
+    {
+      "id": "retune:specialist.EvidenceSolver",
+      "type": "retune:Class.Specialist",
+      "label": "EvidenceSolver",
+      "actsAt": "retune:layer.strategy",
+      "embodiesCellType": "retune:cellType.pyramidal_projection",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.dlpfc", "retune:region.premotor"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": [
+        "retune:thinking.reasoning",
+        "retune:thinking.problemSolving",
+        "retune:thinking.planning"
+      ],
+      "emitsGoal": ["retune:goal.solve_evidence"],
+      "participatesIn": ["retune:network.cen"]
+    },
+    {
+      "id": "retune:specialist.NarrativeArcProposer",
+      "type": "retune:Class.Specialist",
+      "label": "NarrativeArcProposer",
+      "actsAt": "retune:layer.production",
+      "embodiesCellType": "retune:cellType.pyramidal_projection",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.dmn"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.mentalSimulation", "retune:thinking.production"],
+      "emitsGoal": ["retune:goal.propose_arcs", "retune:goal.select_arc"],
+      "participatesIn": ["retune:network.dmn"]
+    },
+    {
+      "id": "retune:specialist.SequentialBulletComposer",
+      "type": "retune:Class.Specialist",
+      "label": "SequentialBulletComposer",
+      "actsAt": "retune:layer.production",
+      "embodiesCellType": "retune:cellType.pyramidal_projection",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.broca", "retune:region.premotor", "retune:region.cerebellum"],
+      "actionClass": "retune:action.communicative",
+      "coversThinking": ["retune:thinking.production"],
+      "emitsGoal": ["retune:goal.compose_resume"]
+    },
+    {
+      "id": "retune:specialist.TheoryOfMindSpecialist",
+      "type": "retune:Class.Specialist",
+      "label": "TheoryOfMindSpecialist",
+      "actsAt": "retune:layer.critique",
+      "embodiesCellType": "retune:cellType.local_excitatory",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.tpj_right", "retune:region.sts"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.mentalSimulation", "retune:thinking.metacognition"],
+      "emitsGoal": ["retune:goal.model_recruiter_beliefs"]
+    },
+    {
+      "id": "retune:specialist.CriticEnsemble",
+      "type": "retune:Class.Specialist",
+      "label": "CriticEnsemble",
+      "actsAt": "retune:layer.critique",
+      "embodiesCellType": "retune:cellType.gating",
+      "usesNeurotransmitter": "retune:nt.gaba",
+      "tagsRegion": ["retune:region.tpj_right", "retune:region.acc"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.critique", "retune:thinking.metacognition"],
+      "emitsConflict": ["retune:conflict.critic_divergence"],
+      "participatesIn": ["retune:network.salience"]
+    },
+    {
+      "id": "retune:specialist.OutcomePredictor",
+      "type": "retune:Class.Specialist",
+      "label": "OutcomePredictor",
+      "actsAt": "retune:layer.decision",
+      "embodiesCellType": "retune:cellType.modulatory",
+      "usesNeurotransmitter": "retune:nt.dopamine",
+      "tagsRegion": ["retune:region.vmpfc", "retune:region.frontopolar"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": [
+        "retune:thinking.decision",
+        "retune:thinking.mentalSimulation",
+        "retune:thinking.metacognition"
+      ],
+      "emitsGoal": ["retune:goal.estimate_outcome"],
+      "participatesIn": ["retune:network.cen"]
+    },
+    {
+      "id": "retune:specialist.RefuseOrShipGate",
+      "type": "retune:Class.Specialist",
+      "label": "RefuseOrShipGate",
+      "actsAt": "retune:layer.decision",
+      "embodiesCellType": "retune:cellType.gating",
+      "usesNeurotransmitter": "retune:nt.norepinephrine",
+      "tagsRegion": [
+        "retune:region.locus_coeruleus",
+        "retune:region.amygdala",
+        "retune:region.frontopolar"
+      ],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.decision", "retune:thinking.metacognition"],
+      "emitsGoal": ["retune:goal.decide_refuse_or_ship"],
+      "emitsConflict": ["retune:conflict.hidden_disqualifier_blocker"]
+    },
+    {
+      "id": "retune:specialist.FairnessMonitor",
+      "type": "retune:Class.Specialist",
+      "label": "FairnessMonitor",
+      "actsAt": "retune:layer.crossCutting",
+      "embodiesCellType": "retune:cellType.monitor",
+      "usesNeurotransmitter": "retune:nt.gaba",
+      "tagsRegion": ["retune:region.vlpfc_right"],
+      "actionClass": "retune:action.reflexive",
+      "coversThinking": ["retune:thinking.critique"],
+      "emitsConflict": ["retune:conflict.fairness_concern"],
+      "participatesIn": ["retune:network.van"]
+    },
+    {
+      "id": "retune:specialist.VoiceDriftMonitor",
+      "type": "retune:Class.Specialist",
+      "label": "VoiceDriftMonitor",
+      "actsAt": "retune:layer.crossCutting",
+      "embodiesCellType": "retune:cellType.monitor",
+      "usesNeurotransmitter": "retune:nt.norepinephrine",
+      "tagsRegion": ["retune:region.cerebellum"],
+      "actionClass": "retune:action.reflexive",
+      "coversThinking": ["retune:thinking.critique"],
+      "emitsConflict": ["retune:conflict.voice_drift"]
+    },
+    {
+      "id": "retune:specialist.WellBeingMonitor",
+      "type": "retune:Class.Specialist",
+      "label": "WellBeingMonitor",
+      "actsAt": "retune:layer.crossCutting",
+      "embodiesCellType": "retune:cellType.monitor",
+      "usesNeurotransmitter": "retune:nt.serotonin",
+      "tagsRegion": ["retune:region.insula", "retune:region.vmpfc"],
+      "actionClass": "retune:action.reflexive",
+      "coversThinking": ["retune:thinking.affect", "retune:thinking.metacognition"],
+      "emitsConflict": ["retune:conflict.well_being"],
+      "participatesIn": ["retune:network.salience"]
+    },
+    {
+      "id": "retune:specialist.EmotionalStateModeler",
+      "type": "retune:Class.Specialist",
+      "label": "EmotionalStateModeler",
+      "actsAt": "retune:layer.meta",
+      "embodiesCellType": "retune:cellType.modulatory",
+      "usesNeurotransmitter": "retune:nt.mixed",
+      "tagsRegion": ["retune:region.insula", "retune:region.amygdala", "retune:region.vmpfc"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.affect", "retune:thinking.metacognition"],
+      "emitsGoal": ["retune:goal.infer_emotional_state"],
+      "emitsEvent": ["retune:event.emotional_state_changed"],
+      "participatesIn": ["retune:network.salience"]
+    },
+    {
+      "id": "retune:specialist.MoodFingerprint",
+      "type": "retune:Class.Specialist",
+      "label": "MoodFingerprint",
+      "actsAt": "retune:layer.meta",
+      "embodiesCellType": "retune:cellType.modulatory",
+      "usesNeurotransmitter": "retune:nt.serotonin",
+      "tagsRegion": [
+        "retune:region.amygdala",
+        "retune:region.insula",
+        "retune:region.nucleus_accumbens"
+      ],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.affect"],
+      "emitsGoal": ["retune:goal.compute_mood_fingerprint"],
+      "participatesIn": ["retune:network.dmn"]
+    },
+    {
+      "id": "retune:specialist.MotivationModulator",
+      "type": "retune:Class.Specialist",
+      "label": "MotivationModulator",
+      "actsAt": "retune:layer.meta",
+      "embodiesCellType": "retune:cellType.modulatory",
+      "usesNeurotransmitter": "retune:nt.dopamine",
+      "tagsRegion": ["retune:region.vta", "retune:region.nucleus_accumbens"],
+      "actionClass": "retune:action.reflexive",
+      "coversThinking": ["retune:thinking.affect", "retune:thinking.decision"],
+      "emitsGoal": ["retune:goal.update_motivation_modulator"]
+    },
+    {
+      "id": "retune:specialist.ActiveQuestionHandler",
+      "type": "retune:Class.Specialist",
+      "label": "ActiveQuestionHandler",
+      "actsAt": "retune:layer.meta",
+      "embodiesCellType": "retune:cellType.gating",
+      "usesNeurotransmitter": "retune:nt.acetylcholine",
+      "tagsRegion": ["retune:region.acc", "retune:region.tpj_right"],
+      "actionClass": "retune:action.goalDirected",
+      "coversThinking": ["retune:thinking.attention", "retune:thinking.metacognition"],
+      "emitsGoal": ["retune:goal.request_user_input"]
+    },
+    {
+      "id": "retune:specialist.Narrator",
+      "type": "retune:Class.Specialist",
+      "label": "Narrator",
+      "actsAt": "retune:layer.meta",
+      "embodiesCellType": "retune:cellType.pyramidal_projection",
+      "usesNeurotransmitter": "retune:nt.glutamate",
+      "tagsRegion": ["retune:region.broca"],
+      "actionClass": "retune:action.communicative",
+      "coversThinking": ["retune:thinking.production", "retune:thinking.metacognition"],
+      "emitsGoal": ["retune:goal.narrate_layer"],
+      "emitsEvent": ["retune:event.narrative_paragraph"]
+    }
+  ]
+}

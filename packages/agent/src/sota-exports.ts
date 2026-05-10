@@ -1,0 +1,217 @@
+/**
+ * SOTA FEATURE EXPORTS
+ * Public surface used by the apps/web routes (comparative, monitoring/stats).
+ * Internal pipeline utilities are not re-exported here.
+ */
+
+export { ConcurrencyManager, concurrencyManager } from "./concurrency/concurrency-manager";
+
+export {
+  buildCachedQualityGatePrompt,
+  buildCachedResumeWriterPrompt,
+  buildCachedSystemPrompt,
+  calculateCachedCost,
+  createCachedSystemPrompt,
+  extractCacheStats,
+  type CacheStats,
+  type CachedSystemPrompt,
+} from "./caching/prompt-cache";
+
+export {
+  Bulkhead,
+  CircuitBreaker,
+  CircuitBreakerState,
+  RequestMonitor,
+  executeWithRetry,
+  executeWithTimeout,
+  globalBulkhead,
+  globalCircuitBreaker,
+  globalMonitor,
+  type CircuitBreakerConfig,
+  type RequestMetrics,
+  type RetryConfig,
+} from "./error-handling/error-recovery";
+
+export {
+  buildCachedSystemPromptForAgent,
+  executeEnhancedAgent,
+  getAgentExecutionStats,
+  resetAgentExecutionStats,
+  type AgentExecutionStats,
+  type EnhancedAgentOptions,
+} from "./pipeline/enhanced-agent-wrapper";
+
+// Cache + token usage telemetry from the new shared SDK wrapper.
+export { getUsageStats } from "./lib/anthropic";
+
+// ─────────── Cognitive workbench (commit #1 + #2) ───────────
+// These are consumed by apps/api to run the cognitive cycle. Surfaced
+// here rather than on a dedicated subpath export so the package stays
+// single-entrypoint.
+export {
+  AttentionScheduler,
+  AuditTrail,
+  BlackboardStore,
+  BudgetController,
+  BudgetExhaustedError,
+  GoalStack,
+  Orchestrator,
+  TriggerBus,
+  path_matches,
+  read_path,
+  write_path,
+  seed_initial_goals,
+  type SeedGoalsPayload,
+  type OrchestratorDeps,
+  type OrchestratorResult,
+  type OrchestratorRunOptions,
+  type OrchestratorTermination,
+  type PickInput,
+  type PickOutput,
+  type Specialist,
+  type SpecialistContext,
+  type SpecialistResult,
+  type EventListener,
+  type TraceEvent,
+  ConflictStagingQueue,
+  type StagedConflict,
+} from "./workbench";
+export {
+  ActiveQuestionHandler,
+  type ActiveQuestionSink,
+  type AndOrGroup,
+  CriticEnsemble,
+  OutcomePredictor,
+  type PredictionResult,
+  type DriftConcernHandler,
+  type DriftMeasurement,
+  EvidenceSolver,
+  type EvidenceAssignment,
+  type BulletPlan,
+  type SolverSolution,
+  type SolverStats,
+  type FairnessConcern,
+  type FairnessConcernHandler,
+  FairnessMonitor,
+  GapMapper,
+  type GapMap,
+  type GapMapEntry,
+  type GapMapSummary,
+  NarrativeArcProposer,
+  RefuseOrShipGate,
+  type ShipDecision,
+  type ShipVerdict,
+  type GdprAuditPacket,
+  type GdprAuditEntry,
+  DocumentRenderer,
+  type RenderComplete,
+  SequentialBulletComposer,
+  SpecialistRegistry,
+  VoiceDriftMonitor,
+  CoverLetterComposer,
+  AtsPatchLoop,
+  ApplicationStrategyComposer,
+} from "./specialists";
+export {
+  NullPersistence,
+  PostgresPersistence,
+  rehydrate_substrate,
+  type CompleteGenerationInput,
+  type EnsureGenerationInput,
+  type GenerationReplayLoader,
+  type PersistTickInput,
+  type RehydratedSubstrate,
+  type ReplayedGeneration,
+  type TickPersistence,
+} from "./persistence";
+export {
+  COGNITIVE_TASK_QUEUE,
+  getStatusQuery,
+  runGenerationWorkflow,
+  userAnsweredSignal,
+  type ActivityFns,
+  type BuildClientInput,
+  type BuildWorkerInput,
+  type GenerationOutcome,
+  type GenerationSeed,
+  type RecordAnswerInput,
+  type RecordAnswerResult,
+  type ResumeInput,
+  type RunGenerationWorkflowResult,
+  type StatusSnapshot,
+  type SubstrateDeps as TemporalSubstrateDeps,
+  type UserAnsweredPayload,
+  type WorkflowStatus,
+} from "./temporal";
+export {
+  BoilerplateStripper,
+  CompanySchemaRetriever,
+  CredibilityScanner,
+  CULTURAL_VECTOR_DIM,
+  CulturalCalibrator,
+  DiscourseClassifier,
+  StubDiscourseClassifier,
+  type ExtractedSpansSink,
+  HONESTY_CLAIM_KINDS,
+  type HonestyCalibrationStore,
+  HonestyCalibrator,
+  JdSpanExtractor,
+  StubJdSpanExtractor,
+  STRIPPED_IMPORTANCE,
+  TitleSchemaRetriever,
+  VOICE_FINGERPRINT_DIM,
+  VoiceFingerprintExtractor,
+  type VoiceFingerprintSink,
+} from "./comprehension";
+export {
+  type GrpcTransportConfig,
+  GrpcTransport,
+  type HttpTransportConfig,
+  HttpTransport,
+  MLClient,
+  type MLClientConfig,
+  MLClientError,
+  type MLErrorKind,
+  type MLTransport,
+} from "./ml-client";
+export {
+  OntologyResolver,
+  SEED_COMPANIES,
+  SEED_ROLES,
+  type CompanyNode,
+  type CompanyResolution,
+  type RoleNode,
+  type RoleResolution,
+  NightlyConsolidator,
+  type ConsolidationStore,
+  type ConsolidationReport,
+  type HonestyUpdate,
+  type VoiceCentroidUpdate,
+  type OutcomeRecord,
+  type HonestyCalibrationRow,
+  type VoiceCentroidRow,
+  type GenerationRecord,
+  type CaseBaseEntry,
+} from "./memory";
+export {
+  EmotionalStateModeler,
+  type EmotionalState,
+  MoodFingerprintSpecialist,
+  type MoodFingerprint,
+  MotivationModulator,
+  type MotivationLevels,
+  Narrator,
+  type NarrativeParagraph,
+  TheoryOfMindSpecialist,
+  type RecruiterBeliefState,
+  type KnowledgeGap,
+  WellBeingMonitor,
+  type WellBeingConcern,
+  type WellBeingConcernHandler,
+} from "./specialists";
+export {
+  TraceBus,
+  TraceBusRegistry,
+  type TraceFrame,
+  type TraceDoneSummary,
+} from "./workbench/trace-bus";

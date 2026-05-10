@@ -1,0 +1,330 @@
+// Retune ML service contracts.
+//
+// The boundary between the TypeScript cognitive workbench and the Python
+// ML compute layer. Source of truth; both sides must conform.
+//
+// Note: codegen is deferred to commit #2. Until then both sides transport
+// over HTTP/JSON with structurally identical payloads validated by
+// zod (TS) and Pydantic (Python).
+
+syntax = "proto3";
+package retune.ml.v1;
+
+// ─────────────────────────────────────────────────────────────
+// Service
+// ─────────────────────────────────────────────────────────────
+
+service ML {
+  // Sensory layer (V1, fusiform, Wernicke's)
+  rpc Health(HealthRequest) returns (HealthResponse);
+  rpc Embed(EmbedRequest) returns (EmbedResponse);
+  rpc ExtractSpans(ExtractSpansRequest) returns (ExtractSpansResponse);
+  rpc ClassifyDiscourse(ClassifyDiscourseRequest) returns (ClassifyDiscourseResponse);
+
+  // Comprehension layer (Wernicke's, ACC)
+  rpc DetectContradiction(NLIRequest) returns (NLIResponse);
+  rpc SimulateReader(ReaderSimRequest) returns (ReaderSimResponse);
+
+  // Strategy layer (DLPFC, default mode network)
+  rpc ProposeArcs(ProposeArcsRequest) returns (ProposeArcsResponse);
+  rpc SolveEvidence(SolveEvidenceRequest) returns (SolveEvidenceResponse);
+
+  // Production layer (Broca's, premotor)
+  rpc ComposeBullet(ComposeBulletRequest) returns (ComposeBulletResponse);
+
+  // Critique + decision (TPJ, vmPFC)
+  rpc Critique(CritiqueRequest) returns (CritiqueResponse);
+  rpc PredictOutcome(PredictOutcomeRequest) returns (PredictOutcomeResponse);
+
+  // Fairness (regulatory + ACC)
+  rpc AuditFairness(AuditFairnessRequest) returns (AuditFairnessResponse);
+
+  // ATS vendor simulation
+  rpc SimulateATS(SimulateATSRequest) returns (SimulateATSResponse);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Common types
+// ─────────────────────────────────────────────────────────────
+
+message Confidence {
+  double point    = 1;
+  double lower    = 2;
+  double upper    = 3;
+  double coverage = 4;
+}
+
+message Span {
+  string id          = 1;
+  string kind        = 2;  // matches packages/types/src/evidence.ts:SpanKindSchema
+  string text        = 3;
+  int32  char_start  = 4;
+  int32  char_end    = 5;
+  Confidence confidence = 6;
+  // Float32 little-endian, length = embedding_dim from the embedding model.
+  bytes  embedding   = 7;
+  string payload_json = 8;  // arbitrary kind-specific payload
+}
+
+// ─────────────────────────────────────────────────────────────
+// Health
+// ─────────────────────────────────────────────────────────────
+
+message HealthRequest {}
+
+message HealthResponse {
+  string status         = 1;  // "ok"
+  string service        = 2;  // "retune-ml"
+  string version        = 3;  // semver
+  double uptime_seconds = 4;
+  repeated string models_loaded = 5;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Embed
+// ─────────────────────────────────────────────────────────────
+
+message EmbedRequest {
+  repeated string texts = 1;
+  string model          = 2;  // "bge-large-en-v1.5"
+  int32  max_tokens     = 3;  // 0 = model default
+}
+
+message EmbedResponse {
+  // Each entry is float32 LE, length = embedding_dim (768 for bge-large).
+  repeated bytes embeddings = 1;
+  string model_version      = 2;
+  double latency_ms         = 3;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Extract spans (GLiNER multitask)
+// ─────────────────────────────────────────────────────────────
+
+message ExtractSpansRequest {
+  string text             = 1;
+  string source_doc_kind  = 2;
+  repeated string span_kinds = 3;  // empty = extract all known kinds
+}
+
+message ExtractSpansResponse {
+  repeated Span spans   = 1;
+  string model_version  = 2;
+  double latency_ms     = 3;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Classify discourse
+// ─────────────────────────────────────────────────────────────
+
+message ClassifyDiscourseRequest {
+  string jd_text = 1;
+}
+
+message DiscourseLabeledSentence {
+  int32  sentence_index = 1;
+  string text           = 2;
+  string function       = 3;  // filter|actual_test|aspiration|culture|legal|boilerplate
+  // Per-class logits, in stable category order.
+  repeated double function_logits = 4;
+  double importance     = 5;
+}
+
+message ClassifyDiscourseResponse {
+  repeated DiscourseLabeledSentence sentences = 1;
+  string model_version = 2;
+  double latency_ms    = 3;
+}
+
+// ─────────────────────────────────────────────────────────────
+// NLI / contradiction detection
+// ─────────────────────────────────────────────────────────────
+
+message NLIRequest {
+  string premise    = 1;
+  string hypothesis = 2;
+}
+
+message NLIResponse {
+  // entailment | neutral | contradiction
+  string label   = 1;
+  double entailment_prob   = 2;
+  double neutral_prob      = 3;
+  double contradiction_prob = 4;
+  string model_version     = 5;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Reader simulator (1.5-second prefix takeaway)
+// ─────────────────────────────────────────────────────────────
+
+message ReaderSimRequest {
+  string bullet_text = 1;
+  string role_family = 2;  // for context-conditioned prediction
+  int32  prefix_token_budget = 3;  // default 8
+}
+
+message ReaderSimResponse {
+  string predicted_takeaway = 1;
+  double confidence         = 2;
+  string model_version      = 3;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Propose narrative arcs
+// ─────────────────────────────────────────────────────────────
+
+message ProposeArcsRequest {
+  string blackboard_snapshot_json = 1;
+  int32  k_candidates             = 2;
+}
+
+message ArcCandidate {
+  string archetype = 1;
+  string thesis    = 2;
+  repeated string lead_evidence_span_ids = 3;
+  Confidence feasibility = 4;
+}
+
+message ProposeArcsResponse {
+  repeated ArcCandidate candidates = 1;
+  string model_version = 2;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Evidence solver (OR-tools CP-SAT)
+// ─────────────────────────────────────────────────────────────
+
+message Requirement {
+  string id           = 1;
+  string text         = 2;
+  string group        = 3;  // AND/OR group key; empty = singleton
+  double weight       = 4;
+  bool   must_have    = 5;
+}
+
+message EvidenceCandidate {
+  string span_id     = 1;
+  repeated string covers_requirement_ids = 2;
+  double confidence  = 3;
+  double recency     = 4;
+  double arc_alignment = 5;
+}
+
+message SolveEvidenceRequest {
+  repeated Requirement       requirements = 1;
+  repeated EvidenceCandidate candidates   = 2;
+  int32  length_budget_bullets = 3;
+  string narrative_arc_archetype = 4;
+}
+
+message SolveEvidenceResponse {
+  // Selected (requirement_id -> span_id) assignments.
+  map<string, string> assignment = 1;
+  double objective_value = 2;
+  bool   feasible        = 3;
+  string solver_version  = 4;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Compose bullet
+// ─────────────────────────────────────────────────────────────
+
+message ComposeBulletRequest {
+  string blackboard_snapshot_json = 1;
+  string section_id               = 2;
+  string lead_evidence_span_id    = 3;
+  string template_family          = 4;  // CAR|PAR|XYZ|STAR|hybrid
+  string verb_quality_tier        = 5;
+  // Slot fillers chosen upstream by deterministic micro-stages.
+  string slot_fill_json           = 6;
+}
+
+message ComposeBulletResponse {
+  string text         = 1;
+  Confidence honesty_score   = 2;
+  Confidence coherence_score = 3;
+  double voice_drift_cosine  = 4;
+  string model_version       = 5;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Critique
+// ─────────────────────────────────────────────────────────────
+
+message CritiqueRequest {
+  string draft_json    = 1;
+  string blackboard_snapshot_json = 2;
+  string persona       = 3;  // ats_bot|recruiter_screener|hiring_manager
+}
+
+message CritiqueRejection {
+  string reason        = 1;
+  string severity      = 2;  // low|medium|high|critical
+  string falsifiable_by = 3;
+  string target_path   = 4;
+}
+
+message CritiqueResponse {
+  bool   ship_recommendation = 1;
+  repeated CritiqueRejection rejections = 2;
+  string model_version = 3;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Outcome predictor
+// ─────────────────────────────────────────────────────────────
+
+message PredictOutcomeRequest {
+  string blackboard_snapshot_json = 1;
+  string persona = 2;  // new_grad|experienced
+}
+
+message PredictOutcomeResponse {
+  Confidence callback_probability = 1;
+  // Top blocking factors with SHAP attribution.
+  repeated string blocking_factors = 2;
+  // Counterfactual coaching suggestions.
+  repeated string counterfactuals  = 3;
+  string model_version = 4;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Fairness audit
+// ─────────────────────────────────────────────────────────────
+
+message AuditFairnessRequest {
+  string blackboard_snapshot_json = 1;
+  // Counterfactual perturbations to test (e.g. name swaps).
+  repeated string perturbations = 2;
+}
+
+message FairnessFinding {
+  string protected_class_proxy = 1;
+  double prediction_delta_pp   = 2;
+  bool   exceeds_threshold     = 3;
+}
+
+message AuditFairnessResponse {
+  bool   passed = 1;
+  repeated FairnessFinding findings = 2;
+  string model_version = 3;
+}
+
+// ─────────────────────────────────────────────────────────────
+// ATS simulator
+// ─────────────────────────────────────────────────────────────
+
+message SimulateATSRequest {
+  string vendor       = 1;  // greenhouse|workday|lever|ashby
+  string resume_text  = 2;
+}
+
+message SimulateATSResponse {
+  // Keywords the simulated parser successfully extracted.
+  repeated string extracted_keywords = 1;
+  // Format issues that broke the parser.
+  repeated string format_issues = 2;
+  double pseudo_rank_score = 3;
+  string vendor_version    = 4;
+}

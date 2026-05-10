@@ -1,0 +1,4 @@
+node_modules/
+# Generated stubs are checked-in for now (commit #4) so consumers don't
+# need to run codegen before typecheck. Commit #6 moves them out of git
+# and into a CI-driven release artifact.
