@@ -1,4 +1,4 @@
-import type { Session } from "@retune/auth";
+import type { Session } from "@/lib/session";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { AuthError, ForbiddenError, RateLimitError, toErrorResponse } from "./errors";
