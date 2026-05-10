@@ -14,4 +14,4 @@ export {
   postgres_drizzle,
 } from "./client";
 export { run_migrations } from "./migrator";
-export { MIGRATIONS, MIGRATION_0000_INIT } from "./migrations";
+export { MIGRATIONS } from "./migrations";
