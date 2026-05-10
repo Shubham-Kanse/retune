@@ -1,5 +1,31 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "NEXT_PUBLIC_APP_URL",
+    "NEXT_PUBLIC_API_URL",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "RETUNE_DATABASE_URL",
+    "RETUNE_DB_KIND",
+    "RETUNE_PERSIST",
+    "AI_PROVIDER",
+    "OPENAI_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_SMART_MODEL",
+    "OPENAI_WRITING_MODEL",
+    "OPENAI_NANO_MODEL",
+    "AGENT_MODEL",
+    "AGENT_MODEL_FAST",
+    "AGENT_MODEL_FRONTIER",
+    "RETUNE_ML_USE_STUBS",
+    "RETUNE_ML_BASE_URL",
+    "RETUNE_API_CORS",
+    "RESEND_API_KEY",
+    "EMAIL_FROM",
+    "JWT_SECRET",
+    "NODE_ENV"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
