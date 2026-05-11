@@ -42,8 +42,8 @@ export async function GET() {
     };
 
     return NextResponse.json({
-      sampleSize: centroid.sampleSize,
-      updatedAt: centroid.updatedAt?.toISOString() ?? new Date().toISOString(),
+      sampleSize: centroid.sample_size,
+      updatedAt: centroid.updated_at?.toISOString() ?? new Date().toISOString(),
       dimensions,
     });
   } catch (error) {
