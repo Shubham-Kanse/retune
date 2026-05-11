@@ -29,8 +29,9 @@ export default function LoginPage() {
         const d = await res.json();
         throw new Error(d.error ?? "Invalid email or password.");
       }
+      const d = await res.json();
       router.refresh();
-      router.push("/dashboard");
+      router.push(d.onboardingCompleted ? "/dashboard" : "/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       emailRef.current?.focus();

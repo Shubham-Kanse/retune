@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { ValidationError } from "@/lib/errors";
 import { withErrorHandling } from "@/lib/api-handler";
+import { db, users } from "@retune/db";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -18,5 +20,9 @@ export const POST = withErrorHandling(async (request) => {
   const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) throw new ValidationError("Invalid email or password");
 
-  return NextResponse.json({ userId: data.user.id });
+  const rows = await db.select({ onboardingCompleted: users.onboardingCompleted })
+    .from(users).where(eq(users.id, data.user.id)).limit(1);
+  const onboardingCompleted = rows[0]?.onboardingCompleted ?? false;
+
+  return NextResponse.json({ userId: data.user.id, onboardingCompleted });
 });
