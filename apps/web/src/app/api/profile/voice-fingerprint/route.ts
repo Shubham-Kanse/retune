@@ -10,12 +10,12 @@ export async function GET() {
   }
 
   try {
-    const { voiceCentroids } = await import("@retune/db/schema");
+    const { voice_centroids } = await import("@retune/db/schema");
     
     const rows = await db
       .select()
-      .from(voiceCentroids)
-      .where(eq(voiceCentroids.userId, session.userId))
+      .from(voice_centroids)
+      .where(eq(voice_centroids.userId, session.userId))
       .limit(1);
 
     if (!rows[0]) {
