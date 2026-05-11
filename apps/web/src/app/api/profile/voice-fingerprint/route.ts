@@ -15,7 +15,7 @@ export async function GET() {
     const rows = await db
       .select()
       .from(voice_centroids)
-      .where(eq(voice_centroids.userId, session.userId))
+      .where(eq(voice_centroids.user_id, session.userId))
       .limit(1);
 
     if (!rows[0]) {
