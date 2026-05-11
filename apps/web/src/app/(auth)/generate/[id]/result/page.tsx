@@ -32,6 +32,7 @@ interface GenerationResult {
   pending_revisions: Array<{ target: string; reason: string }>;
   total_cost_usd: number;
   ticks_executed: number;
+  generation_time_ms?: number;
   termination: string | null;
 }
 
@@ -70,6 +71,22 @@ function StatCard({
       {sub && <p className="text-xs text-[#9a9690] mt-1.5">{sub}</p>}
     </div>
   );
+}
+
+function asNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+
+function formatDurationMs(ms: number | null): string {
+  if (ms == null || ms <= 0 || !Number.isFinite(ms)) return "—";
+  const totalSec = Math.round(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}m ${s}s`;
 }
 
 function DocPanel({
@@ -319,6 +336,11 @@ export default function ResultPage() {
     result.outcome_estimate?.lower != null && result.outcome_estimate?.upper != null
       ? `${Math.round(result.outcome_estimate.lower * 100)}–${Math.round(result.outcome_estimate.upper * 100)}% range`
       : undefined;
+  const generationTimeMs = asNumber(result.generation_time_ms);
+  const generationDuration = formatDurationMs(generationTimeMs);
+  const conflicts = asArray<{ id: string; monitor: string; severity: string; summary: string }>(
+    result.conflicts,
+  );
 
   const tabs: Tab[] = ["resume", "cover_letter", "strategy"];
   const hasContent: Record<Tab, boolean> = {
@@ -360,7 +382,7 @@ export default function ResultPage() {
             </span>
           )}
           <span className="text-[11px] text-[#9a9690] font-mono">
-            {result.ticks_executed} ticks · ${result.total_cost_usd.toFixed(4)}
+            Generated in {generationDuration}
           </span>
         </div>
 
@@ -446,13 +468,13 @@ export default function ResultPage() {
         </div>
 
         {/* Conflicts */}
-        {result.conflicts.length > 0 && (
+        {conflicts.length > 0 && (
           <div className="border border-[#e5e2dd] rounded-2xl bg-white overflow-hidden mb-4">
             <div className="px-5 py-3 border-b border-[#e5e2dd]">
               <p className="rt-label">Quality notes</p>
             </div>
             <div className="p-5 space-y-3">
-              {result.conflicts.map((c) => (
+              {conflicts.map((c) => (
                 <div key={c.id} className="border border-[#e5e2dd] rounded-xl p-4">
                   <p className="rt-label mb-1">
                     {c.monitor.replace(/_/g, " ")} · {c.severity}

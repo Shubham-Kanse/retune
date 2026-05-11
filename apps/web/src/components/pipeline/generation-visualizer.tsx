@@ -1,7 +1,7 @@
 "use client";
 
 import { useGenerationStream } from "@/stores/generation-stream";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, Check, Loader2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";

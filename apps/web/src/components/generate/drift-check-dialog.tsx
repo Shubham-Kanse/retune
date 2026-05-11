@@ -96,10 +96,10 @@ export function DriftCheckDialog({
               <Dialog.Title className="text-xl font-medium text-[#1a1a1a]">
                 A slight drift was identified
               </Dialog.Title>
-              <p className="mt-1 text-sm leading-relaxed text-[#6f6a64]">
+              <Dialog.Description className="mt-1 text-sm leading-relaxed text-[#6f6a64]">
                 We found skills in this job description that are not clearly present in your profile.
                 Confirming these helps Retune generate a truthful resume.
-              </p>
+              </Dialog.Description>
             </div>
             <button type="button" className="rt-icon-btn" onClick={onClose} aria-label="Close">
               <X className="h-4 w-4" />

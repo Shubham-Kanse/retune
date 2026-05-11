@@ -1,11 +1,171 @@
-import { spawn } from "node:child_process";
-import { mkdirSync, unlinkSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { findMissingCoreFields, persistProfileAssembly } from "@/lib/profile-assembly";
 import { getSession } from "@/lib/session";
-import { getModels, getProvider } from "@retune/agent/web";
 import { db, onboardingConversations } from "@retune/db";
 import { eq } from "drizzle-orm";
+import OpenAI from "openai";
 import { NextResponse } from "next/server";
+const DEFAULT_ONBOARDING_MODEL = "gpt-4.1-mini";
+
+const PROFILE_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    fullName: { type: "string" },
+    email: { type: "string" },
+    phone: { type: "string" },
+    linkedin: { type: "string" },
+    location: { type: "string" },
+    visaStatus: { type: "string" },
+    currentTitle: { type: "string" },
+    experienceLevel: { type: "string" },
+    relocationPreferences: { type: "array", items: { type: "string" } },
+    targetRoles: { type: "array", items: { type: "string" } },
+    experience: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          company: { type: "string" },
+          title: { type: "string" },
+          titleForResume: { type: "string" },
+          startDate: { type: "string" },
+          endDate: { type: "string" },
+          description: { type: "string" },
+          metrics: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                metric: { type: "string" },
+                value: { type: "string" },
+                context: { type: "string" },
+                direction: { type: "string" },
+              },
+              required: ["metric", "value", "context", "direction"],
+            },
+          },
+          tools: { type: "array", items: { type: "string" } },
+          teamSize: { type: "number" },
+          client: { type: "string" },
+          industry: { type: "string" },
+        },
+        required: ["company", "title", "titleForResume", "startDate", "endDate", "description", "metrics", "tools", "teamSize", "client", "industry"],
+      },
+    },
+    education: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          degree: { type: "string" },
+          institution: { type: "string" },
+          startDate: { type: "string" },
+          endDate: { type: "string" },
+          status: { type: "string" },
+          coursework: { type: "array", items: { type: "string" } },
+          capstone: { type: "string" },
+        },
+        required: ["degree", "institution", "startDate", "endDate", "status", "coursework", "capstone"],
+      },
+    },
+    certifications: { type: "array", items: { type: "string" } },
+    projects: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: "string" },
+          type: { type: "string" },
+          year: { type: "number" },
+          description: { type: "string" },
+          technologies: { type: "array", items: { type: "string" } },
+          role: { type: "string" },
+          keyMetric: { type: "string" },
+        },
+        required: ["name", "type", "year", "description", "technologies", "role", "keyMetric"],
+      },
+    },
+    skillsTier1: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: "string" },
+          evidence: { type: "string" },
+          years: { type: "number" },
+        },
+        required: ["name", "evidence", "years"],
+      },
+    },
+    skillsTier2: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: "string" },
+          evidence: { type: "string" },
+          years: { type: "number" },
+        },
+        required: ["name", "evidence", "years"],
+      },
+    },
+    skillsTier3: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          name: { type: "string" },
+          evidence: { type: "string" },
+          years: { type: "number" },
+        },
+        required: ["name", "evidence", "years"],
+      },
+    },
+    summary: { type: "string" },
+    voiceNotes: { type: "string" },
+  },
+  required: [
+    "fullName",
+    "email",
+    "phone",
+    "linkedin",
+    "location",
+    "visaStatus",
+    "currentTitle",
+    "relocationPreferences",
+    "targetRoles",
+    "experienceLevel",
+    "experience",
+    "education",
+    "certifications",
+    "projects",
+    "skillsTier1",
+    "skillsTier2",
+    "skillsTier3",
+    "summary",
+    "voiceNotes",
+  ],
+};
+
+const PROFILE_EXTRACTION_PROMPT = `You are a resume extraction engine.
+Return a single JSON object matching the provided schema exactly.
+
+Extraction quality rules:
+- Extract exhaustively. Do not summarize away details.
+- For each work experience item, include ALL meaningful bullet points in description, one bullet per line separated by \\n.
+- Preserve dates accurately. Use YYYY-MM when available; else YYYY.
+- Keep field order and keys from the schema.
+- If unknown, use empty string, 0, or [] as appropriate (never omit required fields).
+- Infer experienceLevel from total years of work history: 0-2 entry, 2-4 early, 4-7 mid, 7-10 senior, 10+ staff.
+- Populate targetRoles from explicit intent if present; otherwise infer from recent titles and skills.
+- Skills tiering: Tier1 = repeated + recent production use, Tier2 = proven but less central, Tier3 = exposure only.`;
 
 export async function POST(request: Request) {
   const session = await getSession();
@@ -13,58 +173,84 @@ export async function POST(request: Request) {
 
   const formData = await request.formData();
   const file = formData.get("file") as File | null;
-
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
-  if (file.size > 10 * 1024 * 1024) {
+  if (file.size > 10 * 1024 * 1024)
     return NextResponse.json({ error: "File too large. Maximum 10MB." }, { status: 400 });
-  }
 
   const name = file.name.toLowerCase();
-  if (!name.endsWith(".pdf") && !name.endsWith(".docx")) {
+  if (!name.endsWith(".pdf") && !name.endsWith(".docx"))
     return NextResponse.json({ error: "Only PDF and DOCX files are supported." }, { status: 400 });
-  }
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  // Validate file magic bytes — reject files that don't match their claimed extension
-  const isPdf =
-    buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46; // %PDF
-  const isDocx = buffer[0] === 0x50 && buffer[1] === 0x4b; // PK ZIP header (DOCX/XLSX/PPTX)
-  if (name.endsWith(".pdf") && !isPdf) {
+  // Validate magic bytes
+  const isPdf = buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46;
+  const isDocx = buffer[0] === 0x50 && buffer[1] === 0x4b;
+  if (name.endsWith(".pdf") && !isPdf)
     return NextResponse.json({ error: "File does not appear to be a valid PDF." }, { status: 400 });
-  }
-  if (name.endsWith(".docx") && !isDocx) {
-    return NextResponse.json(
-      { error: "File does not appear to be a valid DOCX." },
-      { status: 400 },
-    );
-  }
+  if (name.endsWith(".docx") && !isDocx)
+    return NextResponse.json({ error: "File does not appear to be a valid DOCX." }, { status: 400 });
 
-  // Save file temporarily for extraction
-  const uploadDir = resolve(process.cwd(), "data", "uploads", session.userId);
-  mkdirSync(uploadDir, { recursive: true });
-  const filePath = resolve(
-    uploadDir,
-    `resume_${Date.now()}${name.endsWith(".pdf") ? ".pdf" : ".docx"}`,
-  );
-  writeFileSync(filePath, buffer);
+  // Send file as a proper file input and require schema-shaped JSON output
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  // Extract text using Python, then delete temp file
-  let extractedText = "";
+  let assistantText = "";
+  let extracted: Record<string, unknown> | null = null;
   try {
-    extractedText = await extractText(filePath);
-  } catch {
-    extractedText = `[Could not parse file. The user uploaded ${file.name} (${(file.size / 1024).toFixed(0)}KB)]`;
-  } finally {
-    try {
-      unlinkSync(filePath);
-    } catch {
-      /* non-fatal */
+    const mediaType = name.endsWith(".pdf")
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    const fileData = `data:${mediaType};base64,${buffer.toString("base64")}`;
+
+    const response: any = await openai.responses.create({
+      model: process.env.ONBOARDING_EXTRACT_MODEL ?? process.env.OPENAI_NANO_MODEL ?? DEFAULT_ONBOARDING_MODEL,
+      max_output_tokens: 8192,
+      input: [
+        {
+          role: "system",
+          content: [{ type: "input_text", text: PROFILE_EXTRACTION_PROMPT }],
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: "Extract all information from this resume into the profile JSON schema. Be exhaustive.",
+            },
+            {
+              type: "input_file",
+              filename: file.name,
+              file_data: fileData,
+            },
+          ],
+        },
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "profile_extraction",
+          strict: true,
+          schema: PROFILE_SCHEMA,
+        },
+      },
+    });
+
+    assistantText = response.output_text ?? "";
+    if (assistantText) {
+      try {
+        extracted = JSON.parse(assistantText) as Record<string, unknown>;
+      } catch {
+        extracted = null;
+      }
     }
+  } catch (err) {
+    console.error("[upload] AI extraction failed:", err);
+    assistantText = "";
+    extracted = null;
   }
 
-  // Store in onboarding conversation
+  // Store conversation
   const now = new Date();
   const convoRows = await db
     .select()
@@ -73,135 +259,41 @@ export async function POST(request: Request) {
     .limit(1);
   let convo = convoRows[0];
 
+  const messages = [
+    { role: "user", content: `[Uploaded resume: ${file.name}]` },
+    { role: "assistant", content: assistantText },
+  ];
+
   if (!convo) {
     const inserted = await db
       .insert(onboardingConversations)
-      .values({
-        userId: session.userId,
-        messages: "[]",
-        stage: "upload",
-        resumeText: extractedText,
-      })
+      .values({ userId: session.userId, messages: JSON.stringify(messages), stage: "conversation" })
       .returning();
     convo = inserted[0];
-    if (!convo) {
-      return NextResponse.json({ error: "Failed to create conversation" }, { status: 500 });
-    }
+    if (!convo) return NextResponse.json({ error: "Failed to create conversation" }, { status: 500 });
   } else {
     await db
       .update(onboardingConversations)
-      .set({ resumeText: extractedText, updatedAt: now })
+      .set({ messages: JSON.stringify(messages), stage: "conversation", updatedAt: now })
       .where(eq(onboardingConversations.id, convo.id));
   }
 
-  // Feed to onboarding conversation as a message
-  const messages: Array<{ role: string; content: string }> = JSON.parse(convo.messages);
-  messages.push({
-    role: "user",
-    content: `[Uploaded resume: ${file.name}]\n\nExtracted text:\n${extractedText.slice(0, 5000)}`,
-  });
+  const missing = extracted ? findMissingCoreFields(extracted) : [];
 
-  // Get AI response via the provider-agnostic interface.
-  // IMPORTANT: import from `@retune/agent/web` (technical-2.0 §12.2) —
-  // the bare `@retune/agent` barrel pulls in `@temporalio/worker` which
-  // wants `@swc/wasm` and breaks the Next.js bundle.
-  const { assembleSystemPrompt } = await import("@retune/agent/web");
-  const provider = getProvider();
-
-  const systemPromptText = assembleSystemPrompt({ agentType: "profile-builder" });
-  const response = await provider.createMessage("onboarding", {
-    model: getModels().fast,
-    maxTokens: 4096,
-    system: [{ type: "text", text: systemPromptText, cacheHint: true }],
-    messages: messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-  });
-
-  const assistantText = response.content
-    .filter((b) => b.type === "text")
-    .map((b) => (b as { type: "text"; text: string }).text)
-    .join("");
-
-  messages.push({ role: "assistant", content: assistantText });
-
-  await db
-    .update(onboardingConversations)
-    .set({ messages: JSON.stringify(messages), stage: "experience", updatedAt: now })
-    .where(eq(onboardingConversations.id, convo.id));
-
-  // Parse structured JSON from AI response
-  let extracted: Record<string, unknown> | null = null;
-  const jsonMatch = assistantText.match(/```json\s*([\s\S]*?)```/);
-  if (jsonMatch?.[1]) {
+  if (extracted) {
     try {
-      extracted = JSON.parse(jsonMatch[1]);
-    } catch {
-      // If AI didn't return valid JSON, fall back to raw text
+      await persistProfileAssembly({
+        userId: session.userId,
+        sessionEmail: session.email,
+        profile: extracted,
+        now,
+        // Upload should prefill profile data but not auto-complete onboarding.
+        markOnboardingCompleted: false,
+      });
+    } catch (err) {
+      console.error("[upload] Failed to persist extracted profile:", err);
     }
   }
 
-  // Determine which fields are missing
-  const missing: string[] = [];
-  if (extracted) {
-    if (!extracted.fullName) missing.push("fullName");
-    if (!extracted.currentTitle) missing.push("currentTitle");
-    if (!extracted.experienceLevel) missing.push("experienceLevel");
-    if (!Array.isArray(extracted.targetRoles) || extracted.targetRoles.length === 0) missing.push("targetRoles");
-    if (!extracted.linkedin) missing.push("linkedin");
-    if (!extracted.visaStatus) missing.push("visaStatus");
-    if (!Array.isArray(extracted.relocationPreferences) || extracted.relocationPreferences.length === 0) missing.push("relocationPreferences");
-    if (!extracted.location) missing.push("location");
-    if (!extracted.email) missing.push("email");
-    if (!extracted.phone) missing.push("phone");
-  }
-
-  return NextResponse.json({
-    response: assistantText,
-    extracted,
-    missing,
-    stage: 1,
-  });
-}
-
-function extractText(filePath: string): Promise<string> {
-  return new Promise((res, rej) => {
-    // Simple Python script to extract text
-    const script = `
-import sys
-path = sys.argv[1]
-if path.endswith('.pdf'):
-    try:
-        import fitz
-        doc = fitz.open(path)
-        text = '\\n'.join(page.get_text() for page in doc)
-        print(text)
-    except ImportError:
-        with open(path, 'rb') as f:
-            content = f.read()
-            # Fallback: extract ASCII text
-            text = content.decode('utf-8', errors='ignore')
-            print(text[:5000])
-elif path.endswith('.docx'):
-    try:
-        from docx import Document
-        doc = Document(path)
-        text = '\\n'.join(p.text for p in doc.paragraphs)
-        print(text)
-    except ImportError:
-        print('[DOCX parsing requires python-docx]')
-`;
-    const proc = spawn("python3", ["-c", script, filePath], { timeout: 15000 });
-    let stdout = "";
-    let stderr = "";
-    proc.stdout.on("data", (d) => {
-      stdout += d;
-    });
-    proc.stderr.on("data", (d) => {
-      stderr += d;
-    });
-    proc.on("close", (code) => {
-      if (code === 0) res(stdout);
-      else rej(new Error(stderr || "Extraction failed"));
-    });
-    proc.on("error", rej);
-  });
+  return NextResponse.json({ response: assistantText, extracted, missing, stage: 1 });
 }

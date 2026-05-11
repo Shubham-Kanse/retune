@@ -5,7 +5,7 @@ import { useGenerationStream } from "@/stores/generation-stream";
 import { CheckCircle2, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const SPECIALIST_TO_PHASE: Record<string, string> = {
   jd_span_extractor: "Reading the job description",
@@ -96,10 +96,11 @@ export default function GenerationPage() {
     start,
     stop,
     traceEntries,
-    totalCostUsd,
+    startedAt,
     submissionConfidence,
     currentSpecialist,
   } = useGenerationStream();
+  const [elapsedSec, setElapsedSec] = useState(0);
 
   useEffect(() => {
     if (generationId) start(generationId);
@@ -111,12 +112,24 @@ export default function GenerationPage() {
     return () => clearTimeout(t);
   }, [status, generationId, router]);
 
+  useEffect(() => {
+    if (!startedAt || status !== "streaming") {
+      setElapsedSec(0);
+      return;
+    }
+    const id = setInterval(() => {
+      setElapsedSec(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [startedAt, status]);
+
   const isError = status === "error";
   const isComplete = status === "complete";
   const isActive =
     (status === "streaming" || status === "connecting" || traceEntries.length > 0) && !isComplete;
   const confidencePct =
     submissionConfidence != null ? Math.round(submissionConfidence * 100) : null;
+  const elapsedLabel = `${Math.floor(elapsedSec / 60)}:${String(elapsedSec % 60).padStart(2, "0")}`;
 
   const firedSpecialists = new Set(traceEntries.map((t) => t.specialist));
 
@@ -262,7 +275,7 @@ export default function GenerationPage() {
         {/* Footer */}
         <div className="flex items-center justify-between text-[10px] text-[#9a9690] font-mono px-1 mt-4">
           <span>{traceEntries.length} ticks</span>
-          <span>${totalCostUsd.toFixed(4)}</span>
+          <span>{elapsedLabel} elapsed</span>
         </div>
       </div>
     </div>

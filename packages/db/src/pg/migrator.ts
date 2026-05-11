@@ -16,6 +16,7 @@ function loadMigrations() {
     { name: "0003_emotional_mood_motivation", sql: load("0003_emotional_mood_motivation.sql") },
     { name: "0004_legacy_consolidation", sql: load("0004_legacy_consolidation.sql") },
     { name: "0005_generation_preflights", sql: load("0005_generation_preflights.sql") },
+    { name: "0006_created_at_compat", sql: load("0006_created_at_compat.sql") },
   ];
 }
 

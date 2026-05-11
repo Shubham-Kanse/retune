@@ -1,8 +1,6 @@
 import { apiUrl } from "@/lib/api-config";
+import { signGenerationAccessToken, userOwnsGeneration } from "@/lib/generation-access";
 import { getSession } from "@/lib/session";
-import { db } from "@retune/db";
-import { applications } from "@retune/db/schema";
-import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -10,12 +8,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
+  const owns = await userOwnsGeneration({ userId: session.userId, generationId: id });
+  if (!owns) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const { searchParams } = new URL(request.url);
   const qs = searchParams.toString();
   const upstreamUrl = apiUrl(`/generate/${id}/stream${qs ? `?${qs}` : ""}`);
+  const token = signGenerationAccessToken({ generationId: id, userId: session.userId });
 
   const upstream = await fetch(upstreamUrl, {
-    headers: { Accept: "text/event-stream", "Cache-Control": "no-cache" },
+    headers: {
+      Accept: "text/event-stream",
+      "Cache-Control": "no-cache",
+      "X-Retune-Generation-Access": token,
+    },
     signal: request.signal,
   });
 
@@ -23,32 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     return NextResponse.json({ error: "stream_unavailable" }, { status: upstream.status });
   }
 
-  // Pipe the stream through a TransformStream to mark as completed when done
-  const userId = session.userId;
-  const { readable, writable } = new TransformStream<Uint8Array, Uint8Array>({
-    transform(chunk, controller) {
-      controller.enqueue(chunk);
-
-      // Look for `event: done` and mark application as completed
-      const text = new TextDecoder().decode(chunk);
-      if (text.includes("event: done")) {
-        (async () => {
-          try {
-            await db
-              .update(applications)
-              .set({ status: "completed", updatedAt: new Date() })
-              .where(and(eq(applications.id, id), eq(applications.userId, userId)));
-          } catch (err) {
-            console.error("[generate-stream] Failed to mark as completed:", err);
-          }
-        })();
-      }
-    },
-  });
-
-  upstream.body.pipeTo(writable).catch(() => {});
-
-  return new Response(readable, {
+  return new Response(upstream.body, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache, no-transform",

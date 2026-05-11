@@ -25,6 +25,15 @@ keys/
 *.pfx
 *service-account*.json
 *credentials*.json
+*.key
+*.cert
+*.crt
+.secrets
+secrets.*
+auth-token*
+*-token.txt
+*.backup
+*.bak
 
 # ─── Local data & databases ──────────────────────────────────────────────────
 data/
@@ -57,6 +66,9 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+.agents/
+.kiro/
+.understand-anything/
 
 # ─── Logs ────────────────────────────────────────────────────────────────────
 *.log
@@ -73,3 +85,10 @@ test-results/
 # ─── Misc ────────────────────────────────────────────────────────────────────
 packages/agent/src/agent/resumes/
 *.tgz
+.cache/
+tmp/
+temp/
+*.tmp
+uploads/
+downloads/
+user-data/

@@ -6,6 +6,9 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import { Hono } from "hono";
 import { TraceBusRegistry } from "../src/lib/trace-bus";
@@ -13,6 +16,8 @@ import { generate_routes } from "../src/routes/generate";
 import { health } from "../src/routes/health";
 import { status_routes } from "../src/routes/status";
 import { stream_routes } from "../src/routes/stream";
+
+process.env.NODE_ENV = "test";
 
 function build_app() {
   const registry = new TraceBusRegistry();
@@ -98,8 +103,67 @@ test("GET stream for unknown id returns 404", async () => {
   assert.equal(res.status, 404);
 });
 
+test("SSE emits typed completion event before done", async () => {
+  const registry = new TraceBusRegistry();
+  const app = new Hono();
+  app.route("/", stream_routes(registry));
+
+  const generation_id = "11111111-1111-1111-1111-111111111111";
+  const bus = registry.create(generation_id);
+
+  // Publish terminal frames asynchronously after subscriber connects.
+  setTimeout(() => {
+    bus.publish({
+      kind: "done",
+      summary: {
+        termination: "no_open_work",
+        ticks_executed: 3,
+        total_cost_usd: 0.001,
+        total_latency_ms: 123,
+      },
+    });
+  }, 0);
+
+  const res = await app.fetch(new Request(`http://test/generate/${generation_id}/stream`));
+  assert.equal(res.status, 200);
+  const body = await res.text();
+
+  const completionIdx = body.indexOf("event: completion");
+  const doneIdx = body.indexOf("event: done");
+  assert.ok(completionIdx >= 0, "expected completion event");
+  assert.ok(doneIdx >= 0, "expected done event");
+  assert.ok(completionIdx < doneIdx, "completion should be emitted before done");
+  assert.match(body, /"status":"completed"/);
+});
+
+test("SSE emits typed completion event on error", async () => {
+  const registry = new TraceBusRegistry();
+  const app = new Hono();
+  app.route("/", stream_routes(registry));
+
+  const generation_id = "22222222-2222-2222-2222-222222222222";
+  const bus = registry.create(generation_id);
+
+  setTimeout(() => {
+    bus.publish({ kind: "error", message: "boom" });
+  }, 0);
+
+  const res = await app.fetch(new Request(`http://test/generate/${generation_id}/stream`));
+  assert.equal(res.status, 200);
+  const body = await res.text();
+
+  const completionIdx = body.indexOf("event: completion");
+  const errorIdx = body.indexOf("event: error");
+  assert.ok(completionIdx >= 0, "expected completion event");
+  assert.ok(errorIdx >= 0, "expected error event");
+  assert.ok(completionIdx < errorIdx, "completion should be emitted before error");
+  assert.match(body, /"status":"failed"/);
+  assert.match(body, /"error_message":"boom"/);
+});
+
 test("GET /generate/:id/status returns Postgres fallback when no Temporal", async () => {
   process.env.RETUNE_PERSIST = "pglite";
+  process.env.RETUNE_PGLITE_DATADIR = await mkdtemp(join(tmpdir(), "retune-api-status-"));
   // RETUNE_TEMPORAL is unset, so the route falls back to Postgres.
   const app = build_app();
 
@@ -139,11 +203,13 @@ test("GET /generate/:id/status returns Postgres fallback when no Temporal", asyn
   const durability = await acquire_durability();
   if (durability) await durability.close();
   process.env.RETUNE_PERSIST = undefined;
+  process.env.RETUNE_PGLITE_DATADIR = undefined;
 });
 
 test("pglite-backed generation persists to DB", async () => {
   // Cache-local to this test: fresh pglite per run.
   process.env.RETUNE_PERSIST = "pglite";
+  process.env.RETUNE_PGLITE_DATADIR = await mkdtemp(join(tmpdir(), "retune-api-persist-"));
 
   // Build a fresh app after the env var is set so acquire_durability()
   // sees the right mode on first call.
@@ -166,6 +232,8 @@ test("pglite-backed generation persists to DB", async () => {
   const stream_res = await app.fetch(new Request(`http://test/generate/${generation_id}/stream`));
   assert.equal(stream_res.status, 200);
   const body = await stream_res.text();
+  assert.match(body, /event: completion/);
+  assert.match(body, /"status":"completed"/);
   assert.match(body, /"termination":"no_open_work"/);
 
   // Direct DB check: generation row exists with completed termination.
@@ -186,4 +254,5 @@ test("pglite-backed generation persists to DB", async () => {
   // Clean up: close pglite so subsequent tests get a fresh process state.
   await durability.close();
   process.env.RETUNE_PERSIST = undefined;
+  process.env.RETUNE_PGLITE_DATADIR = undefined;
 });

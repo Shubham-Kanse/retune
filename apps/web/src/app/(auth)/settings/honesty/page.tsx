@@ -80,36 +80,50 @@ export default function HonestyCalibrationPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
-      <Link
-        href="/settings"
-        className="text-xs text-muted-foreground hover:text-foreground mb-6 inline-block"
-      >
-        ← Settings
-      </Link>
-
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Claim Calibration</h1>
-          <p className="page-subtitle">
-            Tracks how your claims perform over time. The system adjusts confidence in different
-            claim types based on outcome feedback.
-          </p>
+    <div className="min-h-screen flex items-start justify-center pt-16 px-6">
+      <div className="w-full max-w-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#f0ede8] flex items-center justify-center">
+              <svg className="w-4 h-4 text-[#f59e0b]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+            </div>
+            <div>
+              <p className="rt-label">Honesty</p>
+              <h1 className="font-serif text-2xl font-normal text-[#1a1a1a] leading-tight">
+                Claim Calibration
+              </h1>
+            </div>
+          </div>
+          <Link href="/settings" className="text-[#9a9690] hover:text-[#1a1a1a] transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </Link>
         </div>
+
+        <p className="text-sm text-[#6b6b6b] mb-6">
+          Tracks how your claims perform over time. The system adjusts confidence in different
+          claim types based on outcome feedback.
+        </p>
+
+        {loading ? (
+          <div className="flex min-h-[40vh] items-center justify-center">
+            <div className="h-5 w-5 border-2 border-[#e5e2dd] border-t-[#2d8a5e] rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="bg-white border border-[#e5e2dd] rounded-2xl p-6">
+            <HonestyCalibrationTable rows={calibrations} />
+          </div>
+        )}
+
+        <p className="text-xs text-[#6b6b6b] mt-6">
+          Trust levels are updated when you log outcomes. A trust level below 70% means the system
+          will ask for stronger evidence before using that claim type prominently.
+        </p>
       </div>
-
-      {loading ? (
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="h-5 w-5 border-2 border-border border-t-brand rounded-full animate-spin" />
-        </div>
-      ) : (
-        <HonestyCalibrationTable rows={calibrations} />
-      )}
-
-      <p className="text-xs text-muted-foreground mt-6">
-        Trust levels are updated when you log outcomes. A trust level below 70% means the system
-        will ask for stronger evidence before using that claim type prominently.
-      </p>
     </div>
   );
 }

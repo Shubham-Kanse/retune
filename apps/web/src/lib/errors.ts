@@ -66,12 +66,94 @@ export class ExternalServiceError extends AppError {
   }
 }
 
+export class ServiceUnavailableError extends AppError {
+  constructor(message = "Service temporarily unavailable") {
+    super(message, "SERVICE_UNAVAILABLE", 503, true);
+  }
+}
+
+export function isInfrastructureError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const e = err as Error & { code?: string };
+  const code = String(e.code ?? "").toUpperCase();
+  const msg = e.message.toLowerCase();
+
+  // Network/DNS/transient infrastructure failures.
+  if (["ENOTFOUND", "EAI_AGAIN", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT"].includes(code)) {
+    return true;
+  }
+  if (
+    msg.includes("getaddrinfo enotfound") ||
+    msg.includes("connection refused") ||
+    msg.includes("connect etimedout") ||
+    msg.includes("network error") ||
+    msg.includes("dns")
+  ) {
+    return true;
+  }
+  return false;
+}
+
 export function toErrorResponse(err: unknown): { error: string; code: string; status: number } {
   if (err instanceof AppError) {
     logger.warn("Application error", { code: err.code, message: err.message });
     return { error: err.message, code: err.code, status: err.statusCode };
   }
 
+  if (isInfrastructureError(err)) {
+    logger.error("Infrastructure connectivity error", err instanceof Error ? err : new Error(String(err)));
+    return {
+      error: "Service temporarily unavailable. Please retry in a moment.",
+      code: "SERVICE_UNAVAILABLE",
+      status: 503,
+    };
+  }
+
   logger.error("Unhandled error", err instanceof Error ? err : new Error(String(err)));
   return { error: "An unexpected error occurred", code: "INTERNAL_ERROR", status: 500 };
+}
+
+export async function withInfraFallback<T>(
+  op: () => Promise<T>,
+  fallback: T,
+  opts?: { onInfraError?: (err: Error) => void },
+): Promise<T> {
+  try {
+    return await op();
+  } catch (err) {
+    if (isInfrastructureError(err)) {
+      opts?.onInfraError?.(err instanceof Error ? err : new Error(String(err)));
+      return fallback;
+    }
+    throw err;
+  }
+}
+
+export async function safeQuery<T>(
+  query: () => Promise<T>,
+  fallback: T,
+  opts?: { onInfraError?: (err: Error) => void },
+): Promise<T> {
+  return withInfraFallback(query, fallback, opts);
+}
+
+export async function safeFetch<T>(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  fallback: T,
+  opts?: {
+    parse?: (response: Response) => Promise<T>;
+    onInfraError?: (err: Error) => void;
+    onNonOk?: (response: Response) => Promise<T> | T;
+  },
+): Promise<T> {
+  return withInfraFallback(async () => {
+    const response = await fetch(input, init);
+    if (!response.ok) {
+      if (opts?.onNonOk) return await opts.onNonOk(response);
+      return fallback;
+    }
+    if (opts?.parse) return await opts.parse(response);
+    return (await response.json()) as T;
+  }, fallback, opts);
 }

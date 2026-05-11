@@ -3,6 +3,7 @@ import "@/styles/globals.css";
 
 import { NavGuardProvider } from "@/components/layout/nav-guard-provider";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { logWebStartupDiagnostics, resolveAppUrl } from "@/lib/startup-diagnostics";
 import { EB_Garamond, Inter } from "next/font/google";
 import { Toaster } from "sonner";
 
@@ -32,7 +33,7 @@ export const metadata: Metadata = {
   title: { default: "Retuned", template: "%s | Retuned" },
   description:
     "Paste a job description. Get a tailored resume, cover letter, and application strategy in under 3 minutes.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "https://retuned.cv"),
+  metadataBase: resolveAppUrl(process.env.NEXT_PUBLIC_APP_URL),
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -51,6 +52,8 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg",
   },
 };
+
+logWebStartupDiagnostics();
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

@@ -357,6 +357,27 @@ function handleEvent(
       });
       break;
 
+    case "completion": {
+      const completionStatus = String(data.status ?? "failed");
+      const nextStatus = completionStatus === "completed" ? "complete" : "error";
+      set({
+        status: nextStatus,
+        currentSpecialist: null,
+        errorMessage:
+          nextStatus === "error"
+            ? String(data.error_message ?? data.termination ?? "Generation failed")
+            : null,
+        totalCostUsd:
+          typeof data.total_cost_usd === "number" ? data.total_cost_usd : state.totalCostUsd,
+        steps: state.steps.map((s) =>
+          s.status === "active" || s.status === "pending"
+            ? { ...s, status: "complete" as const }
+            : s,
+        ),
+      });
+      break;
+    }
+
     case "complete":
       set({
         status: "complete",
@@ -433,10 +454,9 @@ function handleEvent(
     }
 
     case "done": {
-      // Backend signals generation complete with a summary object
+      // Legacy terminal event. Authoritative completion now comes from event:completion.
       const confidence = (data.submission_confidence as number) ?? null;
       set({
-        status: "complete",
         currentSpecialist: null,
         submissionConfidence: confidence,
         steps: state.steps.map((s) =>

@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { useGenerationStream } from "@/stores/generation-stream";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { ArrowLeft, ArrowRight, Check, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";

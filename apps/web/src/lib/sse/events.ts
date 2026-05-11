@@ -28,6 +28,7 @@ export type PipelineEventType =
   | "gap_detected"
   | "user_action_required"
   | "trace"
+  | "completion"
   | "error"
   | "complete"
   | "done"
@@ -140,4 +141,13 @@ export interface CompleteData {
   interview_ready_score: number | null;
   submission_confidence: number | null;
   duration_ms: number;
+}
+
+export interface CompletionData {
+  status: "completed" | "failed" | "cancelled";
+  termination: string | null;
+  ticks_executed: number;
+  total_cost_usd: number;
+  total_latency_ms: number;
+  error_message: string | null;
 }

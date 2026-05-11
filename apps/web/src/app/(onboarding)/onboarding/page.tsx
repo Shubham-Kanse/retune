@@ -265,6 +265,7 @@ function CollectionPhase({
   steps,
   currentStepIndex,
   profile,
+  comfortMessage,
   onSelect,
   onTextSubmit,
   onSkip,
@@ -273,6 +274,7 @@ function CollectionPhase({
   steps: CollectionStep[];
   currentStepIndex: number;
   profile: ProfileData;
+  comfortMessage?: string | null;
   onSelect: (field: keyof ProfileData, value: string | string[]) => void;
   onTextSubmit: (field: keyof ProfileData, value: string) => void;
   onSkip: () => void;
@@ -308,6 +310,16 @@ function CollectionPhase({
       {/* Question */}
       <AnimatePresence mode="wait">
         <motion.div key={step.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={SPRING} className="flex-1">
+          {comfortMessage && currentStepIndex === 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={SPRING}
+              className="mb-5 rounded-xl border border-[#d4f5e0] bg-[#f7fff9] px-4 py-3"
+            >
+              <p className="text-sm text-[#236e4a]">{comfortMessage}</p>
+            </motion.div>
+          )}
           <div className="flex gap-3 mb-8">
             <div className="flex-shrink-0 mt-0.5">
               <ColorOrb dimension="28px" tones={ORB_TONES} spinDuration={20} />
@@ -497,6 +509,7 @@ export default function OnboardingPage() {
   const [collectionSteps, setCollectionSteps] = useState<CollectionStep[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [fileName, setFileName] = useState("");
+  const [comfortMessage, setComfortMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Determine which steps to show ───────────────────────────────────────────
@@ -509,6 +522,12 @@ export default function OnboardingPage() {
       setCollectionSteps(ALL_STEPS.filter((s) => missing.includes(s.id)));
     }
     setCurrentStep(0);
+  }, []);
+
+  const getFirstName = useCallback((fullName?: string) => {
+    if (!fullName) return "there";
+    const first = fullName.trim().split(/\s+/)[0];
+    return first || "there";
   }, []);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
@@ -530,20 +549,36 @@ export default function OnboardingPage() {
       if (data.extracted) {
         setProfile(data.extracted);
         setMissingFields(data.missing ?? []);
+        const firstName = getFirstName(data.extracted.fullName);
+        const missing = Array.isArray(data.missing) ? data.missing.length : 0;
+        if (missing === 0) {
+          setComfortMessage(`This is great, ${firstName}! I got everything I need.`);
+        } else if (missing === 1) {
+          setComfortMessage(
+            `This is great, ${firstName}! I got almost everything I need. I just have one final question for you.`,
+          );
+        } else {
+          setComfortMessage(
+            `Great start, ${firstName}. I parsed your resume and only need ${missing} quick details to complete your profile.`,
+          );
+        }
         buildSteps(data.missing ?? []);
       } else {
         // AI didn't return JSON — treat as from scratch
+        setComfortMessage("I parsed your resume, but I need a few quick details to make your profile complete.");
         buildSteps([]);
       }
       setPhase("collection");
     } catch {
       // Fallback to from-scratch on failure
+      setComfortMessage("I couldn't read that file cleanly. We can still finish your profile in a couple of quick steps.");
       buildSteps([]);
       setPhase("collection");
     }
-  }, [buildSteps]);
+  }, [buildSteps, getFirstName]);
 
   const handleScratch = useCallback(() => {
+    setComfortMessage(null);
     buildSteps([]);
     setPhase("collection");
   }, [buildSteps]);
@@ -602,6 +637,7 @@ export default function OnboardingPage() {
             steps={collectionSteps}
             currentStepIndex={currentStep}
             profile={profile}
+            comfortMessage={comfortMessage}
             onSelect={handleSelect}
             onTextSubmit={handleTextSubmit}
             onSkip={handleSkip}

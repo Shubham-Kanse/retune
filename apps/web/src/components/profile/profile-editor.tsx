@@ -13,7 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type KeyboardEvent, useState } from "react";
+import { type KeyboardEvent, useState, memo } from "react";
 import { toast } from "sonner";
 
 interface MetricEntry {

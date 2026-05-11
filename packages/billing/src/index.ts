@@ -87,7 +87,13 @@ async function getUsedCredits(userId: string): Promise<number> {
   const rows = await db
     .select({ total: sql<number>`COALESCE(SUM(${usageRecords.costUsd}), 0)` })
     .from(usageRecords)
-    .where(and(eq(usageRecords.userId, userId), sql`${usageRecords.costUsd} IS NOT NULL`));
+    .where(
+      and(
+        eq(usageRecords.userId, userId),
+        sql`${usageRecords.costUsd} IS NOT NULL`,
+        sql`${usageRecords.type} IN ('generation', 'refinement')` // Exclude refinement_attempt
+      )
+    );
   return Math.round(Number(rows[0]?.total ?? 0));
 }
 
@@ -105,7 +111,9 @@ export async function getSubscription(userId: string): Promise<SubscriptionInfo>
   const sub = subRows[0];
   const plan = (sub?.plan ?? "free") as PlanTier;
   const creditsLimit = getPlanCredits(plan);
-  const creditsUsed = await getUsedCredits(userId);
+  
+  // Read from cached counter instead of expensive SUM query
+  const creditsUsed = sub?.creditsUsed ?? 0;
   const creditsRemaining = Math.max(creditsLimit - creditsUsed, 0);
 
   const result: SubscriptionInfo = {
@@ -122,7 +130,7 @@ export async function getSubscription(userId: string): Promise<SubscriptionInfo>
     generationsLimit: Math.floor(creditsLimit / CREDIT_COSTS.generation),
   };
 
-  cacheSet(cacheKey, result, 60_000);
+  cacheSet(cacheKey, result, 300_000); // 5 minutes
   return result;
 }
 

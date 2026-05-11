@@ -10,6 +10,7 @@
     "db:up": "docker compose up -d postgres",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && docker compose up -d postgres",
+    "startup:selfcheck": "pnpm --filter @retune/web startup:selfcheck && pnpm --filter @retune/api startup:selfcheck && pnpm --filter @retune/worker startup:selfcheck",
     "db:audit:schema": "pnpm -C apps/web exec node ../../tools/db/schema-audit.cjs",
     "build": "turbo build",
     "postinstall": "node scripts/copy-pdf-worker.mjs",

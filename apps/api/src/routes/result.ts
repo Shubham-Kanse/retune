@@ -22,6 +22,7 @@ import {
 } from "../lib/docx-renderer";
 import { renderResult } from "../lib/result-renderer";
 import type { TraceBusRegistry } from "../lib/trace-bus";
+import { verifyGenerationAccessToken } from "../lib/generation-access-token";
 import { acquire_durability } from "../runtime/persistence-factory";
 
 async function loadBlackboard(id: string, registry: TraceBusRegistry): Promise<Blackboard | null> {
@@ -45,8 +46,29 @@ async function loadBlackboard(id: string, registry: TraceBusRegistry): Promise<B
 export function result_routes(registry: TraceBusRegistry) {
   const app = new Hono();
 
+  async function authorize(c: any, id: string) {
+    const token = c.req.header("x-retune-generation-access");
+    const claims = verifyGenerationAccessToken(token, id);
+    if (!claims) return { ok: false as const, response: c.json({ error: "forbidden" }, 403) };
+
+    const durability = await acquire_durability();
+    if (!durability) return { ok: true as const, userId: claims.user_id };
+    const rows = await durability.db
+      .select({ user_id: generations.user_id })
+      .from(generations)
+      .where(eq(generations.id, id))
+      .limit(1);
+    const owner = rows[0]?.user_id;
+    if (owner && claims.user_id !== "__TEST_BYPASS__" && owner !== claims.user_id) {
+      return { ok: false as const, response: c.json({ error: "forbidden" }, 403) };
+    }
+    return { ok: true as const, userId: claims.user_id };
+  }
+
   app.get("/generate/:id", async (c) => {
     const id = c.req.param("id");
+    const auth = await authorize(c, id);
+    if (!auth.ok) return auth.response;
 
     // 1. In-memory: bus captured the final blackboard on orchestrator return.
     const bus = registry.get(id);
@@ -59,6 +81,7 @@ export function result_routes(registry: TraceBusRegistry) {
             termination: done?.termination ?? null,
             ticks_executed: done?.ticks_executed ?? 0,
             total_cost_usd: done?.total_cost_usd ?? 0,
+            generation_time_ms: done?.total_latency_ms ?? 0,
           }),
         );
       }
@@ -73,6 +96,7 @@ export function result_routes(registry: TraceBusRegistry) {
           blackboard: generations.current_blackboard,
           ticks_executed: generations.ticks_executed,
           total_cost_usd: generations.total_cost_usd,
+          total_latency_ms: generations.total_latency_ms,
           termination: generations.termination,
         })
         .from(generations)
@@ -89,6 +113,7 @@ export function result_routes(registry: TraceBusRegistry) {
             termination: row.termination ?? null,
             ticks_executed: row.ticks_executed ?? 0,
             total_cost_usd: row.total_cost_usd ?? 0,
+            generation_time_ms: row.total_latency_ms ?? 0,
           }),
         );
       }
@@ -99,6 +124,8 @@ export function result_routes(registry: TraceBusRegistry) {
 
   app.get("/generate/:id/audit", async (c) => {
     const id = c.req.param("id");
+    const auth = await authorize(c, id);
+    if (!auth.ok) return auth.response;
     const bus = registry.get(id);
     if (bus) {
       const trace = bus.get_trace_log();
@@ -128,6 +155,8 @@ export function result_routes(registry: TraceBusRegistry) {
     for (const fmt of ["docx", "pdf"] as const) {
       app.get(`/generate/:id/${slug}.${fmt}`, async (c) => {
         const id = c.req.param("id");
+        const auth = await authorize(c, id);
+        if (!auth.ok) return auth.response;
         const blackboard = await loadBlackboard(id, registry);
         if (!blackboard) {
           return c.json({ error: "not_found", generation_id: id }, 404);

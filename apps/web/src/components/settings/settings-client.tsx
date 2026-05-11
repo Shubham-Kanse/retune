@@ -33,8 +33,8 @@ export function SettingsClient({
   subscription,
   email,
   fullName,
-  createdAt,
-}: { subscription: Sub; email: string; fullName: string; createdAt: Date | null }) {
+  memberSince,
+}: { subscription: Sub; email: string; fullName: string; memberSince: string | null }) {
   const router = useRouter();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
@@ -167,14 +167,7 @@ export function SettingsClient({
             <span className="font-medium">{fullName}</span> · {email}
           </p>
           <p className="text-xs text-[#6b6b6b]">
-            Member since{" "}
-            {createdAt
-              ? createdAt.toLocaleDateString(undefined, {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })
-              : "—"}
+            Member since {memberSince ?? "—"}
           </p>
         </div>
 

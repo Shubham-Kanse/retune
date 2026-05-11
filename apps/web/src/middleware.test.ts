@@ -1,86 +1,63 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("jose", () => ({
-  jwtVerify: vi.fn(),
+const resolveSessionStateFromRequest = vi.fn();
+
+vi.mock("@/lib/identity-edge", () => ({
+  resolveSessionStateFromRequest,
 }));
 
-describe("middleware session protection", () => {
+describe("middleware", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
   });
 
-  it("redirects to login when session cookie is missing", async () => {
-    process.env.JWT_SECRET = "12345678901234567890123456789012";
-    const { middleware } = await import("./middleware");
+  it("allows public paths without auth and sets security headers", async () => {
+    const { middleware } = await import("@/middleware");
+    const req = new NextRequest("http://localhost/login");
+
+    const res = await middleware(req);
+
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+    expect(res.headers.get("Referrer-Policy")).toBe("strict-origin-when-cross-origin");
+    expect(resolveSessionStateFromRequest).not.toHaveBeenCalled();
+  });
+
+  it("redirects protected path to /login when session is missing", async () => {
+    resolveSessionStateFromRequest.mockResolvedValue({
+      response: NextResponse.next(),
+      session: null,
+    });
+    const { middleware } = await import("@/middleware");
     const req = new NextRequest("http://localhost/dashboard");
+
     const res = await middleware(req);
+
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toBe("http://localhost/login");
+    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
   });
 
-  it("rejects tampered session cookie", async () => {
-    process.env.JWT_SECRET = "12345678901234567890123456789012";
-    const { jwtVerify } = await import("jose");
-    vi.mocked(jwtVerify).mockRejectedValueOnce(new Error("invalid token"));
-    const { middleware } = await import("./middleware");
-
-    const req = new NextRequest("http://localhost/dashboard", {
-      headers: { cookie: "session=tampered.token.value" },
+  it("passes through protected path when session exists", async () => {
+    const passthrough = NextResponse.next();
+    resolveSessionStateFromRequest.mockResolvedValue({
+      response: passthrough,
+      session: {
+        userId: "u1",
+        email: "u1@example.com",
+        fullName: "U1",
+        expiresAt: 0,
+      },
     });
+    const { middleware } = await import("@/middleware");
+    const req = new NextRequest("http://localhost/dashboard");
+
     const res = await middleware(req);
-    expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe("http://localhost/login");
-  });
 
-  it("rejects expired session cookie", async () => {
-    process.env.JWT_SECRET = "12345678901234567890123456789012";
-    const { jwtVerify } = await import("jose");
-    vi.mocked(jwtVerify).mockRejectedValueOnce(new Error("jwt expired"));
-    const { middleware } = await import("./middleware");
-
-    const req = new NextRequest("http://localhost/dashboard", {
-      headers: { cookie: "session=expired.jwt.token" },
-    });
-    const res = await middleware(req);
-    expect(res.status).toBe(307);
-    expect(res.headers.get("location")).toBe("http://localhost/login");
-  });
-
-  it("allows protected routes with a valid non-expired session across route changes", async () => {
-    process.env.JWT_SECRET = "12345678901234567890123456789012";
-    const { jwtVerify } = await import("jose");
-    vi.mocked(jwtVerify).mockResolvedValue({ payload: { userId: "u1" } } as never);
-    const { middleware } = await import("./middleware");
-
-    const dashboardReq = new NextRequest("http://localhost/dashboard", {
-      headers: { cookie: "session=valid.jwt.token" },
-    });
-    const dashboardRes = await middleware(dashboardReq);
-    expect(dashboardRes.status).toBe(200);
-    expect(dashboardRes.headers.get("location")).toBeNull();
-
-    const settingsReq = new NextRequest("http://localhost/settings", {
-      headers: { cookie: "session=valid.jwt.token" },
-    });
-    const settingsRes = await middleware(settingsReq);
-    expect(settingsRes.status).toBe(200);
-    expect(settingsRes.headers.get("location")).toBeNull();
-  });
-
-  it("allows crawler files without requiring session", async () => {
-    process.env.JWT_SECRET = "12345678901234567890123456789012";
-    const { middleware } = await import("./middleware");
-
-    const robotsReq = new NextRequest("http://localhost/robots.txt");
-    const robotsRes = await middleware(robotsReq);
-    expect(robotsRes.status).toBe(200);
-    expect(robotsRes.headers.get("location")).toBeNull();
-
-    const sitemapReq = new NextRequest("http://localhost/sitemap.xml");
-    const sitemapRes = await middleware(sitemapReq);
-    expect(sitemapRes.status).toBe(200);
-    expect(sitemapRes.headers.get("location")).toBeNull();
+    expect(res.status).toBe(200);
+    expect(resolveSessionStateFromRequest).toHaveBeenCalledTimes(1);
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
   });
 });

@@ -1,5 +1,6 @@
 import { apiUrl } from "@/lib/api-config";
 import { withAuthParams } from "@/lib/api-handler";
+import { signGenerationAccessToken, userOwnsGeneration } from "@/lib/generation-access";
 import {
   dualWriteOptimizedResult,
   parityCheckResult,
@@ -11,22 +12,21 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export const GET = withAuthParams(async (_req, _session, { id }) => {
-  if (id) {
-    const pre = await readOptimizedResult(id);
-    if (pre) {
-      return NextResponse.json(pre, {
-        status: 200,
-        headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
-          Pragma: "no-cache",
-          Expires: "0",
-          "X-Retune-Source": "optimized",
-        },
-      });
-    }
+  if (!id) {
+    return NextResponse.json({ error: "invalid_generation_id" }, { status: 400 });
+  }
+  const owns = await userOwnsGeneration({ userId: _session.userId, generationId: id });
+  if (!owns) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const res = await fetch(apiUrl(`/generate/${id}`), { cache: "no-store" });
+  const token = signGenerationAccessToken({ generationId: id, userId: _session.userId });
+  const pre = id ? await readOptimizedResult(id) : null;
+
+  const res = await fetch(apiUrl(`/generate/${id}`), {
+    cache: "no-store",
+    headers: { "X-Retune-Generation-Access": token },
+  });
   const data = (await res.json().catch(() => null)) as {
     verdict?: string;
     company?: string | null;
@@ -51,13 +51,14 @@ export const GET = withAuthParams(async (_req, _session, { id }) => {
   }
 
   const post = id ? await readOptimizedResult(id) : null;
-  return NextResponse.json(post ?? data, {
+  const merged = data ? { ...data, ...(post ?? pre ?? {}) } : post ?? pre ?? null;
+  return NextResponse.json(merged, {
     status: res.status,
     headers: {
       "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
       Pragma: "no-cache",
       Expires: "0",
-      "X-Retune-Source": post ? "optimized" : "upstream-fallback",
+      "X-Retune-Source": post || pre ? "optimized+upstream" : "upstream-fallback",
     },
   });
 });

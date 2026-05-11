@@ -49,16 +49,39 @@ export class PostgresPersistence implements TickPersistence, GenerationReplayLoa
     // already exist from a previous (crashed) run; we don't want to
     // reset ticks_executed.
     await this.db.transaction(async (tx) => {
-      await tx
-        .insert(generations)
-        .values({
-          id: input.generation_id,
-          user_id: input.user_id,
-          jd_id: input.jd_id ?? null,
-          ontology_version: input.ontology_version,
-          current_blackboard: input.initial_blackboard as unknown as Record<string, unknown>,
-        })
-        .onConflictDoNothing();
+      try {
+        await tx
+          .insert(generations)
+          .values({
+            id: input.generation_id,
+            user_id: input.user_id,
+            jd_id: input.jd_id ?? null,
+            ontology_version: input.ontology_version,
+            current_blackboard: input.initial_blackboard as unknown as Record<string, unknown>,
+          })
+          .onConflictDoNothing();
+      } catch (err: unknown) {
+        // Some deployments still have `generations.jd_id` FK-bound to a
+        // different JD table shape. Fall back to null to keep generation
+        // durable instead of failing at startup.
+        const e = err as { code?: string; constraint_name?: string; message?: string };
+        const fkViolation = e?.code === "23503";
+        const jdConstraint =
+          e?.constraint_name === "generations_jd_id_fkey" ||
+          String(e?.message ?? "").includes("generations_jd_id_fkey");
+        if (!fkViolation || !jdConstraint) throw err;
+
+        await tx
+          .insert(generations)
+          .values({
+            id: input.generation_id,
+            user_id: input.user_id,
+            jd_id: null,
+            ontology_version: input.ontology_version,
+            current_blackboard: input.initial_blackboard as unknown as Record<string, unknown>,
+          })
+          .onConflictDoNothing();
+      }
 
       // Seed goals (also idempotent — if the row is already there we leave it).
       if (input.initial_goals.length > 0) {

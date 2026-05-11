@@ -265,6 +265,7 @@ body {
 /* Icon shine utility class */
 .icon-shine {
   transition: filter 0.3s ease;
+  will-change: filter;
 }
 .icon-shine:hover {
   animation: iconShine 1.2s ease-in-out;
@@ -277,6 +278,7 @@ body {
 }
 .rt-float {
   animation: float 4s ease-in-out infinite;
+  will-change: transform;
 }
 
 /* Points badge glow — heartbeat pulse */
@@ -294,8 +296,28 @@ body {
 /* Hover lift for landing page cards */
 .rt-card-lift {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  will-change: transform;
 }
 .rt-card-lift:hover {
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.07);
+}
+
+/* GPU acceleration for interactive elements */
+.rt-btn,
+.rt-btn-ghost,
+.rt-icon-btn,
+.rt-feature-card {
+  will-change: transform;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

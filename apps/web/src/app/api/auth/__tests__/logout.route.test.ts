@@ -1,8 +1,12 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/session", () => ({
-  getSession: vi.fn(),
+const signOut = vi.fn();
+
+vi.mock("@/lib/identity", () => ({
+  createIdentityModule: vi.fn(() => ({
+    signOut,
+  })),
 }));
 
 describe("POST /api/auth/logout", () => {
@@ -11,38 +15,28 @@ describe("POST /api/auth/logout", () => {
     vi.clearAllMocks();
   });
 
-  it("returns 401 without session", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(null);
-    const { POST } = await import("@/app/api/auth/logout/route");
-    const req = new NextRequest("http://localhost/api/auth/logout", { method: "POST" });
-    const res = await POST(req);
-    expect(res.status).toBe(401);
-  });
+  function req() {
+    return new NextRequest("http://localhost/api/auth/logout", { method: "POST" });
+  }
 
-  it("returns 403 on cross-origin request", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue({ userId: "u1", email: "x@y.com", fullName: "X Y" });
+  it("returns ok on successful sign out", async () => {
+    signOut.mockResolvedValue({ ok: true });
     const { POST } = await import("@/app/api/auth/logout/route");
-    const req = new NextRequest("http://localhost/api/auth/logout", {
-      method: "POST",
-      headers: { origin: "https://evil.com", host: "localhost" },
-    });
-    const res = await POST(req);
-    expect(res.status).toBe(403);
-  });
 
-  it("clears cookie on valid logout", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue({ userId: "u1", email: "x@y.com", fullName: "X Y" });
-    const { POST } = await import("@/app/api/auth/logout/route");
-    const req = new NextRequest("http://localhost/api/auth/logout", {
-      method: "POST",
-      headers: { origin: "http://localhost", host: "localhost" },
-    });
-    const res = await POST(req);
+    const res = await POST(req());
     expect(res.status).toBe(200);
-    expect(res.headers.get("set-cookie")).toContain("session=");
-    expect(res.headers.get("set-cookie")).toContain("Max-Age=0");
+    expect(await res.json()).toEqual({ ok: true });
+  });
+
+  it("returns 503 on infrastructure errors", async () => {
+    signOut.mockRejectedValue(
+      Object.assign(new Error("getaddrinfo ENOTFOUND db.example.com"), { code: "ENOTFOUND" }),
+    );
+    const { POST } = await import("@/app/api/auth/logout/route");
+
+    const res = await POST(req());
+    expect(res.status).toBe(503);
+    const body = await res.json();
+    expect(body.code).toBe("SERVICE_UNAVAILABLE");
   });
 });

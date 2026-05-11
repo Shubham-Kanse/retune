@@ -1,15 +1,28 @@
 import { apiUrl } from "@/lib/api-config";
 import { withAuthParams } from "@/lib/api-handler";
+import { signGenerationAccessToken, userOwnsGeneration } from "@/lib/generation-access";
 import { NextResponse } from "next/server";
 
 const ALLOWED = new Set(["resume.docx", "resume.pdf", "cover_letter.docx", "cover_letter.pdf"]);
 
 export const GET = withAuthParams(async (_req, _session, { id, filename }) => {
+  if (!id) {
+    return NextResponse.json({ error: "invalid_generation_id" }, { status: 400 });
+  }
   if (!filename || !ALLOWED.has(filename)) {
     return NextResponse.json({ error: "invalid_file" }, { status: 400 });
   }
 
-  const upstream = await fetch(apiUrl(`/generate/${id}/${filename}`), { cache: "no-store" });
+  const owns = await userOwnsGeneration({ userId: _session.userId, generationId: id });
+  if (!owns) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const token = signGenerationAccessToken({ generationId: id, userId: _session.userId });
+
+  const upstream = await fetch(apiUrl(`/generate/${id}/${filename}`), {
+    cache: "no-store",
+    headers: { "X-Retune-Generation-Access": token },
+  });
   if (!upstream.ok) {
     const fallback = await upstream.text().catch(() => "");
     return NextResponse.json(

@@ -10,6 +10,7 @@
  */
 
 import type { Blackboard, BulletDraft, SectionDraft } from "@retune/types";
+import { resultStatusFromMeta } from "./generation-status";
 
 export interface GenerationResultPayload {
   generation_id: string;
@@ -34,6 +35,7 @@ export interface GenerationResultPayload {
   pending_revisions: Array<{ target: string; reason: string }>;
   total_cost_usd: number;
   ticks_executed: number;
+  generation_time_ms: number;
   termination: string | null;
 }
 
@@ -142,6 +144,7 @@ export function renderResult(
     termination: string | null;
     ticks_executed: number;
     total_cost_usd: number;
+    generation_time_ms: number;
   },
 ): GenerationResultPayload {
   if (!blackboard) {
@@ -163,6 +166,7 @@ export function renderResult(
       pending_revisions: [],
       total_cost_usd: meta.total_cost_usd,
       ticks_executed: meta.ticks_executed,
+      generation_time_ms: meta.generation_time_ms,
       termination: meta.termination,
     };
   }
@@ -172,10 +176,7 @@ export function renderResult(
   const arc = blackboard.hypotheses.chosen_narrative_arc as NarrativeArcLike | null;
 
   const verdict = ship_decision?.verdict ?? null;
-  let status: GenerationResultPayload["status"] = "running";
-  if (verdict === "refuse") status = "refused";
-  else if (verdict === "ship" || verdict === "revise") status = "complete";
-  else if (meta.termination && meta.termination !== "no_open_work") status = "error";
+  const status = resultStatusFromMeta({ verdict, termination: meta.termination });
 
   const outcome = blackboard.outcome_estimate;
 
@@ -225,6 +226,7 @@ export function renderResult(
     })),
     total_cost_usd: meta.total_cost_usd,
     ticks_executed: meta.ticks_executed,
+    generation_time_ms: meta.generation_time_ms,
     termination: meta.termination,
   };
 }

@@ -74,11 +74,6 @@ export const POST = withAuth(async (request, session) => {
     );
   }
 
-  await db
-    .update(generationPreflights)
-    .set({ usedAt: now, updatedAt: now })
-    .where(eq(generationPreflights.id, row.id));
-
   const res = await fetch(apiUrl("/generate"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -88,6 +83,50 @@ export const POST = withAuth(async (request, session) => {
   const data = (await res.json().catch(() => null)) as { generation_id?: string } | null;
   if (!res.ok || !data?.generation_id) {
     return NextResponse.json(data, { status: res.status });
+  }
+
+  // Atomically consume the preflight after upstream generation has started.
+  // This prevents burning tokens on transient upstream failures while still
+  // guarding against concurrent double-use.
+  const consumeAt = new Date();
+  await db
+    .update(generationPreflights)
+    .set({ usedAt: consumeAt, updatedAt: consumeAt })
+    .where(
+      and(
+        eq(generationPreflights.id, row.id),
+        eq(generationPreflights.userId, session.userId),
+        eq(generationPreflights.jdHash, suppliedHash),
+        isNull(generationPreflights.usedAt),
+        isNull(generationPreflights.revokedAt),
+      ),
+    );
+
+  const consumed = await db
+    .select({ id: generationPreflights.id })
+    .from(generationPreflights)
+    .where(
+      and(
+        eq(generationPreflights.id, row.id),
+        eq(generationPreflights.userId, session.userId),
+        eq(generationPreflights.jdHash, suppliedHash),
+        eq(generationPreflights.usedAt, consumeAt),
+        eq(generationPreflights.updatedAt, consumeAt),
+      ),
+    )
+    .limit(1);
+
+  if (!consumed[0]) {
+    // Another request consumed this preflight first. Abort this generation to
+    // preserve one-preflight -> one-generation semantics.
+    await fetch(apiUrl(`/generate/${data.generation_id}`), { method: "DELETE" }).catch(() => {});
+    return NextResponse.json(
+      {
+        error:
+          "preflight_expired_or_used: complete drift preflight again for this JD before generation.",
+      },
+      { status: 428 },
+    );
   }
 
   // Record in Postgres so it shows in /applications immediately. The

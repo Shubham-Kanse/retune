@@ -223,6 +223,13 @@ export async function run_generation(input: {
 }): Promise<void> {
   const { generation_id, bus, external_signal } = input;
   let { payload } = input;
+  const maxTicksRaw = Number(process.env.RETUNE_MAX_TICKS ?? "64");
+  const maxRuntimeMsRaw = Number(process.env.RETUNE_MAX_RUNTIME_MS ?? "180000");
+  const maxTicks = Number.isFinite(maxTicksRaw) && maxTicksRaw > 0 ? Math.floor(maxTicksRaw) : 64;
+  const maxRuntimeMs =
+    Number.isFinite(maxRuntimeMsRaw) && maxRuntimeMsRaw > 10_000
+      ? Math.floor(maxRuntimeMsRaw)
+      : 180_000;
 
   log("info", generation_id, "run_generation started", {
     has_jd_url: !!payload.jd_url,
@@ -502,6 +509,7 @@ export async function run_generation(input: {
     try {
       await dualWriteJobDescription({
         db: durability.db,
+        jdId: jd_id,
         userId: user_id,
         jdText: jdRaw,
         title: payload.jd_title ?? null,
@@ -522,11 +530,16 @@ export async function run_generation(input: {
   });
 
   try {
-    const result = await orchestrator.run({
-      external_signal,
-      on_trace: (event) => bus.publish({ kind: "trace", event }),
-      generation_context: durability ? { user_id, jd_id, ontology_version: "0.0.1" } : undefined,
-    });
+    const result = await withTimeout(
+      orchestrator.run({
+        external_signal,
+        max_ticks: maxTicks,
+        on_trace: (event) => bus.publish({ kind: "trace", event }),
+        generation_context: durability ? { user_id, jd_id, ontology_version: "0.0.1" } : undefined,
+      }),
+      maxRuntimeMs,
+      `generation_timeout: exceeded ${Math.round(maxRuntimeMs / 1000)}s`,
+    );
     // Capture the final blackboard snapshot so `GET /generate/:id` can hydrate
     // results (resume/cover_letter/strategy markdown, conflicts, narrative arc)
     // without relying on Postgres being configured. Persistence-backed runs
@@ -560,6 +573,20 @@ export async function run_generation(input: {
       kind: "error",
       message: err instanceof Error ? err.message : String(err),
     });
+  }
+}
+
+async function withTimeout<T>(p: Promise<T>, timeoutMs: number, msg: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      p,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(msg)), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }
 

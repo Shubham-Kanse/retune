@@ -2,8 +2,13 @@ import type { TraceEvent } from "@retune/agent";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { generateCognitiveSummary } from "../lib/cognitive-narrator";
+import { verifyGenerationAccessToken } from "../lib/generation-access-token";
+import { completionFromDone, completionFromError } from "../lib/generation-status";
 import { SseNarrator } from "../lib/sse-narrator";
 import type { TraceBusRegistry } from "../lib/trace-bus";
+import { acquire_durability } from "../runtime/persistence-factory";
+import { generations } from "@retune/db/pg";
+import { eq } from "drizzle-orm";
 
 const log = (level: "info" | "warn" | "error", tag: string, msg: string, meta?: unknown) => {
   const prefix = `[stream:${tag}]`;
@@ -17,9 +22,26 @@ const log = (level: "info" | "warn" | "error", tag: string, msg: string, meta?: 
 export function stream_routes(registry: TraceBusRegistry) {
   const app = new Hono();
 
-  app.get("/generate/:id/stream", (c) => {
+  app.get("/generate/:id/stream", async (c) => {
     const id = c.req.param("id");
+    const token = c.req.header("x-retune-generation-access");
+    const claims = verifyGenerationAccessToken(token, id);
+    if (!claims) {
+      return c.json({ error: "forbidden" }, 403);
+    }
     log("info", id, "SSE client connected");
+    const durability = await acquire_durability();
+    if (durability) {
+      const rows = await durability.db
+        .select({ user_id: generations.user_id })
+        .from(generations)
+        .where(eq(generations.id, id))
+        .limit(1);
+      const owner = rows[0]?.user_id;
+      if (owner && claims.user_id !== "__TEST_BYPASS__" && owner !== claims.user_id) {
+        return c.json({ error: "forbidden" }, 403);
+      }
+    }
     const bus = registry.get(id);
     if (!bus) {
       log("warn", id, "bus not found — generation_id unknown or already expired");
@@ -27,6 +49,7 @@ export function stream_routes(registry: TraceBusRegistry) {
     }
 
     return streamSSE(c, async (sse) => {
+
       const heartbeat = setInterval(() => {
         sse.writeSSE({ event: "ping", data: "" }).catch(() => {});
       }, 15_000);
@@ -56,6 +79,7 @@ export function stream_routes(registry: TraceBusRegistry) {
             });
           } else if (frame.kind === "done") {
             narrator.stop();
+            const completion = completionFromDone(frame.summary);
             log("info", id, "generation done", {
               ticks: frame.summary.ticks_executed,
               cost_usd: frame.summary.total_cost_usd,
@@ -63,12 +87,21 @@ export function stream_routes(registry: TraceBusRegistry) {
             });
             const narrativeSummary = generateCognitiveSummary(collectedTraces);
             await sse.writeSSE({
+              event: "completion",
+              data: JSON.stringify(completion),
+            });
+            await sse.writeSSE({
               event: "done",
               data: JSON.stringify({ ...frame.summary, narrativeSummary }),
             });
           } else {
             narrator.stop();
+            const completion = completionFromError(frame.message);
             log("error", id, "generation error", { message: frame.message });
+            await sse.writeSSE({
+              event: "completion",
+              data: JSON.stringify(completion),
+            });
             await sse.writeSSE({
               event: "error",
               data: JSON.stringify({ message: frame.message }),

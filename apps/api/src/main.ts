@@ -52,10 +52,15 @@ app.route("/", active_questions_routes());
 app.route("/", status_routes());
 
 const port = Number(process.env.PORT ?? 8787);
+const temporalEnabled =
+  process.env.RETUNE_TEMPORAL === "1" || Boolean(process.env.RETUNE_TEMPORAL_ADDRESS);
+const persistMode = (process.env.RETUNE_PERSIST ?? "none").toLowerCase();
 
-serve({ fetch: app.fetch, port }, (info) => {
+const server = serve({ fetch: app.fetch, port }, (info) => {
   // eslint-disable-next-line no-console
   console.log(`@retune/api listening on http://localhost:${info.port}`);
+  // eslint-disable-next-line no-console
+  console.log(`[startup] persist=${persistMode} temporal=${temporalEnabled ? "on" : "off"}`);
 
   if (process.env.ENABLE_CRON !== "0") {
     acquire_durability()
@@ -70,6 +75,19 @@ serve({ fetch: app.fetch, port }, (info) => {
         console.error("[cron] failed to start:", err instanceof Error ? err.message : String(err));
       });
   }
+});
+
+server.on("error", (err: NodeJS.ErrnoException) => {
+  if (err?.code === "EADDRINUSE") {
+    // eslint-disable-next-line no-console
+    console.error(
+      `[startup] port ${port} is already in use (EADDRINUSE). Stop the existing process or set PORT to a free port.`,
+    );
+    process.exit(1);
+  }
+  // eslint-disable-next-line no-console
+  console.error("[startup] server error", err);
+  process.exit(1);
 });
 
 export { app };

@@ -1,4 +1,5 @@
 import { ProfileEditor } from "@/components/profile/profile-editor";
+import { safeQuery } from "@/lib/errors";
 import { getSession } from "@/lib/session";
 import { db, profiles } from "@retune/db";
 import { eq } from "drizzle-orm";
@@ -28,11 +29,15 @@ export default async function ProfilePage() {
   const session = await getSession();
   if (!session) return null;
 
-  const profileRows = await db
-    .select()
-    .from(profiles)
-    .where(eq(profiles.userId, session.userId))
-    .limit(1);
+  const profileRows = await safeQuery(
+    () =>
+      db
+      .select()
+      .from(profiles)
+      .where(eq(profiles.userId, session.userId))
+      .limit(1),
+    [] as Array<typeof profiles.$inferSelect>,
+  );
   const profile = profileRows[0];
 
   const profileData = profile

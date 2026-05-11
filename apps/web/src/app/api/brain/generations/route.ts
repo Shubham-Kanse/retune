@@ -1,4 +1,5 @@
 import { apiUrl } from "@/lib/api-config";
+import { safeFetch, safeQuery } from "@/lib/errors";
 import { getSession } from "@/lib/session";
 import { applications, db } from "@retune/db";
 import { desc, eq } from "drizzle-orm";
@@ -9,17 +10,27 @@ export async function GET() {
   if (!session) return NextResponse.json([], { status: 401 });
 
   // 1. Fetch legacy generations from SQLite
-  const rows = await db
-    .select()
-    .from(applications)
-    .where(eq(applications.userId, session.userId))
-    .orderBy(desc(applications.createdAt))
-    .limit(50);
+  const rows = await safeQuery(
+    () =>
+      db
+      .select()
+      .from(applications)
+      .where(eq(applications.userId, session.userId))
+      .orderBy(desc(applications.createdAt))
+      .limit(50),
+    [] as any[],
+  );
 
   // 2. Fetch new generations from Hono API (Cognitive Architecture)
-  const cognitiveGenerations = await fetch(apiUrl("/generations"))
-    .then((res) => (res.ok ? res.json() : []))
-    .catch(() => []);
+  const cognitiveGenerations = await safeFetch<any[]>(
+    apiUrl("/generations"),
+    undefined,
+    [],
+    {
+      parse: (res) => res.json(),
+      onNonOk: () => [],
+    },
+  );
 
   const summaries = rows.map((row) => {
     // ... (existing mapping logic)

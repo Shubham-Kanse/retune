@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server";
-import { ConflictError, ValidationError } from "@/lib/errors";
 import { withErrorHandling } from "@/lib/api-handler";
+import { createIdentityModule } from "@/lib/identity";
+import { ValidationError } from "@/lib/errors";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -17,23 +17,13 @@ const schema = z.object({
 });
 
 export const POST = withErrorHandling(async (request) => {
-  const body = await request.json().catch(() => { throw new ValidationError("Invalid JSON body"); });
+  const body = await request.json().catch(() => {
+    throw new ValidationError("Invalid JSON body");
+  });
   const parsed = schema.safeParse(body);
   if (!parsed.success) throw new ValidationError(parsed.error.issues[0]?.message ?? "Invalid input");
 
-  const { email, password, fullName } = parsed.data;
-  const supabase = await createClient();
-
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName ?? null } },
-  });
-
-  if (error) {
-    if (error.message.toLowerCase().includes("already")) throw new ConflictError("An account with this email already exists");
-    throw new ValidationError(error.message);
-  }
-
-  return NextResponse.json({ userId: data.user?.id, emailVerificationSent: true });
+  const identity = createIdentityModule();
+  const result = await identity.signUp(parsed.data);
+  return NextResponse.json(result);
 });

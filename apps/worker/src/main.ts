@@ -79,10 +79,14 @@ async function main(): Promise<void> {
     return;
   }
 
+  const persist = mode();
+  const temporalAddress = process.env.RETUNE_TEMPORAL_ADDRESS ?? "localhost:7233";
+  console.log(`[worker:start] persist=${persist} temporal_address=${temporalAddress}`);
+
   const { db, persistence, close: close_db } = await acquire_deps();
 
   let worker;
-  const address = process.env.RETUNE_TEMPORAL_ADDRESS ?? "localhost:7233";
+  const address = temporalAddress;
   let attempts = 0;
 
   // Retry loop for Temporal connection — exponential backoff, capped at 60s
@@ -97,6 +101,13 @@ async function main(): Promise<void> {
     } catch (err) {
       attempts++;
       const delay = Math.min(5000 * attempts, 60_000);
+      const code = (err as { code?: string })?.code;
+      const message = err instanceof Error ? err.message : String(err);
+      if (code === "ENOTFOUND" || message.toLowerCase().includes("enotfound")) {
+        console.warn(
+          `[worker] DNS lookup failed for Temporal address "${address}" (ENOTFOUND). Check RETUNE_TEMPORAL_ADDRESS and network/DNS.`,
+        );
+      }
       console.warn(
         `[worker] waiting for temporal at ${address} (attempt ${attempts}, retry in ${delay / 1000}s)...`,
       );
@@ -123,6 +134,13 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
+  const code = (err as { code?: string })?.code;
+  const message = err instanceof Error ? err.message : String(err);
+  if (code === "ENOTFOUND" || message.toLowerCase().includes("enotfound")) {
+    console.error(
+      `[worker] fatal: DNS resolution failed. Verify RETUNE_DATABASE_URL / RETUNE_TEMPORAL_ADDRESS hostnames and network connectivity.`,
+    );
+  }
   console.error("[worker] fatal", err);
   process.exit(1);
 });

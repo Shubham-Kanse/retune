@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/session";
+import { safeFetch, safeQuery } from "@/lib/errors";
 import { computeCompletenessScore, db } from "@retune/db";
-import { profiles } from "@retune/db/schema";
+import { applications, profiles } from "@retune/db/schema";
 import { eq } from "drizzle-orm";
 import { ChevronRight, CreditCard, FileText, Sparkles, User } from "lucide-react";
 import Link from "next/link";
@@ -9,27 +10,60 @@ export default async function DashboardPage() {
   const session = await getSession();
   if (!session) return null;
 
-  const profileRows = await db
-    .select({
-      fullName: profiles.fullName,
-      email: profiles.email,
-      phone: profiles.phone,
-      linkedin: profiles.linkedin,
-      location: profiles.location,
-      currentTitle: profiles.currentTitle,
-      targetRoles: profiles.targetRoles,
-      experience: profiles.experience,
-      education: profiles.education,
-      skillsTier1: profiles.skillsTier1,
-      voiceNotes: profiles.voiceNotes,
-      profileMarkdown: profiles.profileMarkdown,
-    })
-    .from(profiles)
-    .where(eq(profiles.userId, session.userId))
-    .limit(1);
+  const profileRows = await safeQuery(
+    () =>
+      db
+      .select({
+        fullName: profiles.fullName,
+        email: profiles.email,
+        phone: profiles.phone,
+        linkedin: profiles.linkedin,
+        location: profiles.location,
+        currentTitle: profiles.currentTitle,
+        targetRoles: profiles.targetRoles,
+        experience: profiles.experience,
+        education: profiles.education,
+        skillsTier1: profiles.skillsTier1,
+        voiceNotes: profiles.voiceNotes,
+        profileMarkdown: profiles.profileMarkdown,
+      })
+      .from(profiles)
+      .where(eq(profiles.userId, session.userId))
+      .limit(1),
+    [] as Array<{
+      fullName: string;
+      email: string;
+      phone: string | null;
+      linkedin: string | null;
+      location: string;
+      currentTitle: string | null;
+      targetRoles: string;
+      experience: string;
+      education: string;
+      skillsTier1: string | null;
+      voiceNotes: string | null;
+      profileMarkdown: string;
+    }>,
+  );
   const profile = profileRows[0];
 
-  const safeJson = (v: string | null | undefined) => { try { return v ? JSON.parse(v) : []; } catch { return []; } };
+  const safeJson = (v: string | null | undefined) => { 
+    try { return v ? JSON.parse(v) : []; } catch { return []; } 
+  };
+
+  const generations = await safeQuery(
+    () =>
+      db
+        .select({
+          id: applications.id,
+          status: applications.status,
+        })
+        .from(applications)
+        .where(eq(applications.userId, session.userId))
+        .limit(50),
+    [],
+  );
+
   const profileScore = profile
     ? computeCompletenessScore({
         ...profile,
@@ -40,24 +74,7 @@ export default async function DashboardPage() {
       })
     : 0;
 
-  let generations: { id: string; verdict: string | null }[] = [];
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/brain/generations`,
-      {
-        headers: { cookie: `session=${session.userId}` },
-        cache: "no-store",
-      },
-    );
-    if (res.ok) {
-      const data = await res.json();
-      generations = Array.isArray(data) ? data : [];
-    }
-  } catch {
-    /* silent — show 0 */
-  }
-
-  const shipped = generations.filter((i) => i.verdict === "ship" || i.verdict === "completed");
+  const shipped = generations.filter((i) => i.status === "completed" || i.status === "submitted");
 
   const greetings = [
     "Good to see you!",

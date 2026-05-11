@@ -31,6 +31,7 @@ const INITIAL_RECONNECT_DELAY_MS = 500;
 // All named event types the cognitive backend can emit
 const NAMED_EVENT_TYPES: PipelineEventType[] = [
   "trace",
+  "completion",
   "ping",
   "done",
   "error",
@@ -95,6 +96,7 @@ export class StreamClient {
         this.options.onEvent(event);
 
         if (
+          type === "completion" ||
           type === "complete" ||
           type === "done" ||
           type === "error" ||

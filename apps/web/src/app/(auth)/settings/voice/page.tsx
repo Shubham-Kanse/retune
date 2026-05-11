@@ -99,71 +99,83 @@ export default function VoiceFingerprintSettingsPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
-      <Link
-        href="/settings"
-        className="text-xs text-muted-foreground hover:text-foreground mb-6 inline-block"
-      >
-        ← Settings
-      </Link>
-
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Writing Voice</h1>
-          <p className="page-subtitle">
-            Your voice fingerprint captures how you naturally write. It&apos;s used to keep
-            generated content authentic to your style.
-          </p>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="h-5 w-5 border-2 border-border border-t-brand rounded-full animate-spin" />
-        </div>
-      ) : fingerprint ? (
-        <div className="space-y-6">
-          <div className="border border-border p-4">
-            <div className="flex items-center justify-between mb-4">
-              <span className="rt-label">Fingerprint Status</span>
-              <span className="text-xs text-brand bg-brand/10 px-2 py-0.5">Active</span>
+    <div className="min-h-screen flex items-start justify-center pt-16 px-6">
+      <div className="w-full max-w-xl">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#f0ede8] flex items-center justify-center">
+              <svg className="w-4 h-4 text-[#b84ed1]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-muted-foreground">Documents analyzed</span>
-                <p className="font-medium">{fingerprint.sampleSize}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground">Last updated</span>
-                <p className="font-medium">
-                  {new Date(fingerprint.updatedAt).toLocaleDateString()}
-                </p>
-              </div>
+            <div>
+              <p className="rt-label">Voice & Style</p>
+              <h1 className="font-serif text-2xl font-normal text-[#1a1a1a] leading-tight">
+                Writing Voice
+              </h1>
             </div>
           </div>
-
-          {fingerprint.dimensions && Object.keys(fingerprint.dimensions).length > 0 && (
-            <div className="border border-border p-4">
-              <h3 className="rt-label mb-3">Style Characteristics</h3>
-              <VoiceFingerprintRadar dimensions={fingerprint.dimensions} className="mt-2" />
-            </div>
-          )}
-
-          <p className="text-xs text-muted-foreground">
-            Your voice fingerprint updates automatically as you upload more documents and complete
-            more generations. To reset it, contact support.
-          </p>
-        </div>
-      ) : (
-        <div className="border border-border p-6 text-center">
-          <p className="text-sm text-muted-foreground mb-3">
-            No voice fingerprint yet. It will be created automatically during your first generation.
-          </p>
-          <Link href="/generate/new" className="rt-btn inline-flex px-4 py-2 text-sm">
-            Start a generation
+          <Link href="/settings" className="text-[#9a9690] hover:text-[#1a1a1a] transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </Link>
         </div>
-      )}
+
+        <p className="text-sm text-[#6b6b6b] mb-6">
+          Your voice fingerprint captures how you naturally write. It&apos;s used to keep
+          generated content authentic to your style.
+        </p>
+
+        {loading ? (
+          <div className="flex min-h-[40vh] items-center justify-center">
+            <div className="h-5 w-5 border-2 border-[#e5e2dd] border-t-[#2d8a5e] rounded-full animate-spin" />
+          </div>
+        ) : fingerprint ? (
+          <div className="space-y-4">
+            <div className="bg-white border border-[#e5e2dd] rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <span className="rt-label">Fingerprint Status</span>
+                <span className="text-xs text-[#2d8a5e] bg-[#d4f5e0] px-2 py-0.5 rounded-full">Active</span>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-[#6b6b6b] text-xs">Documents analyzed</span>
+                  <p className="font-medium text-[#1a1a1a]">{fingerprint.sampleSize}</p>
+                </div>
+                <div>
+                  <span className="text-[#6b6b6b] text-xs">Last updated</span>
+                  <p className="font-medium text-[#1a1a1a]">
+                    {new Date(fingerprint.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {fingerprint.dimensions && Object.keys(fingerprint.dimensions).length > 0 && (
+              <div className="bg-white border border-[#e5e2dd] rounded-2xl p-6">
+                <h3 className="rt-label mb-4">Style Characteristics</h3>
+                <VoiceFingerprintRadar dimensions={fingerprint.dimensions} className="flex justify-center" />
+              </div>
+            )}
+
+            <p className="text-xs text-[#6b6b6b]">
+              Your voice fingerprint updates automatically as you upload more documents and complete
+              more generations. To reset it, contact support.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-white border border-[#e5e2dd] rounded-2xl p-8 text-center">
+            <p className="text-sm text-[#6b6b6b] mb-4">
+              No voice fingerprint yet. It will be created automatically during your first generation.
+            </p>
+            <Link href="/generate/new" className="rt-btn inline-flex">
+              Start a generation
+            </Link>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

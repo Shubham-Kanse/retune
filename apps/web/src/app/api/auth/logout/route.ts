@@ -1,8 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
+import { withErrorHandling } from "@/lib/api-handler";
+import { createIdentityModule } from "@/lib/identity";
 import { NextResponse } from "next/server";
 
-export async function POST() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  return NextResponse.json({ ok: true });
-}
+export const POST = withErrorHandling(async () => {
+  const identity = createIdentityModule();
+  const result = await identity.signOut();
+  return NextResponse.json(result);
+});

@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "tsx src/main.ts",
+    "startup:selfcheck": "node scripts/startup-selfcheck.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

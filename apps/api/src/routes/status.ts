@@ -15,6 +15,7 @@ import { getStatusQuery } from "@retune/agent";
 import { generations } from "@retune/db/pg";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { statusFromPersistenceRow } from "../lib/generation-status";
 import { acquire_durability } from "../runtime/persistence-factory";
 import { acquire_temporal } from "../runtime/temporal-factory";
 import { workflow_id_for } from "../runtime/workflow-ids";
@@ -77,7 +78,10 @@ export function status_routes() {
       if (row) {
         const body: StatusResponse = {
           generation_id,
-          status: row.completed_at ? "completed" : "running",
+          status: statusFromPersistenceRow({
+            completed_at: row.completed_at,
+            termination: row.termination,
+          }),
           ticks_executed: row.ticks_executed,
           total_cost_usd: row.total_cost_usd,
           termination: row.termination,
