@@ -97,7 +97,7 @@ function calculateCompleteness(form: ProfileData): number {
 
 function PointsBadge({ points }: { points: number }) {
   return (
-    <span className="inline-flex items-center ml-1.5 text-[10px] font-semibold text-[#2d8a5e] animate-[pulse-glow_2s_ease-in-out_infinite]">
+    <span className="inline-flex items-center ml-1.5 text-[10px] font-semibold text-brand animate-[pulse-glow_2s_ease-in-out_infinite]">
       +{points}
     </span>
   );
@@ -141,14 +141,14 @@ function BulletPills({
       {bullets.map((bullet, i) => (
         <div
           key={`${i}-${bullet.slice(0, 20)}`}
-          className="flex items-start gap-2 bg-[#f0ede8] border border-[#e5e2dd] px-3 py-2 text-xs text-[#1a1a1a] rounded-lg leading-relaxed group"
+          className="flex items-start gap-2 bg-[#f0ede8] border border-border px-3 py-2 text-xs text-foreground rounded-lg leading-relaxed group"
         >
-          <span className="text-[#9a9690] mt-0.5 shrink-0">•</span>
+          <span className="text-muted-foreground mt-0.5 shrink-0">•</span>
           <span className="flex-1">{bullet}</span>
           <button
             type="button"
             onClick={() => onChange(bullets.filter((_, idx) => idx !== i))}
-            className="text-[#9a9690] hover:text-[#dc2626] transition-colors opacity-0 group-hover:opacity-100 shrink-0 mt-0.5"
+            className="text-muted-foreground hover:text-[#dc2626] transition-colors opacity-0 group-hover:opacity-100 shrink-0 mt-0.5"
             aria-label="Remove bullet"
           >
             <X className="h-3 w-3" />
@@ -206,13 +206,13 @@ function SkillPills({
         {skills.map((skill, i) => (
           <span
             key={`${skill.name}-${i}`}
-            className="inline-flex items-center gap-1.5 bg-[#f0ede8] border border-[#e5e2dd] px-2.5 py-1 text-xs text-[#1a1a1a] rounded-lg"
+            className="inline-flex items-center gap-1.5 bg-[#f0ede8] border border-border px-2.5 py-1 text-xs text-foreground rounded-lg"
           >
             {skill.name}
             <button
               type="button"
               onClick={() => onChange(skills.filter((_, idx) => idx !== i))}
-              className="text-[#9a9690] hover:text-[#1a1a1a] transition-colors"
+              className="text-muted-foreground hover:text-foreground transition-colors"
               aria-label={`Remove ${skill.name}`}
             >
               <X className="h-2.5 w-2.5" />
@@ -256,23 +256,23 @@ function Section({
 }) {
   return (
     <section>
-      <div className="border border-[#e5e2dd] rounded-2xl bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e5e2dd]">
+      <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-3">
             {icon && (
               <div
-                className="flex items-center justify-center shrink-0"
-                style={iconColor ? { color: iconColor } : undefined}
+                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
+                style={iconColor ? { backgroundColor: `${iconColor}18`, color: iconColor } : { backgroundColor: "#f0ede8" }}
               >
                 {icon}
               </div>
             )}
             <div>
-              <h2 className="text-sm font-semibold text-[#1a1a1a]">
+              <h2 className="text-sm font-semibold text-foreground">
                 {title}
                 {pendingPoints ? <PointsBadge points={pendingPoints} /> : null}
               </h2>
-              <p className="text-xs text-[#9a9690] mt-0.5">{subtitle}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
             </div>
           </div>
           {actions && <div className="flex gap-2">{actions}</div>}
@@ -336,19 +336,14 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
   const completeness = calculateCompleteness(form);
 
   return (
-    <div className="px-10 py-12 max-w-2xl mx-auto">
+    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#f0ede8] flex items-center justify-center">
-            <User className="w-4 h-4 text-[#ff5555]" />
-          </div>
-          <div>
-            <p className="rt-label">Your details</p>
-            <h1 className="font-serif text-2xl font-normal text-[#1a1a1a] leading-tight">
-              Profile
-            </h1>
-          </div>
+      <div className="flex items-end justify-between mb-12">
+        <div>
+          <p className="rt-label mb-3">Your details</p>
+          <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
+            Profile
+          </h1>
         </div>
         <button
           type="button"
@@ -356,18 +351,18 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
             if (isDirty && !window.confirm("You have unsaved changes. Leave anyway?")) return;
             router.back();
           }}
-          className="text-[#9a9690] hover:text-[#1a1a1a] transition-colors"
+          className="text-muted-foreground hover:text-foreground transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
       {/* Sticky progress bar */}
-      <div className="sticky top-4 z-40 mb-6 border border-[#e5e2dd] rounded-2xl bg-white/90 backdrop-blur-xl px-5 py-3 flex items-center justify-between gap-4 shadow-sm">
+      <div className="sticky top-4 z-40 mb-6 rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] px-5 py-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="flex-1 h-1.5 bg-[#f0ede8] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#2d8a5e] rounded-full transition-all duration-700"
+              className="h-full bg-brand rounded-full transition-all duration-700"
               style={{ width: `${completeness}%` }}
             />
           </div>
@@ -375,7 +370,7 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
             className={cn(
               "text-xs font-mono tabular-nums shrink-0",
               completeness >= 80
-                ? "text-[#2d8a5e]"
+                ? "text-brand"
                 : completeness >= 60
                   ? "text-amber-600"
                   : "text-[#dc2626]",
@@ -387,7 +382,7 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
 
         <div className="flex items-center gap-3">
           {isDirty && <span className="text-[10px] text-amber-600 font-medium">Unsaved</span>}
-          <label className="text-xs text-[#9a9690] hover:text-[#1a1a1a] transition-colors cursor-pointer">
+          <label className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
             {importing ? "Importing…" : "Upload resume"}
             <input
               type="file"
@@ -463,7 +458,7 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
           title="Target roles"
           subtitle="Job titles you're applying for."
           icon={<Target className="w-4 h-4" />}
-          iconColor="#b84ed1"
+          iconColor="#2d8a5e"
           pendingPoints={!FIELD_POINTS.targetRoles!.check(form) ? FIELD_POINTS.targetRoles!.points : undefined}
         >
           <SkillPills
@@ -555,7 +550,7 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
                   experience: [...form.experience, { title: "", company: "", description: "" }],
                 })
               }
-              className="flex items-center gap-1.5 text-xs text-[#2d8a5e] hover:opacity-75 transition-opacity font-medium"
+              className="flex items-center gap-1.5 text-xs text-brand hover:opacity-75 transition-opacity font-medium"
             >
               <Plus className="h-3.5 w-3.5" />
               Add role
@@ -569,7 +564,7 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
                 onClick={() =>
                   updateForm({ experience: [{ title: "", company: "", description: "" }] })
                 }
-                className="w-full py-8 border border-dashed border-[#e5e2dd] rounded-xl text-sm text-[#9a9690] hover:border-[#2d8a5e] hover:text-[#2d8a5e] transition-colors"
+                className="w-full py-8 border border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-brand hover:text-brand transition-colors"
               >
                 + Add your first role
               </button>
@@ -577,14 +572,14 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
             {form.experience.map((exp, idx) => (
               <div
                 key={idx}
-                className="border border-[#e5e2dd] rounded-xl p-4 space-y-3 group relative"
+                className="border border-border rounded-xl p-4 space-y-3 group relative"
               >
                 <button
                   type="button"
                   onClick={() =>
                     updateForm({ experience: form.experience.filter((_, i) => i !== idx) })
                   }
-                  className="absolute top-3 right-3 text-[#9a9690] hover:text-[#dc2626] transition-colors opacity-0 group-hover:opacity-100"
+                  className="absolute top-3 right-3 text-muted-foreground hover:text-[#dc2626] transition-colors opacity-0 group-hover:opacity-100"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
@@ -682,7 +677,7 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
               onClick={() =>
                 updateForm({ education: [...form.education, { degree: "", institution: "" }] })
               }
-              className="flex items-center gap-1.5 text-xs text-[#2d8a5e] hover:opacity-75 transition-opacity font-medium"
+              className="flex items-center gap-1.5 text-xs text-brand hover:opacity-75 transition-opacity font-medium"
             >
               <Plus className="h-3.5 w-3.5" />
               Add
@@ -694,19 +689,19 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
               <button
                 type="button"
                 onClick={() => updateForm({ education: [{ degree: "", institution: "" }] })}
-                className="w-full py-8 border border-dashed border-[#e5e2dd] rounded-xl text-sm text-[#9a9690] hover:border-[#2d8a5e] hover:text-[#2d8a5e] transition-colors"
+                className="w-full py-8 border border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-brand hover:text-brand transition-colors"
               >
                 + Add education
               </button>
             )}
             {form.education.map((edu, idx) => (
-              <div key={idx} className="border border-[#e5e2dd] rounded-xl p-4 group relative">
+              <div key={idx} className="border border-border rounded-xl p-4 group relative">
                 <button
                   type="button"
                   onClick={() =>
                     updateForm({ education: form.education.filter((_, i) => i !== idx) })
                   }
-                  className="absolute top-3 right-3 text-[#9a9690] hover:text-[#dc2626] transition-colors opacity-0 group-hover:opacity-100"
+                  className="absolute top-3 right-3 text-muted-foreground hover:text-[#dc2626] transition-colors opacity-0 group-hover:opacity-100"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>

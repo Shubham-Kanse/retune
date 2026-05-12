@@ -8,7 +8,6 @@ import {
   Link2,
   LogOut,
   MessageSquare,
-  Settings,
   Shield,
   User,
   X,
@@ -59,86 +58,80 @@ export function SettingsClient({
   }
 
   return (
-    <div className="min-h-screen flex items-start justify-center pt-16 px-6">
-      <div className="w-full max-w-xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#f0ede8] flex items-center justify-center">
-              <Settings className="w-4 h-4 text-[#5fc3ff]" />
-            </div>
-            <div>
-              <p className="rt-label">Account</p>
-              <h1 className="font-serif text-2xl font-normal text-[#1a1a1a] leading-tight">
-                Settings
-              </h1>
-            </div>
-          </div>
-          <Link href="/dashboard" className="text-[#9a9690] hover:text-[#1a1a1a] transition-colors">
-            <X className="w-4 h-4" />
-          </Link>
+    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
+      {/* Header */}
+      <div className="flex items-end justify-between mb-12">
+        <div>
+          <p className="rt-label mb-3">Account</p>
+          <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
+            Settings
+          </h1>
         </div>
+        <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors mb-2">
+          <X className="w-4 h-4" />
+        </Link>
+      </div>
 
         {/* Main settings list */}
-        <div className="bg-white border border-[#e5e2dd] rounded-2xl overflow-hidden mb-6">
+        <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] overflow-hidden mb-6">
           <Link
             href="/profile"
-            className="flex items-center gap-4 px-6 py-5 hover:bg-[#faf8f5] transition-colors border-b border-[#e5e2dd] group"
+            className="flex items-center gap-4 px-6 py-5 hover:bg-[rgba(255,255,255,0.6)] transition-colors border-b border-[#e0ddd9] group"
           >
-            <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center">
-              <User className="w-4 h-4 text-[#ff5555]" />
+            <div className="w-9 h-9 rounded-full bg-rose-500/12 flex items-center justify-center">
+              <User className="w-4 h-4 text-rose-700" />
             </div>
-            <span className="flex-1 text-sm font-medium text-[#1a1a1a]">Profile settings</span>
-            <ChevronRight className="w-4 h-4 text-[#6b6b6b] group-hover:translate-x-0.5 transition-transform" />
+            <span className="flex-1 text-sm font-medium text-foreground">Profile settings</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
           </Link>
 
           <Link
             href="/settings/voice"
-            className="flex items-center gap-4 px-6 py-5 hover:bg-[#faf8f5] transition-colors border-b border-[#e5e2dd] group"
+            className="flex items-center gap-4 px-6 py-5 hover:bg-[rgba(255,255,255,0.6)] transition-colors border-b border-[#e0ddd9] group"
           >
-            <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center">
-              <Link2 className="w-4 h-4 text-[#b84ed1]" />
+            <div className="w-9 h-9 rounded-full bg-violet-500/12 flex items-center justify-center">
+              <Link2 className="w-4 h-4 text-violet-700" />
             </div>
-            <span className="flex-1 text-sm font-medium text-[#1a1a1a]">Voice &amp; style</span>
-            <ChevronRight className="w-4 h-4 text-[#6b6b6b] group-hover:translate-x-0.5 transition-transform" />
+            <span className="flex-1 text-sm font-medium text-foreground">Voice &amp; style</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
           </Link>
 
           <Link
             href="/settings/honesty"
-            className="flex items-center gap-4 px-6 py-5 hover:bg-[#faf8f5] transition-colors border-b border-[#e5e2dd] group"
+            className="flex items-center gap-4 px-6 py-5 hover:bg-[rgba(255,255,255,0.6)] transition-colors border-b border-[#e0ddd9] group"
           >
-            <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 text-[#f59e0b]" />
+            <div className="w-9 h-9 rounded-full bg-amber-500/12 flex items-center justify-center">
+              <MessageSquare className="w-4 h-4 text-amber-700" />
             </div>
-            <span className="flex-1 text-sm font-medium text-[#1a1a1a]">Honesty calibration</span>
-            <ChevronRight className="w-4 h-4 text-[#6b6b6b] group-hover:translate-x-0.5 transition-transform" />
+            <span className="flex-1 text-sm font-medium text-foreground">Honesty calibration</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
           </Link>
 
           <Link
             href="/settings/data"
-            className="flex items-center gap-4 px-6 py-5 hover:bg-[#faf8f5] transition-colors group"
+            className="flex items-center gap-4 px-6 py-5 hover:bg-[rgba(255,255,255,0.6)] transition-colors group"
           >
-            <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center">
-              <Shield className="w-4 h-4 text-[#2d8a5e]" />
+            <div className="w-9 h-9 rounded-full bg-emerald-500/12 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-emerald-700" />
             </div>
-            <span className="flex-1 text-sm font-medium text-[#1a1a1a]">Privacy &amp; data</span>
-            <ChevronRight className="w-4 h-4 text-[#6b6b6b] group-hover:translate-x-0.5 transition-transform" />
+            <span className="flex-1 text-sm font-medium text-foreground">Privacy &amp; data</span>
+            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
 
         {/* Subscription card */}
-        <div className="bg-white border border-[#e5e2dd] rounded-2xl overflow-hidden mb-6">
-          <div className="px-6 py-5 border-b border-[#e5e2dd]">
+        <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] overflow-hidden mb-6">
+          <div className="px-6 py-5 border-b border-[#e0ddd9]">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center">
-                  <Database className="w-4 h-4 text-[#5fc3ff]" />
+                <div className="w-9 h-9 rounded-full bg-sky-500/12 flex items-center justify-center">
+                  <Database className="w-4 h-4 text-sky-700" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-[#1a1a1a] capitalize">
+                  <p className="text-sm font-medium text-foreground capitalize">
                     {subscription.plan} Plan
                   </p>
-                  <p className="text-xs text-[#6b6b6b]">
+                  <p className="text-xs text-muted-foreground">
                     {subscription.creditsUsed} / {subscription.creditsLimit} credits used
                   </p>
                 </div>
@@ -151,10 +144,10 @@ export function SettingsClient({
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center gap-4 px-6 py-5 hover:bg-[#faf8f5] transition-colors w-full text-left group"
+            className="flex items-center gap-4 px-6 py-5 hover:bg-[rgba(255,255,255,0.6)] transition-colors w-full text-left group"
           >
-            <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center">
-              <LogOut className="w-4 h-4 text-[#dc2626]" />
+            <div className="w-9 h-9 rounded-full bg-red-500/12 flex items-center justify-center">
+              <LogOut className="w-4 h-4 text-red-700" />
             </div>
             <span className="flex-1 text-sm font-medium text-[#dc2626]">Log out</span>
             <ChevronRight className="w-4 h-4 text-[#dc2626] opacity-50" />
@@ -163,16 +156,16 @@ export function SettingsClient({
 
         {/* Account info */}
         <div className="mt-8 space-y-3">
-          <p className="text-xs text-[#6b6b6b]">
+          <p className="text-xs text-muted-foreground">
             <span className="font-medium">{fullName}</span> · {email}
           </p>
-          <p className="text-xs text-[#6b6b6b]">
+          <p className="text-xs text-muted-foreground">
             Member since {memberSince ?? "—"}
           </p>
         </div>
 
         {/* Delete account */}
-        <div className="mt-12 pt-8 border-t border-[#e5e2dd]">
+        <div className="mt-12 pt-8 border-t border-[#e0ddd9]">
           {!deleteConfirm ? (
             <button
               type="button"
@@ -190,8 +183,8 @@ export function SettingsClient({
                 </p>
               </div>
               <div>
-                <label className="text-xs text-[#6b6b6b] block mb-2" htmlFor="delete-confirm-input">
-                  Type <strong className="text-[#1a1a1a]">DELETE</strong> to confirm
+                <label className="text-xs text-muted-foreground block mb-2" htmlFor="delete-confirm-input">
+                  Type <strong className="text-foreground">DELETE</strong> to confirm
                 </label>
                 <input
                   id="delete-confirm-input"
@@ -217,7 +210,7 @@ export function SettingsClient({
                     setDeleteConfirm(false);
                     setDeleteInput("");
                   }}
-                  className="text-xs text-[#6b6b6b] hover:text-[#1a1a1a] px-4 py-2"
+                  className="text-xs text-muted-foreground hover:text-foreground px-4 py-2"
                 >
                   Cancel
                 </button>
@@ -225,7 +218,6 @@ export function SettingsClient({
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 }

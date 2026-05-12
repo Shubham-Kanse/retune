@@ -41,7 +41,7 @@ type Tab = "resume" | "cover_letter" | "strategy";
 const TAB_META: Record<Tab, { label: string; icon: React.ReactNode }> = {
   resume: {
     label: "Resume",
-    icon: <FileText className="h-3.5 w-3.5 text-[#00d4d4]" />,
+    icon: <FileText className="h-3.5 w-3.5 text-brand" />,
   },
   cover_letter: {
     label: "Cover letter",
@@ -60,7 +60,7 @@ function StatCard({
   color = "#1a1a1a",
 }: { label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className="border border-[#e5e2dd] rounded-2xl bg-white p-5">
+    <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-5 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
       <p className="rt-label mb-3">{label}</p>
       <p
         className="text-2xl font-semibold leading-tight tabular-nums tracking-tight"
@@ -68,7 +68,7 @@ function StatCard({
       >
         {value}
       </p>
-      {sub && <p className="text-xs text-[#9a9690] mt-1.5">{sub}</p>}
+      {sub && <p className="text-xs text-muted-foreground mt-1.5">{sub}</p>}
     </div>
   );
 }
@@ -102,22 +102,22 @@ function DocPanel({
           href={downloadUrl("docx")}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-[#e5e2dd] rounded-lg hover:bg-[#f0ede8] transition-colors text-xs text-[#6b6b6b] hover:text-[#1a1a1a]"
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-[#e0ddd9] rounded-lg hover:bg-[#f0ede8] transition-colors text-xs text-muted-foreground hover:text-foreground"
         >
-          <Download className="h-3.5 w-3.5 text-[#00d4d4]" />
+          <Download className="h-3.5 w-3.5 text-brand" />
           DOCX
         </a>
         <a
           href={downloadUrl("pdf")}
           target="_blank"
           rel="noreferrer"
-          className="flex items-center gap-1.5 px-3 py-1.5 border border-[#e5e2dd] rounded-lg hover:bg-[#f0ede8] transition-colors text-xs text-[#6b6b6b] hover:text-[#1a1a1a]"
+          className="flex items-center gap-1.5 px-3 py-1.5 border border-[#e0ddd9] rounded-lg hover:bg-[#f0ede8] transition-colors text-xs text-muted-foreground hover:text-foreground"
         >
           <Download className="h-3.5 w-3.5 text-[#ff8c42]" />
           PDF
         </a>
       </div>
-      <div className="border border-[#e5e2dd] rounded-2xl bg-white p-8 shadow-sm">
+      <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
         <MarkdownContent content={content} />
       </div>
     </div>
@@ -147,14 +147,14 @@ function MarkdownContent({ content }: { content: string }) {
       remarkPlugins={[remarkGfm]}
       components={{
         h1: ({ children }) => (
-          <h1 className="text-base font-semibold text-[#1a1a1a] mt-0 mb-5">{children}</h1>
+          <h1 className="text-base font-semibold text-foreground mt-0 mb-5">{children}</h1>
         ),
         h2: ({ children }) => {
           const isFirst = h2Count++ === 0;
           return (
             <div className="mt-6">
-              {!isFirst && <hr className="border-[#e5e2dd] mb-4" />}
-              <h2 className="text-[13px] font-semibold text-[#1a1a1a] mb-3 uppercase tracking-wide">
+              {!isFirst && <hr className="border-[#e0ddd9] mb-4" />}
+              <h2 className="text-[13px] font-semibold text-foreground mb-3 uppercase tracking-wide">
                 {children}
               </h2>
             </div>
@@ -162,44 +162,44 @@ function MarkdownContent({ content }: { content: string }) {
         },
         // H3 — subsection, no divider
         h3: ({ children }) => (
-          <h3 className="text-[13px] font-semibold text-[#1a1a1a] mb-2 mt-4">{children}</h3>
+          <h3 className="text-[13px] font-semibold text-foreground mb-2 mt-4">{children}</h3>
         ),
         p: ({ children }) => (
-          <p className="text-sm leading-[1.7] text-[#1a1a1a] mb-3">{children}</p>
+          <p className="text-sm leading-[1.7] text-foreground mb-3">{children}</p>
         ),
         ul: ({ children }) => (
-          <ul className="mb-4 pl-5 list-disc space-y-2 text-sm text-[#1a1a1a]">{children}</ul>
+          <ul className="mb-4 pl-5 list-disc space-y-2 text-sm text-foreground">{children}</ul>
         ),
         ol: ({ children }) => (
-          <ol className="mb-4 pl-5 list-decimal space-y-2 text-sm text-[#1a1a1a]">{children}</ol>
+          <ol className="mb-4 pl-5 list-decimal space-y-2 text-sm text-foreground">{children}</ol>
         ),
         li: ({ children }) => (
-          <li className="text-sm leading-[1.7] text-[#1a1a1a] pl-1">{children}</li>
+          <li className="text-sm leading-[1.7] text-foreground pl-1">{children}</li>
         ),
         strong: ({ children }) => (
-          <strong className="font-semibold text-[#1a1a1a]">{children}</strong>
+          <strong className="font-semibold text-foreground">{children}</strong>
         ),
-        em: ({ children }) => <em className="italic text-[#6b6b6b]">{children}</em>,
+        em: ({ children }) => <em className="italic text-muted-foreground">{children}</em>,
         // Inline backtick code — subtle pill, normal size
         code: ({ children }) => (
-          <code className="bg-[#f0ede8] px-1.5 py-0.5 rounded text-[13px] font-sans text-[#1a1a1a]">
+          <code className="bg-[#f0ede8] px-1.5 py-0.5 rounded text-[13px] text-foreground">
             {children}
           </code>
         ),
         // Fenced code blocks (LLM uses these for template text like LinkedIn messages)
         // Render as a readable card, NOT monospace
         pre: ({ children }) => (
-          <div className="bg-[#faf8f5] border border-[#e5e2dd] rounded-xl px-5 py-4 my-4 text-sm text-[#1a1a1a] leading-[1.7] [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-sm [&_code]:font-sans">
+          <div className="bg-muted border border-[#e0ddd9] rounded-xl px-5 py-4 my-4 text-sm text-foreground leading-[1.7] [&_code]:bg-transparent [&_code]:p-0 [&_code]:text-sm">
             {children}
           </div>
         ),
         // Template blocks (converted from 4-space indent) — card-like background
         blockquote: ({ children }) => (
-          <blockquote className="bg-[#faf8f5] border border-[#e5e2dd] rounded-xl px-5 py-4 my-4 text-sm text-[#1a1a1a] leading-[1.7] [&_p]:mb-1.5 [&_p:last-child]:mb-0">
+          <blockquote className="bg-muted border border-[#e0ddd9] rounded-xl px-5 py-4 my-4 text-sm text-foreground leading-[1.7] [&_p]:mb-1.5 [&_p:last-child]:mb-0">
             {children}
           </blockquote>
         ),
-        hr: () => <hr className="border-[#e5e2dd] my-5" />,
+        hr: () => <hr className="border-[#e0ddd9] my-5" />,
         // GFM tables
         table: ({ children }) => (
           <div className="overflow-x-auto mb-4">
@@ -208,13 +208,13 @@ function MarkdownContent({ content }: { content: string }) {
         ),
         thead: ({ children }) => <thead>{children}</thead>,
         tbody: ({ children }) => <tbody>{children}</tbody>,
-        tr: ({ children }) => <tr className="border-b border-[#e5e2dd]">{children}</tr>,
+        tr: ({ children }) => <tr className="border-b border-[#e0ddd9]">{children}</tr>,
         th: ({ children }) => (
-          <th className="text-left text-xs font-semibold text-[#1a1a1a] px-3 py-2 bg-[#f0ede8]">
+          <th className="text-left text-xs font-semibold text-foreground px-3 py-2 bg-[#f0ede8]">
             {children}
           </th>
         ),
-        td: ({ children }) => <td className="px-3 py-2 text-[#1a1a1a]">{children}</td>,
+        td: ({ children }) => <td className="px-3 py-2 text-foreground">{children}</td>,
       }}
     >
       {normaliseMarkdown(content)}
@@ -256,10 +256,10 @@ export default function ResultPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-3 text-[#9a9690]">
+        <div className="flex items-center gap-3 text-muted-foreground">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#b84ed1] opacity-60" />
-            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#b84ed1]" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-brand" />
           </span>
           <span className="text-sm">Loading results…</span>
         </div>
@@ -270,7 +270,7 @@ export default function ResultPage() {
   if (error || !result) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-sm text-[#9a9690]">No results found for this generation.</p>
+        <p className="text-sm text-muted-foreground">No results found for this generation.</p>
         <Link href="/dashboard" className="rt-btn-ghost inline-flex items-center gap-2 text-sm">
           <ArrowLeft className="h-4 w-4" /> Back to dashboard
         </Link>
@@ -280,38 +280,30 @@ export default function ResultPage() {
 
   if (result.status === "refused") {
     return (
-      <div className="min-h-screen flex items-start justify-center pt-16 px-6 pb-16">
+      <div className="w-full px-8 md:px-12 py-16">
         <div className="w-full max-w-xl">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#fef2f2] flex items-center justify-center">
-                <X className="w-4 h-4 text-[#dc2626]" />
-              </div>
-              <div>
-                <p className="rt-label">Result</p>
-                <h1 className="font-serif text-2xl font-normal text-[#1a1a1a] leading-tight">
-                  Not ready to ship
-                </h1>
-              </div>
+          <div className="flex items-end justify-between mb-8">
+            <div>
+              <p className="rt-label mb-3">Result</p>
+              <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
+                Not ready to ship
+              </h1>
             </div>
-            <Link
-              href="/dashboard"
-              className="text-[#9a9690] hover:text-[#1a1a1a] transition-colors"
-            >
+            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors mb-2">
               <ArrowLeft className="w-4 h-4" />
             </Link>
           </div>
-          <div className="border border-[#fecaca] bg-[#fef2f2] rounded-2xl p-6 mb-4">
+          <div className="border border-[#fecaca] bg-[#fef2f2]/90 rounded-3xl p-6 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] mb-4">
             <p className="text-sm text-[#dc2626] leading-relaxed">
               The quality gate refused to ship. Refine your profile or the job details and retry.
             </p>
           </div>
           {result.conflicts.map((c) => (
-            <div key={c.id} className="border border-[#e5e2dd] bg-white rounded-2xl p-5 mb-3">
+            <div key={c.id} className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-5 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] mb-3">
               <p className="rt-label mb-1.5">
                 {c.monitor.replace(/_/g, " ")} · {c.severity}
               </p>
-              <p className="text-sm text-[#1a1a1a] leading-relaxed">{c.summary}</p>
+              <p className="text-sm text-foreground leading-relaxed">{c.summary}</p>
             </div>
           ))}
           <div className="flex gap-3 mt-6">
@@ -350,22 +342,17 @@ export default function ResultPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-start justify-center pt-12 px-6 pb-16">
+    <div className="w-full px-8 md:px-12 py-12">
       <div className="w-full max-w-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#f0ede8] flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-[#b84ed1]" />
-            </div>
-            <div>
-              <p className="rt-label">Your package</p>
-              <h1 className="font-serif text-2xl font-normal text-[#1a1a1a] leading-tight">
-                Application ready
-              </h1>
-            </div>
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <p className="rt-label mb-3">Your package</p>
+            <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
+              Application ready
+            </h1>
           </div>
-          <Link href="/dashboard" className="text-[#9a9690] hover:text-[#1a1a1a] transition-colors">
+          <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors mb-2">
             <ArrowLeft className="w-4 h-4" />
           </Link>
         </div>
@@ -373,7 +360,7 @@ export default function ResultPage() {
         {/* Verdict + meta */}
         <div className="flex items-center gap-3 mb-6">
           {shipped ? (
-            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#16a34a] bg-[#d4f5e0] border border-[#bbf7d0] px-2.5 py-1 rounded-full">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-brand bg-brand-light border border-[#b9eacb] px-2.5 py-1 rounded-full">
               <CheckCircle2 className="h-3 w-3" /> Shipped
             </span>
           ) : (
@@ -381,14 +368,14 @@ export default function ResultPage() {
               {result.verdict ?? "Incomplete"}
             </span>
           )}
-          <span className="text-[11px] text-[#9a9690] font-mono">
+          <span className="text-[11px] text-muted-foreground font-mono">
             Generated in {generationDuration}
           </span>
         </div>
 
         {/* Narrative arc thesis */}
         {result.narrative_arc?.thesis && (
-          <p className="text-sm text-[#6b6b6b] italic leading-relaxed mb-6 border-l-2 border-[#e5e2dd] pl-4">
+          <p className="text-sm text-muted-foreground italic leading-relaxed mb-6 border-l-2 border-[#e0ddd9] pl-4">
             "{result.narrative_arc.thesis}"
           </p>
         )}
@@ -398,24 +385,24 @@ export default function ResultPage() {
           <StatCard
             label="Interview readiness"
             value={score != null ? `${Math.round(score)}/100` : "—"}
-            color={score != null && score >= 80 ? "#16a34a" : "#1a1a1a"}
+            color={score != null && score >= 80 ? "#2d8a5e" : "#1a1a1a"}
           />
           <StatCard
             label="ATS score"
             value={result.ats_score != null ? `${Math.round(result.ats_score)}%` : "—"}
-            color={result.ats_score != null && result.ats_score >= 80 ? "#16a34a" : "#1a1a1a"}
+            color={result.ats_score != null && result.ats_score >= 80 ? "#2d8a5e" : "#1a1a1a"}
           />
           <StatCard
             label="Callback chance"
             value={callbackPct != null ? `${callbackPct}%` : "—"}
             sub={callbackRange}
-            color={callbackPct != null && callbackPct >= 70 ? "#16a34a" : "#1a1a1a"}
+            color={callbackPct != null && callbackPct >= 70 ? "#2d8a5e" : "#1a1a1a"}
           />
         </div>
 
         {/* Tab switcher */}
-        <div className="border border-[#e5e2dd] rounded-2xl bg-white overflow-hidden mb-4">
-          <div className="flex border-b border-[#e5e2dd]">
+        <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] overflow-hidden mb-4">
+          <div className="flex border-b border-[#e0ddd9]">
             {tabs.map((key) => {
               const { label, icon } = TAB_META[key];
               const active = tab === key;
@@ -428,9 +415,9 @@ export default function ResultPage() {
                   disabled={!enabled}
                   className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors ${
                     active
-                      ? "text-[#1a1a1a] bg-[#f0ede8]"
+                      ? "text-foreground bg-[#f0ede8]"
                       : enabled
-                        ? "text-[#6b6b6b] hover:bg-[#faf8f5]"
+                        ? "text-muted-foreground hover:bg-muted"
                         : "text-[#ccc8c3] cursor-default"
                   }`}
                 >
@@ -469,17 +456,17 @@ export default function ResultPage() {
 
         {/* Conflicts */}
         {conflicts.length > 0 && (
-          <div className="border border-[#e5e2dd] rounded-2xl bg-white overflow-hidden mb-4">
-            <div className="px-5 py-3 border-b border-[#e5e2dd]">
+          <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] overflow-hidden mb-4">
+            <div className="px-5 py-3 border-b border-[#e0ddd9]">
               <p className="rt-label">Quality notes</p>
             </div>
             <div className="p-5 space-y-3">
               {conflicts.map((c) => (
-                <div key={c.id} className="border border-[#e5e2dd] rounded-xl p-4">
+                <div key={c.id} className="border border-[#e0ddd9] rounded-xl p-4">
                   <p className="rt-label mb-1">
                     {c.monitor.replace(/_/g, " ")} · {c.severity}
                   </p>
-                  <p className="text-sm text-[#1a1a1a] leading-relaxed">{c.summary}</p>
+                  <p className="text-sm text-foreground leading-relaxed">{c.summary}</p>
                 </div>
               ))}
             </div>
@@ -502,9 +489,9 @@ export default function ResultPage() {
 
 function Empty({ label }: { label: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-12 gap-3 text-center border border-dashed border-[#e5e2dd] rounded-xl">
+    <div className="flex flex-col items-center justify-center py-12 gap-3 text-center border border-dashed border-[#e0ddd9] rounded-xl">
       <FileText className="h-6 w-6 text-[#ccc8c3]" />
-      <p className="text-sm text-[#9a9690]">{label}</p>
+      <p className="text-sm text-muted-foreground">{label}</p>
     </div>
   );
 }

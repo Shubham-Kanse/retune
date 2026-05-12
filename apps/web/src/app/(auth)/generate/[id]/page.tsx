@@ -155,30 +155,16 @@ export default function GenerationPage() {
   const activePhase = activePhaseKey ? PHASES.find((p) => p.key === activePhaseKey) : null;
 
   return (
-    <div className="min-h-screen flex items-start justify-center pt-16 px-6 pb-16">
-      <div className="w-full max-w-xl">
+    <div className="w-full max-w-xl px-8 py-16">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-            <motion.div
-              className="w-9 h-9 rounded-xl bg-[#f0ede8] flex items-center justify-center overflow-hidden"
-              animate={isActive ? { scale: [1, 1.04, 1] } : { scale: 1 }}
-              transition={{ duration: 2, repeat: isActive ? Infinity : 0 }}
-            >
-              <ColorOrb dimension="26px" tones={orbTones} spinDuration={10} />
-            </motion.div>
-            <div>
-              <p className="rt-label">
-                {isComplete ? "Done" : isError ? "Interrupted" : "Working"}
-              </p>
-              <h1 className="font-serif text-2xl font-normal text-[#1a1a1a] leading-tight">
-                {isComplete
-                  ? "Shipping your package"
-                  : isError
-                    ? "Something went wrong"
-                    : "Building your package"}
-              </h1>
-            </div>
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <p className="rt-label mb-3">
+              {isComplete ? "Done" : isError ? "Interrupted" : "Working"}
+            </p>
+            <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
+              {isComplete ? "Shipping your package" : isError ? "Something went wrong" : "Building your package"}
+            </h1>
           </div>
           <button
             type="button"
@@ -186,7 +172,7 @@ export default function GenerationPage() {
               stop();
               router.push("/dashboard");
             }}
-            className="text-[#9a9690] hover:text-[#1a1a1a] transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
             aria-label="Cancel"
           >
             <X className="w-4 h-4" />
@@ -195,14 +181,14 @@ export default function GenerationPage() {
 
         {/* Error */}
         {isError && errorMessage && (
-          <div className="mb-6 px-4 py-3 text-sm rounded-2xl border border-[#fecaca] bg-[#fef2f2] text-[#dc2626]">
+          <div className="mb-6 px-4 py-3 text-sm rounded-3xl border border-[#fecaca] bg-[#fef2f2] text-[#dc2626]">
             {errorMessage}
           </div>
         )}
 
         {/* Hero loading orb */}
         {isActive && (
-          <div className="mb-6 rounded-2xl border border-[#e5e2dd] bg-white px-6 py-8">
+          <div className="mb-6 rounded-3xl border border-[#e0ddd9] bg-white/90 px-6 py-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
             <div className="flex flex-col items-center justify-center gap-4 text-center">
               <motion.div
                 animate={{ scale: [1, 1.05, 1] }}
@@ -211,19 +197,19 @@ export default function GenerationPage() {
                 <ColorOrb dimension="76px" tones={orbTones} spinDuration={8} />
               </motion.div>
               <div>
-                <p className="font-serif text-xl text-[#1a1a1a]">Retune is building your package</p>
-                <p className="text-sm text-[#6b6b6b] mt-1">
+                <p className="font-serif text-xl text-foreground">Retune is building your package</p>
+                <p className="text-sm text-muted-foreground mt-1">
                   {activePhase?.label ?? currentLabel ?? "Starting cognitive pipeline..."}
                 </p>
               </div>
               <div className="inline-flex items-center gap-1.5 text-[#7c746b]">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
                 <span
-                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]"
+                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand"
                   style={{ animationDelay: "120ms" }}
                 />
                 <span
-                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]"
+                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand"
                   style={{ animationDelay: "240ms" }}
                 />
               </div>
@@ -235,25 +221,25 @@ export default function GenerationPage() {
         {!isActive && <div className="space-y-2 mb-4">
           {/* Active phase pill — with pulse on the icon and current specialist as muted subtitle */}
           {isActive && (activePhase || currentLabel) && (
-            <div className="flex items-center gap-3 px-5 py-3.5 border border-[#e5d6f5] bg-white rounded-2xl shadow-sm">
+            <div className="flex items-center gap-3 px-5 py-3.5 rounded-3xl border border-[#e5d6f5] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
               {/* Icon with iconShine pulse — same as nav bar hover effect */}
               <div className="w-5 h-5 shrink-0 flex items-center justify-center">
                 <span
-                  className="inline-flex w-3 h-3 rounded-full bg-[#b84ed1]"
+                  className="inline-flex w-3 h-3 rounded-full bg-brand"
                   style={{ animation: "iconShine 1.2s ease-in-out infinite" }}
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-[#1a1a1a]">
+                <p className="text-sm font-medium text-foreground">
                   {activePhase?.label ?? currentLabel ?? "Starting up…"}
                 </p>
                 {/* Current specialist as muted subtitle */}
                 {currentLabel && activePhase && currentLabel !== activePhase.label && (
-                  <p className="text-[11px] text-[#9a9690] mt-0.5 truncate">{currentLabel}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{currentLabel}</p>
                 )}
               </div>
               {confidencePct != null && (
-                <span className="text-[11px] font-mono text-[#2d8a5e] font-semibold shrink-0">
+                <span className="text-[11px] font-mono text-brand font-semibold shrink-0">
                   {confidencePct}%
                 </span>
               )}
@@ -264,20 +250,19 @@ export default function GenerationPage() {
           {phasesDone.map(({ key, label }) => (
             <div
               key={key}
-              className="flex items-center gap-3 px-5 py-3 border border-[#e5e2dd] bg-white rounded-2xl"
+              className="flex items-center gap-3 px-5 py-3 rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]"
             >
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-[#16a34a]" />
-              <span className="text-sm text-[#1a1a1a]">{label}</span>
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-brand" />
+              <span className="text-sm text-foreground">{label}</span>
             </div>
           ))}
         </div>}
 
         {/* Footer */}
-        <div className="flex items-center justify-between text-[10px] text-[#9a9690] font-mono px-1 mt-4">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono px-1 mt-4">
           <span>{traceEntries.length} ticks</span>
           <span>{elapsedLabel} elapsed</span>
         </div>
-      </div>
     </div>
   );
 }

@@ -32,7 +32,6 @@ export default function CultureSettingsPage() {
   const [axes, setAxes] = useState<Axes>(DEFAULT_AXES);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -52,8 +51,6 @@ export default function CultureSettingsPage() {
       .catch(() => null)
       .finally(() => {
         setLoading(false);
-        // small delay so labels stagger after content appears
-        setTimeout(() => setMounted(true), 50);
       });
   }, []);
 
@@ -91,66 +88,58 @@ export default function CultureSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-6 animate-in fade-in slide-in-from-bottom-2 duration-400">
-      <Link
-        href="/settings"
-        className="text-xs text-muted-foreground hover:text-foreground mb-6 inline-block"
-      >
-        ← Settings
-      </Link>
-
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Cultural Preferences</h1>
-          <p className="page-subtitle">
-            Set your work style preferences so applications are calibrated to roles that suit you.
-          </p>
+    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
+        {/* Header */}
+        <div className="flex items-end justify-between mb-12">
+          <div>
+            <p className="rt-label mb-3">Settings</p>
+            <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
+              Cultural Preferences
+            </h1>
+          </div>
+          <div className="flex items-center gap-3 mb-2">
+            {saved && <span className="text-xs text-brand">Saved</span>}
+            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors text-sm">✕</Link>
+          </div>
         </div>
-        {saved && (
-          <span className="text-xs text-brand animate-in fade-in shrink-0 mt-1">Saved</span>
+
+        <p className="text-sm text-muted-foreground mb-8">
+          Set your work style preferences so applications are calibrated to roles that suit you.
+        </p>
+
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="h-5 w-5 border-2 border-[#e0ddd9] border-t-[#2d8a5e] rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] space-y-8">
+            {AXES.map(({ key, left, right }) => {
+              const value = axes[key];
+              return (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground">{left}</span>
+                    <span className="text-xs text-muted-foreground">{right}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-100"
+                    max="100"
+                    step="10"
+                    value={value}
+                    onChange={(e) => handleChange(key, e.target.value)}
+                    className="w-full accent-brand"
+                  />
+                  <div className="flex justify-center mt-1">
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {value > 0 ? `+${value}` : value === 0 ? "Balanced" : value}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="h-4 w-4 border-2 border-border border-t-brand rounded-full animate-spin" />
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {AXES.map(({ key, left, right }, index) => {
-            const value = axes[key];
-            return (
-              <div
-                key={key}
-                className="animate-in fade-in duration-300"
-                style={{
-                  animationDelay: mounted ? `${index * 60}ms` : "0ms",
-                  animationFillMode: "both",
-                }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground">{left}</span>
-                  <span className="text-xs text-muted-foreground">{right}</span>
-                </div>
-                <input
-                  type="range"
-                  min="-100"
-                  max="100"
-                  step="10"
-                  value={value}
-                  onChange={(e) => handleChange(key, e.target.value)}
-                  className="w-full accent-brand"
-                />
-                <div className="flex justify-center mt-1">
-                  <span className="text-[10px] text-muted-foreground/60 tabular-nums">
-                    {value > 0 ? `+${value}` : value === 0 ? "Balanced" : value}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

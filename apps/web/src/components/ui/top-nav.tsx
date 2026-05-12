@@ -65,13 +65,6 @@ function ThemeToggle() {
   );
 }
 
-// ─── Nav items ────────────────────────────────────────────────────────────────
-const NAV_ITEMS = [
-  { label: "How it works", href: "/#how-it-works" },
-  { label: "Why Retuned", href: "/#why-retune" },
-  { label: "Pricing", href: "/#pricing" },
-];
-
 // ─── Top Nav ──────────────────────────────────────────────────────────────────
 export function TopNav({ className }: { className?: string }) {
   const [scrolled, setScrolled] = useState(false);
@@ -83,13 +76,13 @@ export function TopNav({ className }: { className?: string }) {
   }, []);
 
   return (
-    <div className={cn("fixed top-6 left-1/2 -translate-x-1/2 z-50", className)}>
+    <div className={cn("fixed top-4 left-1/2 -translate-x-1/2 z-50", className)}>
       <motion.nav
         initial={{ y: -60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", damping: 20, stiffness: 300, delay: 0.1 }}
         className={cn(
-          "flex items-center gap-1 px-2 py-2 rounded-2xl border transition-all duration-300",
+          "flex items-center gap-1 px-1.5 py-1.5 rounded-xl border transition-all duration-300",
           scrolled
             ? "bg-[rgba(17,17,17,0.92)] border-[rgba(255,255,255,0.1)] shadow-2xl backdrop-blur-xl"
             : "bg-[rgba(17,17,17,0.7)] border-[rgba(255,255,255,0.08)] shadow-lg backdrop-blur-md",
@@ -99,30 +92,16 @@ export function TopNav({ className }: { className?: string }) {
         {/* ── Logo + brand name ─────────────────────────────────────────── */}
         <Link
           href="/"
-          className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-[#ebebeb] hover:bg-[rgba(255,255,255,0.08)] transition-all group"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[#ebebeb] hover:bg-[rgba(255,255,255,0.08)] transition-all group"
         >
-          <span className="text-[#22c55e] group-hover:text-[#4ade80] transition-colors">
-            <RetunedIcon size={16} />
+          <span className="text-[#ebebeb] group-hover:text-[#ffffff] transition-colors">
+            <RetunedIcon size={15} />
           </span>
           <span className="text-sm font-semibold tracking-tight text-[#ebebeb]">Retuned</span>
         </Link>
 
         {/* ── Divider ───────────────────────────────────────────────────── */}
-        <div className="w-px h-5 bg-[rgba(255,255,255,0.1)] mx-1" />
-
-        {/* ── Nav links ─────────────────────────────────────────────────── */}
-        {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.label}
-            href={item.href}
-            className="px-3 py-1.5 text-sm font-medium text-[#888888] hover:text-[#ebebeb] rounded-xl hover:bg-[rgba(255,255,255,0.08)] transition-all whitespace-nowrap"
-          >
-            {item.label}
-          </Link>
-        ))}
-
-        {/* ── Divider ───────────────────────────────────────────────────── */}
-        <div className="w-px h-5 bg-[rgba(255,255,255,0.1)] mx-1" />
+        <div className="w-px h-4 bg-[rgba(255,255,255,0.1)] mx-0.5" />
 
         {/* ── Theme toggle ──────────────────────────────────────────────── */}
         <ThemeToggle />
@@ -130,7 +109,7 @@ export function TopNav({ className }: { className?: string }) {
         {/* ── CTA ───────────────────────────────────────────────────────── */}
         <Link
           href="/signup"
-          className="ml-1 px-4 py-1.5 text-sm font-bold bg-[#22c55e] hover:bg-[#16a34a] text-black rounded-xl transition-all"
+          className="px-3.5 py-1 text-sm font-bold rt-btn-dark rounded-lg"
         >
           Join
         </Link>

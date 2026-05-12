@@ -938,7 +938,7 @@ function DashboardInner(props: {
               <div className="grid grid-cols-2 gap-4">
                 {/* Profile Card */}
                 <div className="border border-[#e5e2dd] rounded-2xl bg-white p-6 hover:shadow-md transition-all">
-                  <div className="w-10 h-10 rounded-xl bg-[#f0ede8] flex items-center justify-center mb-4">
+                  <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center mb-4">
                     <User className="w-5 h-5 text-[#ff5555] icon-shine" />
                   </div>
                   <p className="font-serif text-2xl text-[#1a1a1a] mb-1 leading-tight">
@@ -962,7 +962,7 @@ function DashboardInner(props: {
 
                 {/* Credit Card */}
                 <div className="border border-[#e5e2dd] rounded-2xl bg-white p-6 hover:shadow-md transition-all">
-                  <div className="w-10 h-10 rounded-xl bg-[#f0ede8] flex items-center justify-center mb-4">
+                  <div className="w-9 h-9 rounded-full bg-[#f0ede8] flex items-center justify-center mb-4">
                     {plan === "max" ? (
                       <Sparkles className="w-5 h-5 text-[#b84ed1] icon-shine" />
                     ) : plan === "pro" ? (

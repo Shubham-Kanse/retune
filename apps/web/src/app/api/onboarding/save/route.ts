@@ -1,12 +1,9 @@
 import { withAuth } from "@/lib/api-handler";
 import { ValidationError } from "@/lib/errors";
-import { persistProfileAssembly } from "@/lib/profile-assembly";
+import { normalizeProfile } from "@/lib/profile-domain/services/normalizer";
+import { persistProfile } from "@/lib/profile-domain/repositories/profile-repository";
 import { NextResponse } from "next/server";
 
-/**
- * POST /api/onboarding/save
- * Saves deterministically-collected profile fields with a shared profile assembly module.
- */
 export const POST = withAuth(async (request, session) => {
   const body = await request.json().catch(() => {
     throw new ValidationError("Invalid JSON body");
@@ -17,13 +14,14 @@ export const POST = withAuth(async (request, session) => {
     throw new ValidationError("Missing profile object");
   }
 
-  const assembled = await persistProfileAssembly({
+  const normalized = normalizeProfile(profile as Record<string, unknown>, session.email, session.fullName ?? "");
+  const persisted = await persistProfile({
     userId: session.userId,
     sessionEmail: session.email,
-    profile: profile as Record<string, unknown>,
-    now: new Date(),
+    sessionFullName: session.fullName,
+    profile: normalized,
     markOnboardingCompleted: true,
   });
 
-  return NextResponse.json({ success: true, completenessScore: assembled.completenessScore });
+  return NextResponse.json({ success: true, completenessScore: persisted.completenessScore });
 });

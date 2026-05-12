@@ -1,7 +1,7 @@
 "use client";
 
-import { LegalModal } from "@/components/ui/legal-modal";
-import { ArrowRight, Check, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -15,7 +15,7 @@ function getPasswordStrength(pw: string): { score: number; label: string; color:
   if (pw.length >= 12) score++;
   if (score <= 1) return { score, label: "Weak", color: "#dc2626" };
   if (score <= 3) return { score, label: "Fair", color: "#d97706" };
-  return { score, label: "Strong", color: "#16a34a" };
+  return { score, label: "Strong", color: "#2d8a5e" };
 }
 
 const PW_RULES = [
@@ -25,19 +25,12 @@ const PW_RULES = [
   { label: "Number", test: (pw: string) => /[0-9]/.test(pw) },
 ];
 
-const VALUE_PROPS = [
-  "Tailored resume for every application",
-  "ATS optimised, ready in under 3 minutes",
-  "Cover letter + application strategy included",
-];
-
 export default function SignupPage() {
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [password, setPassword] = useState("");
-  const [legalDoc, setLegalDoc] = useState<"terms" | "privacy" | null>(null);
   const [processorConsents, setProcessorConsents] = useState({
     anthropic: false,
     openai: false,
@@ -82,98 +75,25 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#faf8f5]">
-      {/* Left panel */}
-      <div className="hidden lg:flex flex-1 flex-col justify-between p-16 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[#2d8a5e] rounded-r-[3rem]" />
-        <Link href="/" className="flex items-center gap-2.5 relative z-10">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 20 20"
-            fill="none"
-            aria-hidden="true"
-            className="text-white"
-          >
-            <rect x="3" y="15" width="2" height="2" fill="currentColor" />
-            <rect x="3" y="13" width="2" height="2" fill="currentColor" />
-            <rect x="3" y="11" width="2" height="2" fill="currentColor" />
-            <rect x="3" y="9" width="2" height="2" fill="currentColor" />
-            <rect x="3" y="7" width="2" height="2" fill="currentColor" />
-            <rect x="3" y="5" width="2" height="2" fill="currentColor" />
-            <rect x="5" y="3" width="2" height="2" fill="currentColor" />
-            <rect x="7" y="3" width="2" height="2" fill="currentColor" />
-            <rect x="9" y="3" width="2" height="2" fill="currentColor" />
-            <rect x="11" y="5" width="2" height="2" fill="currentColor" />
-            <rect x="11" y="7" width="2" height="2" fill="currentColor" />
-            <rect x="11" y="15" width="2" height="2" fill="currentColor" />
-            <rect x="9" y="13" width="2" height="2" fill="currentColor" />
-            <rect x="13" y="13" width="2" height="2" fill="currentColor" />
-            <rect x="7" y="11" width="2" height="2" fill="currentColor" />
-            <rect x="15" y="11" width="2" height="2" fill="currentColor" />
-          </svg>
-          <span className="text-sm font-semibold text-white">Retuned</span>
-        </Link>
-        <div className="relative z-10 max-w-md">
-          <p className="text-xs font-medium tracking-wider uppercase mb-6 text-white/50">
-            Start here
-          </p>
-          <h1 className="font-serif text-5xl font-normal text-white leading-[1.1] mb-8">
-            Your architect
-            <br />
-            <span className="text-white/50">is waiting.</span>
-          </h1>
-          <ul className="space-y-4 mb-8">
-            {VALUE_PROPS.map((prop) => (
-              <li key={prop} className="flex items-start gap-3">
-                <div className="w-5 h-5 rounded-full bg-white/10 border border-white/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <Check className="w-3 h-3 text-white" />
-                </div>
-                <span className="text-sm text-white/70 leading-relaxed">{prop}</span>
-              </li>
-            ))}
-          </ul>
-          <p className="text-xs font-medium text-white/50">3 free generations. No credit card.</p>
-        </div>
-        <div className="text-xs text-white/30 relative z-10">Retuned © 2026</div>
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      <div className="pointer-events-none fixed -right-32 md:-right-48 top-20 md:top-28 w-[500px] h-[500px] md:w-[700px] md:h-[700px] animate-orb-rotate scale-125 opacity-80 z-0">
+        <Image src="/images/orb.png" alt="" width={700} height={700} className="w-full h-full" priority unoptimized />
       </div>
 
-      {/* Right panel */}
-      <div className="flex-1 lg:max-w-[520px] flex flex-col items-center justify-center px-8 py-12 overflow-y-auto">
-        <div className="w-full max-w-sm py-8">
-          <Link href="/" className="flex items-center gap-2 mb-10 lg:hidden text-[#2d8a5e]">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <rect x="3" y="15" width="2" height="2" fill="currentColor" />
-              <rect x="3" y="13" width="2" height="2" fill="currentColor" />
-              <rect x="3" y="11" width="2" height="2" fill="currentColor" />
-              <rect x="3" y="9" width="2" height="2" fill="currentColor" />
-              <rect x="3" y="7" width="2" height="2" fill="currentColor" />
-              <rect x="3" y="5" width="2" height="2" fill="currentColor" />
-              <rect x="5" y="3" width="2" height="2" fill="currentColor" />
-              <rect x="7" y="3" width="2" height="2" fill="currentColor" />
-              <rect x="9" y="3" width="2" height="2" fill="currentColor" />
-              <rect x="11" y="5" width="2" height="2" fill="currentColor" />
-              <rect x="11" y="7" width="2" height="2" fill="currentColor" />
-              <rect x="11" y="15" width="2" height="2" fill="currentColor" />
-              <rect x="9" y="13" width="2" height="2" fill="currentColor" />
-              <rect x="13" y="13" width="2" height="2" fill="currentColor" />
-              <rect x="7" y="11" width="2" height="2" fill="currentColor" />
-              <rect x="15" y="11" width="2" height="2" fill="currentColor" />
-            </svg>
-            <span className="text-sm font-semibold text-[#1a1a1a]">Retuned</span>
+      <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl items-center px-6 py-12">
+        <div className="w-full max-w-md rounded-3xl border border-border bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+          <Link href="/" className="inline-flex items-center font-serif text-lg font-semibold tracking-tight text-foreground mb-8">
+            Retuned
           </Link>
 
-          <h2 className="text-2xl font-semibold text-[#1a1a1a] mb-2">Create account</h2>
-          <p className="text-sm text-[#6b6b6b] mb-8">
-            Already a member?{" "}
-            <Link href="/login" className="text-[#2d8a5e] font-medium hover:underline">
-              Sign in
-            </Link>
+          <h1 className="font-serif text-4xl font-normal leading-tight text-foreground mb-2">Create your account.</h1>
+          <p className="text-sm text-muted-foreground mb-8">
+            Start with 3 free generations. No credit card required.
           </p>
 
           <a
             href="/api/auth/google"
-            className="flex items-center justify-center gap-3 w-full py-2.5 px-4 mb-6 rounded-lg border border-[#e5e2dd] bg-white hover:bg-[#f5f3f0] transition-colors text-sm font-medium text-[#1a1a1a]"
+            className="flex items-center justify-center gap-3 w-full py-2.5 px-4 mb-6 rounded-lg border border-border bg-white hover:bg-muted transition-colors text-sm font-medium text-foreground"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
               <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z"/>
@@ -185,14 +105,14 @@ export default function SignupPage() {
           </a>
 
           <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-[#e5e2dd]" />
-            <span className="text-xs text-[#999]">or</span>
-            <div className="flex-1 h-px bg-[#e5e2dd]" />
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <div className="flex-1 h-px bg-border" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             <div>
-              <label htmlFor="fullName" className="block text-xs font-medium text-[#6b6b6b] mb-2">
+              <label htmlFor="fullName" className="block text-xs font-medium text-muted-foreground mb-2">
                 Full Name
               </label>
               <input
@@ -206,7 +126,7 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label htmlFor="email" className="block text-xs font-medium text-[#6b6b6b] mb-2">
+              <label htmlFor="email" className="block text-xs font-medium text-muted-foreground mb-2">
                 Email Address
               </label>
               <input
@@ -223,7 +143,7 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-xs font-medium text-[#6b6b6b] mb-2">
+              <label htmlFor="password" className="block text-xs font-medium text-muted-foreground mb-2">
                 Password
               </label>
               <div className="relative">
@@ -242,7 +162,7 @@ export default function SignupPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999] hover:text-[#6b6b6b] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -267,7 +187,7 @@ export default function SignupPage() {
                       <li
                         key={rule.label}
                         className="text-[10px] flex items-center gap-2"
-                        style={{ color: rule.test(password) ? "#16a34a" : "#999" }}
+                        style={{ color: rule.test(password) ? "#2d8a5e" : "#6b6b6b" }}
                       >
                         <span>{rule.test(password) ? "✓" : "○"}</span>
                         {rule.label}
@@ -278,8 +198,8 @@ export default function SignupPage() {
               )}
             </div>
 
-            <div className="space-y-3 pt-3 border-t border-[#e5e2dd]">
-              <p className="text-xs font-medium text-[#6b6b6b]">Data processing consent</p>
+            <div className="space-y-3 pt-3 border-t border-border">
+              <p className="text-xs font-medium text-muted-foreground">Data processing consent</p>
               {[
                 { key: "anthropic", label: "Anthropic (AI generation)" },
                 { key: "openai", label: "OpenAI (processing)" },
@@ -292,15 +212,19 @@ export default function SignupPage() {
                     onChange={(e) =>
                       setProcessorConsents((prev) => ({ ...prev, [key]: e.target.checked }))
                     }
-                    className="w-4 h-4 accent-[#2d8a5e]"
+                    className="w-4 h-4 accent-brand"
                     required
                   />
-                  <span className="text-xs text-[#6b6b6b] group-hover:text-[#1a1a1a] transition-colors">
+                  <span className="text-xs text-muted-foreground group-hover:text-foreground transition-colors">
                     {label}
                   </span>
                 </label>
               ))}
             </div>
+
+            <p className="text-sm text-muted-foreground">
+              Already a member? <Link href="/login" className="text-foreground hover:underline">Sign in</Link>
+            </p>
 
             {error && (
               <p
@@ -326,13 +250,7 @@ export default function SignupPage() {
             </button>
           </form>
         </div>
-      </div>
-
-      <LegalModal
-        isOpen={legalDoc != null}
-        doc={legalDoc ?? "terms"}
-        onClose={() => setLegalDoc(null)}
-      />
+      </main>
     </div>
   );
 }

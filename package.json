@@ -20,7 +20,10 @@
     "test": "turbo test",
     "test:eval": "pnpm --filter @retune/eval eval",
     "db:migrate": "pnpm --filter @retune/db db:migrate",
-    "db:studio": "pnpm --filter @retune/db db:studio"
+    "db:studio": "pnpm --filter @retune/db db:studio",
+    "understand:analyze": "node tools/understand-anything/generate-graph.mjs",
+    "understand:check": "node tools/understand-anything/check-setup.mjs",
+    "understand:dashboard": "GRAPH_DIR=\"$PWD\" /bin/zsh -lc 'cd \"$HOME/.understand-anything-plugin/packages/dashboard\" && (pnpm install --frozen-lockfile 2>/dev/null || pnpm install) && cd \"$HOME/.understand-anything-plugin\" && pnpm --filter @understand-anything/core build && cd \"$HOME/.understand-anything-plugin/packages/dashboard\" && npx vite --host 127.0.0.1'"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
@@ -30,7 +33,12 @@
     "typescript": "^5.7.3"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3", "@biomejs/biome", "esbuild", "sharp"],
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "@biomejs/biome",
+      "esbuild",
+      "sharp"
+    ],
     "overrides": {
       "drizzle-orm": "0.38.4"
     }

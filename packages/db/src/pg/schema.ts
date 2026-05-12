@@ -581,6 +581,31 @@ export const onboardingConversations = pgTable("onboarding_conversations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const resumeIngestions = pgTable(
+  "resume_ingestions",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    status: text("status").notNull().default("pending"),
+    stage: text("stage").notNull().default("upload"),
+    filename: text("filename").notNull(),
+    mediaType: text("media_type"),
+    sizeBytes: integer("size_bytes").notNull(),
+    contentHash: text("content_hash").notNull(),
+    extractedProfileJson: text("extracted_profile_json"),
+    errorCode: text("error_code"),
+    errorDetail: text("error_detail"),
+    createdAt: tcol("created_at"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    userHashIdx: uniqueIndex("resume_ingestions_user_hash_ux").on(t.userId, t.contentHash),
+  }),
+);
+
 // billing_subscriptions is the canonical subscription table (legacy `subscriptions` dropped).
 export const subscriptions = pgTable("billing_subscriptions", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),

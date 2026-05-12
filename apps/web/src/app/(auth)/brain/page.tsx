@@ -10,14 +10,14 @@ function BrainHeatmap({
 }) {
   const regions = [...new Set(traces.map((t) => t.brain_region))];
   return (
-    <div className="flex flex-wrap gap-2 p-4 bg-[#f7f3ec] rounded-2xl">
+    <div className="flex flex-wrap gap-2 p-4 bg-[#f7f3ec] rounded-3xl">
       {regions.length === 0 ? (
         <span className="text-xs text-[#9a9a8a]">No trace data</span>
       ) : (
         regions.map((r) => (
           <span
             key={r}
-            className="text-[10px] font-medium text-[#1B3028] bg-[#c8e6c9] px-2.5 py-1 rounded-full"
+            className="text-[10px] font-medium text-[#7e22ce] bg-[#f3e8ff] px-2.5 py-1 rounded-full"
           >
             {r.replace(/_/g, " ")}
           </span>
@@ -38,7 +38,7 @@ function GoalDag({
       {goals.map((g) => (
         <span
           key={g.id}
-          className={`text-[10px] font-medium px-2 py-1 rounded-full ${g.status === "satisfied" ? "bg-[#c8e6c9] text-[#1B3028]" : "bg-[#f2ede3] text-[#9a9a8a]"}`}
+          className={`text-[10px] font-medium px-2 py-1 rounded-full ${g.status === "satisfied" ? "bg-[#f3e8ff] text-[#7e22ce]" : "bg-[#f2ede3] text-[#9a9a8a]"}`}
         >
           {g.kind.replace(/_/g, " ")}
         </span>
@@ -46,7 +46,7 @@ function GoalDag({
     </div>
   );
 }
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 const PIPELINE_GOALS = [
   { id: "g1", kind: "extract_spans", status: "satisfied" as const, parentId: null },
@@ -83,37 +83,6 @@ interface GenerationSummary {
   traces: TraceEvent[];
 }
 
-function useCountUp(target: number, duration = 800) {
-  const [value, setValue] = useState(0);
-  const rafRef = useRef<number | null>(null);
-  const startRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (target === 0) {
-      setValue(0);
-      return;
-    }
-    startRef.current = null;
-    function tick(now: number) {
-      if (startRef.current === null) startRef.current = now;
-      const elapsed = now - startRef.current;
-      const progress = Math.min(elapsed / duration, 1);
-      // ease out cubic
-      const eased = 1 - (1 - progress) ** 3;
-      setValue(Math.round(eased * target));
-      if (progress < 1) {
-        rafRef.current = requestAnimationFrame(tick);
-      }
-    }
-    rafRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    };
-  }, [target, duration]);
-
-  return value;
-}
-
 export default function BrainDashboard() {
   const [generations, setGenerations] = useState<GenerationSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,156 +107,95 @@ export default function BrainDashboard() {
   const totalCost = generations.reduce((s, g) => s + g.totalCostUsd, 0);
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-6 animate-in fade-in duration-400">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Insights</h1>
-          <p className="page-subtitle">How your applications are generated.</p>
+    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
+        {/* Header */}
+        <div className="flex items-end justify-between mb-12">
+          <div>
+            <p className="rt-label mb-3">Cognitive</p>
+            <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
+              Insights
+            </h1>
+          </div>
+          <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors mb-2">
+            <span className="text-sm">✕</span>
+          </Link>
         </div>
-      </div>
 
-      {/* Stat row — thin border table style */}
-      <div className="flex border border-border mb-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
-        <StatCell
-          label="Total Generations"
-          value={generations.length.toString()}
-          countTarget={generations.length}
-        />
-        <StatCell
-          label="Avg. Interview Score"
-          value={generations.length > 0 ? `${avgScore}` : "—"}
-          suffix="/100"
-          countTarget={generations.length > 0 ? avgScore : undefined}
-          bordered
-        />
-        <StatCell label="Total Cost" value={`$${totalCost.toFixed(3)}`} bordered />
-      </div>
+        {/* Stat row */}
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-4 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+            <p className="text-xs text-muted-foreground mb-1">Generations</p>
+            <p className="font-serif text-2xl text-foreground">{generations.length}</p>
+          </div>
+          <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-4 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+            <p className="text-xs text-muted-foreground mb-1">Avg. Score</p>
+            <p className="font-serif text-2xl text-foreground">
+              {generations.length > 0 ? avgScore : "—"}
+              {generations.length > 0 && <span className="text-sm text-muted-foreground">/100</span>}
+            </p>
+          </div>
+          <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-4 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+            <p className="text-xs text-muted-foreground mb-1">Total Cost</p>
+            <p className="font-serif text-2xl text-foreground">${totalCost.toFixed(3)}</p>
+          </div>
+        </div>
 
-      {loading ? (
-        <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="h-5 w-5 border-2 border-border border-t-brand rounded-full animate-spin" />
-        </div>
-      ) : generations.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground text-sm">
-          No generations yet. Submit a job description from the dashboard to get started.
-        </div>
-      ) : (
-        <>
-          <div className="border border-border mb-6">
-            <div
-              className="grid grid-cols-[1fr_1fr_80px_80px_80px_24px] gap-4 px-4 py-2 border-b border-border text-xs text-muted-foreground uppercase tracking-wider animate-in fade-in slide-in-from-top-1 duration-300"
-              style={{ animationDelay: "100ms", animationFillMode: "both" }}
-            >
-              <span>Company</span>
-              <span>Role</span>
-              <span className="text-right">Score</span>
-              <span className="text-right">ATS</span>
-              <span className="text-right">Verdict</span>
-              <span />
-            </div>
-            {generations.map((gen, index) => (
-              <div
-                key={gen.id}
-                className="animate-in fade-in slide-in-from-bottom-1 duration-250"
-                style={{
-                  animationDelay: `${index * 40}ms`,
-                  animationFillMode: "both",
-                }}
-              >
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="h-5 w-5 border-2 border-[#e5e2dd] border-t-[#b84ed1] rounded-full animate-spin" />
+          </div>
+        ) : generations.length === 0 ? (
+          <div className="text-center py-16">
+            <p className="font-serif text-xl text-foreground mb-2">No generations yet</p>
+            <p className="text-sm text-muted-foreground">
+              Submit a job description to get started.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {generations.map((gen) => (
+              <div key={gen.id}>
                 <button
                   type="button"
                   onClick={() => setSelectedId((prev) => (prev === gen.id ? null : gen.id))}
-                  className={`w-full grid grid-cols-[1fr_1fr_80px_80px_80px_24px] gap-4 px-4 py-3 border-b border-border last:border-b-0 transition-colors text-sm text-left ${
-                    selectedId === gen.id ? "bg-muted/20" : "hover:bg-accent/30"
-                  }`}
+                  className="w-full rounded-3xl border border-[#e0ddd9] bg-white/90 p-5 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] text-left hover:shadow-lg transition-all"
                 >
-                  <span className="truncate font-medium">{gen.company}</span>
-                  <span className="truncate text-muted-foreground">{gen.role}</span>
-                  <span className="text-right tabular-nums">{gen.interviewReadyScore ?? "—"}</span>
-                  <span className="text-right tabular-nums">
-                    {gen.atsScore ? `${Math.round(gen.atsScore)}%` : "—"}
-                  </span>
-                  <span className="text-right">
-                    <VerdictBadge verdict={gen.verdict} />
-                  </span>
-                  <span className="flex items-center justify-end text-muted-foreground text-xs">
-                    {selectedId === gen.id ? "▾" : "▸"}
-                  </span>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm text-foreground truncate">{gen.company}</p>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">{gen.role}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {gen.interviewReadyScore != null && (
+                        <span className="text-xs font-mono text-foreground">{gen.interviewReadyScore}/100</span>
+                      )}
+                      <VerdictBadge verdict={gen.verdict} />
+                    </div>
+                  </div>
                 </button>
+
+                {selectedId === gen.id && (
+                  <div className="mt-2 rounded-3xl border border-[#e0ddd9] bg-white/90 p-5 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] space-y-4">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Brain Activity</p>
+                      <BrainHeatmap traces={gen.traces} />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Goal Chain</p>
+                      <GoalDag goals={PIPELINE_GOALS} />
+                    </div>
+                    <Link
+                      href={`/applications/${gen.id}`}
+                      className="inline-flex items-center gap-1.5 text-xs text-[#b84ed1] hover:opacity-75 transition-opacity"
+                    >
+                      View application →
+                    </Link>
+                  </div>
+                )}
               </div>
             ))}
           </div>
-
-          {selected && (
-            <div
-              key={selected.id}
-              className="border border-border animate-in fade-in slide-in-from-bottom-3 duration-400 space-y-6"
-            >
-              {/* Detail panel header */}
-              <div className="flex items-center justify-between gap-4 px-5 py-3 border-b border-border">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-sm font-medium truncate">
-                    {selected.company} — {selected.role}
-                  </span>
-                  <VerdictBadge verdict={selected.verdict} />
-                </div>
-                <Link
-                  href={`/applications/${selected.id}`}
-                  className="rt-btn-ghost text-xs px-3 min-h-8 shrink-0"
-                >
-                  View Application →
-                </Link>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 px-5 pb-5">
-                <div className="animate-in fade-in zoom-in-95 duration-500">
-                  <p className="rt-label mb-3">Brain Activity</p>
-                  <BrainHeatmap traces={selected.traces} />
-                  {selected.traces.length === 0 && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Detailed trace data requires the cognitive pipeline.
-                    </p>
-                  )}
-                </div>
-                <div
-                  className="animate-in fade-in slide-in-from-right-2 duration-500"
-                  style={{ animationDelay: "100ms", animationFillMode: "both" }}
-                >
-                  <p className="rt-label mb-3">Goal Chain</p>
-                  <GoalDag goals={PIPELINE_GOALS} className="h-48" />
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-function StatCell({
-  label,
-  value,
-  suffix,
-  countTarget,
-  bordered,
-}: {
-  label: string;
-  value: string;
-  suffix?: string;
-  countTarget?: number;
-  bordered?: boolean;
-}) {
-  const counted = useCountUp(countTarget ?? 0);
-  const displayValue = countTarget != null ? counted.toString() : value;
-
-  return (
-    <div className={`flex-1 py-4 px-5 ${bordered ? "border-l border-border" : ""}`}>
-      <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">{label}</div>
-      <div className="text-2xl font-semibold tabular-nums">
-        {displayValue}
-        {suffix && <span className="text-sm text-muted-foreground ml-0.5">{suffix}</span>}
-      </div>
+        )}
     </div>
   );
 }
@@ -295,12 +203,12 @@ function StatCell({
 function VerdictBadge({ verdict }: { verdict: string }) {
   const styles =
     verdict === "ship"
-      ? "text-brand bg-brand/10"
+      ? "text-[#7e22ce] bg-[#f3e8ff]"
       : verdict === "refuse"
-        ? "text-destructive bg-destructive/10"
-        : "text-amber-600 bg-amber-500/10";
+        ? "text-[#dc2626] bg-[#fef2f2]"
+        : "text-[#d97706] bg-[#fef9c3]";
   return (
-    <span className={`inline-block px-1.5 py-0.5 text-xs ${styles}`}>
+    <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-full ${styles}`}>
       {verdict === "ship" ? "Ready" : verdict === "refuse" ? "Refused" : "Revise"}
     </span>
   );

@@ -86,88 +86,93 @@ export default async function DashboardPage() {
   const greeting = greetings[new Date().getMinutes() % greetings.length];
 
   return (
-    <div className="px-10 py-12 max-w-3xl mx-auto">
-      <h1 className="font-serif text-5xl md:text-[3.25rem] font-normal text-[#1a1a1a] leading-[0.95] tracking-tight">
+    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
+      <p className="rt-label mb-3">Overview</p>
+      <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
         {greeting}
       </h1>
-      <p className="text-[#6b6b6b] text-sm mt-1 mb-12">here&apos;s a quick overview of your hub.</p>
+      <p className="text-muted-foreground text-base mt-3 mb-14">here&apos;s a quick overview of your hub.</p>
 
       <div className="grid grid-cols-2 gap-4">
         {/* Applications card */}
         <Link
           href="/applications"
-          className="flex flex-col border border-[#e5e2dd] rounded-2xl p-6 hover:shadow-md transition-all group bg-white min-h-[220px]"
+          className="relative flex flex-col rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] hover:shadow-lg transition-shadow group min-h-[220px] overflow-hidden"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#f0ede8] flex items-center justify-center">
-            <FileText className="w-5 h-5 text-[#00d4d4] icon-shine" />
+          <div className="w-9 h-9 rounded-full bg-amber-500/12 flex items-center justify-center">
+            <FileText className="w-4 h-4 text-amber-700 icon-shine" />
           </div>
           <div className="mt-6 flex-1">
-            <p className="font-serif text-2xl text-[#1a1a1a] mb-1 leading-tight">
+            <p className="font-serif text-2xl text-foreground mb-1 leading-tight">
               {shipped.length === 0 ? "All caught up" : `${shipped.length} shipped`}
             </p>
-            <p className="text-sm font-medium text-[#1a1a1a]">Applications</p>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">
+            <p className="text-sm font-medium text-foreground">Applications</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
               {generations.length === 0
                 ? "No active generations"
                 : `${generations.length} total generations`}
             </p>
           </div>
-          <ChevronRight className="w-4 h-4 text-[#ccc8c3] mt-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground/40 mt-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-amber-500 rounded-full opacity-10" style={{ filter: "blur(72px)" }} />
         </Link>
 
         {/* Profile card */}
         <Link
           href="/profile"
-          className="flex flex-col border border-[#e5e2dd] rounded-2xl p-6 hover:shadow-md transition-all group bg-white min-h-[220px]"
+          className="relative flex flex-col rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] hover:shadow-lg transition-shadow group min-h-[220px] overflow-hidden"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#f0ede8] flex items-center justify-center">
-            <User className="w-5 h-5 text-[#ff5555] icon-shine" />
+          <div className="w-9 h-9 rounded-full bg-rose-500/12 flex items-center justify-center">
+            <User className="w-4 h-4 text-rose-700 icon-shine" />
           </div>
           <div className="mt-6 flex-1">
-            <p className="font-serif text-2xl text-[#1a1a1a] mb-1 leading-tight">
+            <p className="font-serif text-2xl text-foreground mb-1 leading-tight">
               {profileScore > 0 ? `${profileScore}% complete` : "Incomplete"}
             </p>
-            <p className="text-sm font-medium text-[#1a1a1a]">Profile</p>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">Add: Salary target, Work mode...</p>
-            <div className="mt-2 h-1.5 bg-[#e5e2dd] rounded-full overflow-hidden">
+            <p className="text-sm font-medium text-foreground">Profile</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Add: Salary target, Work mode...</p>
+            <div className="mt-2 h-1.5 bg-border rounded-full overflow-hidden">
               <div
-                className="h-full bg-[#2d8a5e] rounded-full"
+                className="h-full bg-brand rounded-full"
                 style={{ width: `${profileScore}%` }}
               />
             </div>
           </div>
+          <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-rose-500 rounded-full opacity-10" style={{ filter: "blur(72px)" }} />
         </Link>
 
         {/* Generate card */}
         <Link
           href="/generate/new"
-          className="flex flex-col border border-[#e5e2dd] rounded-2xl p-6 hover:shadow-md transition-all group bg-white min-h-[220px]"
+          className="relative flex flex-col rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] hover:shadow-lg transition-shadow group min-h-[220px] overflow-hidden"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#f0ede8] flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-[#b84ed1] icon-shine" />
+          <div className="w-9 h-9 rounded-full bg-violet-500/12 flex items-center justify-center">
+            <Sparkles className="w-4 h-4 text-violet-700 icon-shine" />
           </div>
           <div className="mt-6 flex-1">
-            <p className="font-serif text-2xl text-[#1a1a1a] mb-1 leading-tight">New</p>
-            <p className="text-sm font-medium text-[#1a1a1a]">Generate</p>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">Paste a JD, get your package</p>
+            <p className="font-serif text-2xl text-foreground mb-1 leading-tight">New</p>
+            <p className="text-sm font-medium text-foreground">Generate</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Paste a JD, get your package</p>
           </div>
-          <ChevronRight className="w-4 h-4 text-[#ccc8c3] mt-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground/40 mt-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-violet-500 rounded-full opacity-10" style={{ filter: "blur(72px)" }} />
         </Link>
 
         {/* Billing / Settings card */}
         <Link
           href="/settings"
-          className="flex flex-col border border-[#e5e2dd] rounded-2xl p-6 hover:shadow-md transition-all group bg-white min-h-[220px]"
+          className="relative flex flex-col rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] hover:shadow-lg transition-shadow group min-h-[220px] overflow-hidden"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#f0ede8] flex items-center justify-center">
-            <CreditCard className="w-5 h-5 text-[#5fc3ff] icon-shine" />
+          <div className="w-9 h-9 rounded-full bg-sky-500/12 flex items-center justify-center">
+            <CreditCard className="w-4 h-4 text-sky-700 icon-shine" />
           </div>
           <div className="mt-6 flex-1">
-            <p className="font-serif text-2xl text-[#1a1a1a] mb-1 leading-tight">Manage</p>
-            <p className="text-sm font-medium text-[#1a1a1a]">Account &amp; Billing</p>
-            <p className="text-xs text-[#6b6b6b] mt-0.5">Plan, usage, data, privacy</p>
+            <p className="font-serif text-2xl text-foreground mb-1 leading-tight">Manage</p>
+            <p className="text-sm font-medium text-foreground">Account &amp; Billing</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Plan, usage, data, privacy</p>
           </div>
-          <ChevronRight className="w-4 h-4 text-[#ccc8c3] mt-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <ChevronRight className="w-4 h-4 text-muted-foreground/40 mt-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-sky-500 rounded-full opacity-10" style={{ filter: "blur(72px)" }} />
         </Link>
       </div>
     </div>

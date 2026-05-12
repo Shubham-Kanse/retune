@@ -1,7 +1,7 @@
 "use client";
 
 import { ColorOrb } from "@/components/ui/color-orb";
-import { ArrowRight, FileText, Link2, Loader2, X } from "lucide-react";
+import { ArrowRight, Loader2, X } from "lucide-react";
 import { motion } from "motion/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -210,26 +210,26 @@ export default function NewGenerationPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-start justify-center pt-16 px-6">
-      <div className="w-full max-w-xl">
+    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
+      <div className="w-full">
         {showAliveLoading ? (
-          <div className="rounded-2xl border border-[#e5e2dd] bg-white p-8">
+          <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
             <div className="flex min-h-[360px] flex-col items-center justify-center gap-6 text-center">
               <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 2, repeat: Infinity }}>
                 <ColorOrb dimension="80px" tones={orbTones} spinDuration={8} />
               </motion.div>
               <div className="space-y-2">
-                <p className="font-serif text-2xl text-[#1a1a1a]">Retune is working</p>
-                <p className="text-sm text-[#6b6b6b]">{loadingCopy}</p>
+                <p className="font-serif text-2xl text-foreground">Retune is working</p>
+                <p className="text-sm text-muted-foreground">{loadingCopy}</p>
               </div>
               <div className="inline-flex items-center gap-1.5 text-[#7c746b]">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]" />
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
                 <span
-                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]"
+                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand"
                   style={{ animationDelay: "120ms" }}
                 />
                 <span
-                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]"
+                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand"
                   style={{ animationDelay: "240ms" }}
                 />
               </div>
@@ -243,28 +243,23 @@ export default function NewGenerationPage() {
         ) : (
           <>
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#f0ede8] flex items-center justify-center">
-              <FileText className="w-4 h-4 text-[#00d4d4]" />
-            </div>
-            <div>
-              <p className="rt-label">New application</p>
-              <h1 className="font-serif text-2xl font-normal text-[#1a1a1a] leading-tight">
-                Generate
-              </h1>
-            </div>
+        <div className="flex items-end justify-between mb-12">
+          <div>
+            <p className="rt-label mb-3">New application</p>
+            <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
+              Generate
+            </h1>
           </div>
-          <Link href="/dashboard" className="text-[#9a9690] hover:text-[#1a1a1a] transition-colors">
+          <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors mb-2">
             <X className="w-4 h-4" />
           </Link>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="border border-[#e5e2dd] rounded-2xl bg-white overflow-hidden">
+          <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] overflow-hidden">
             {/* Mode + market toggles */}
-            <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#e5e2dd]">
-              <div className="flex items-center gap-0 border border-[#e5e2dd] rounded-lg overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#e0ddd9]">
+              <div className="flex items-center gap-0 border border-[#e0ddd9] rounded-lg overflow-hidden">
                 <button
                   type="button"
                   onClick={() => {
@@ -273,11 +268,11 @@ export default function NewGenerationPage() {
                   }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium transition-colors ${
                     inputMode === "url"
-                      ? "bg-[#f0ede8] text-[#1a1a1a]"
-                      : "text-[#9a9690] hover:bg-[#faf8f5] hover:text-[#1a1a1a]"
+                      ? "bg-[#f0ede8] text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  <Link2 className="h-3 w-3 text-[#00d4d4]" />
+                  
                   Job URL
                 </button>
                 <button
@@ -288,16 +283,16 @@ export default function NewGenerationPage() {
                   }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium transition-colors ${
                     inputMode === "text"
-                      ? "bg-[#f0ede8] text-[#1a1a1a]"
-                      : "text-[#9a9690] hover:bg-[#faf8f5] hover:text-[#1a1a1a]"
+                      ? "bg-[#f0ede8] text-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  <FileText className="h-3 w-3 text-[#b84ed1]" />
+                  
                   Paste text
                 </button>
               </div>
 
-              <div className="flex items-center gap-0 border border-[#e5e2dd] rounded-lg overflow-hidden">
+              <div className="flex items-center gap-0 border border-[#e0ddd9] rounded-lg overflow-hidden">
                 {(["us", "uk"] as Market[]).map((m) => (
                   <button
                     key={m}
@@ -305,8 +300,8 @@ export default function NewGenerationPage() {
                     onClick={() => setMarket(m)}
                     className={`px-3 py-1.5 text-[11px] font-medium uppercase tracking-wider transition-colors ${
                       market === m
-                        ? "bg-[#f0ede8] text-[#1a1a1a]"
-                        : "text-[#9a9690] hover:bg-[#faf8f5] hover:text-[#1a1a1a]"
+                        ? "bg-[#f0ede8] text-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     }`}
                   >
                     {m === "us" ? "US" : "UK"}
@@ -383,7 +378,7 @@ export default function NewGenerationPage() {
           </button>
 
           {!loading && (
-            <p className="text-center text-xs text-[#9a9690]">30–60 seconds · live progress</p>
+            <p className="text-center text-xs text-muted-foreground">30–60 seconds · live progress</p>
           )}
         </form>
           </>

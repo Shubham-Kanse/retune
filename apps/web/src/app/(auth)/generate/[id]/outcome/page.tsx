@@ -12,26 +12,11 @@ const OUTCOMES: Array<{ value: OutcomeKind; label: string; hint: string }> = [
   { value: "screen", label: "Screen", hint: "First-stage interview scheduled" },
   { value: "onsite", label: "Onsite", hint: "Final-round invitation" },
   { value: "offer", label: "Offer", hint: "Written offer received" },
-  {
-    value: "rejection_with_reason",
-    label: "Rejection with reason",
-    hint: "Rejected — feedback provided",
-  },
-  {
-    value: "rejection_without_reason",
-    label: "Rejection without reason",
-    hint: "Rejected — no feedback",
-  },
+  { value: "rejection_with_reason", label: "Rejection with reason", hint: "Rejected — feedback provided" },
+  { value: "rejection_without_reason", label: "Rejection without reason", hint: "Rejected — no feedback" },
 ];
 
-type OutcomeKind =
-  | "no_response"
-  | "callback"
-  | "screen"
-  | "onsite"
-  | "offer"
-  | "rejection_with_reason"
-  | "rejection_without_reason";
+type OutcomeKind = "no_response" | "callback" | "screen" | "onsite" | "offer" | "rejection_with_reason" | "rejection_without_reason";
 
 export default function OutcomePage() {
   const params = useParams<{ id: string }>();
@@ -51,10 +36,7 @@ export default function OutcomePage() {
       const res = await fetch(apiUrl(`/generate/${id}/outcome`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          outcome: picked,
-          feedback_text: feedback.trim() || undefined,
-        }),
+        body: JSON.stringify({ outcome: picked, feedback_text: feedback.trim() || undefined }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => null)) as { error?: string } | null;
@@ -70,22 +52,16 @@ export default function OutcomePage() {
 
   if (done) {
     return (
-      <div className="relative bg-grain min-h-[calc(100vh-56px)]">
-        <div className="mx-auto max-w-xl px-6 py-24 text-center">
-          <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600 dark:text-emerald-400" />
-          <h1 className="mt-6 text-2xl font-semibold tracking-tight">Outcome logged.</h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Your feedback updates how we'll think about your next application — honesty
-            calibrations, voice centroid, and the OutcomePredictor's empirical conformal residuals.
-          </p>
-          <div className="mt-8 flex justify-center gap-2">
-            <Link href="/dashboard" className="rt-btn-ghost">
-              <ArrowLeft className="h-4 w-4" />
-              Dashboard
-            </Link>
-            <Link href="/generate/new" className="rt-btn">
-              New application
-            </Link>
+      <div className="min-h-screen flex items-center justify-center px-6">
+        <div className="text-center">
+          <div className="w-16 h-16 rounded-full bg-brand-light flex items-center justify-center mx-auto mb-4">
+            <CheckCircle2 className="h-8 w-8 text-brand" />
+          </div>
+          <h1 className="font-serif text-2xl text-foreground mb-2">Outcome logged.</h1>
+          <p className="text-sm text-muted-foreground mb-8 max-w-sm mx-auto">Your feedback updates how we'll think about your next application.</p>
+          <div className="flex justify-center gap-3">
+            <Link href="/dashboard" className="rt-btn-ghost inline-flex items-center gap-2"><ArrowLeft className="h-4 w-4" />Dashboard</Link>
+            <Link href="/generate/new" className="rt-btn">New application</Link>
           </div>
         </div>
       </div>
@@ -93,29 +69,20 @@ export default function OutcomePage() {
   }
 
   return (
-    <div className="relative bg-grain min-h-[calc(100vh-56px)]">
-      <div className="mx-auto max-w-2xl px-6 py-12">
-        <Link
-          href={`/generate/${id}/result`}
-          className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to result
+    <div className="min-h-screen flex items-start justify-center pt-16 px-6">
+      <div className="w-full max-w-xl">
+        <Link href={`/generate/${id}/result`} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-6">
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to result
         </Link>
 
-        <p className="mt-6 rt-label">Log outcome</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight">
-          What happened with this application?
-        </h1>
-        <p className="mt-3 max-w-prose text-sm text-muted-foreground">
-          Your feedback trains the OutcomePredictor against your real outcomes. Once you've logged ≥
-          100 outcomes the cold-start Wilson interval gives way to empirical conformal residuals.
-        </p>
+        <p className="rt-label mb-1">Log outcome</p>
+        <h1 className="font-serif text-3xl font-normal text-foreground mb-2 leading-tight">What happened?</h1>
+        <p className="text-sm text-muted-foreground mb-8 max-w-prose">Your feedback trains the outcome predictor against your real results.</p>
 
-        <form onSubmit={handleSubmit} className="mt-10 space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <fieldset>
-            <legend className="rt-label">Outcome</legend>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <legend className="rt-label mb-3">Outcome</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
               {OUTCOMES.map((o) => {
                 const active = picked === o.value;
                 return (
@@ -123,21 +90,10 @@ export default function OutcomePage() {
                     key={o.value}
                     type="button"
                     onClick={() => setPicked(o.value)}
-                    className={
-                      "text-left p-4 border transition-colors " +
-                      (active
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border hover:border-foreground/50 bg-card")
-                    }
+                    className={`text-left p-4 rounded-3xl border backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] transition-colors ${active ? "border-brand bg-brand-light" : "border-[#e0ddd9] bg-white/90 hover:border-brand"}`}
                   >
-                    <div className="text-sm font-medium">{o.label}</div>
-                    <div
-                      className={
-                        "mt-1 text-xs " + (active ? "text-background/80" : "text-muted-foreground")
-                      }
-                    >
-                      {o.hint}
-                    </div>
+                    <div className="text-sm font-medium text-foreground">{o.label}</div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{o.hint}</div>
                   </button>
                 );
               })}
@@ -145,25 +101,20 @@ export default function OutcomePage() {
           </fieldset>
 
           <div>
-            <label htmlFor="feedback" className="rt-label inline-flex items-center gap-2">
-              <MessageSquare className="h-3.5 w-3.5" />
-              Recruiter feedback / notes (optional)
+            <label htmlFor="feedback" className="rt-label inline-flex items-center gap-2 mb-2">
+              <MessageSquare className="h-3.5 w-3.5" /> Recruiter feedback (optional)
             </label>
             <textarea
               id="feedback"
               value={feedback}
               onChange={(e) => setFeedback(e.target.value)}
-              rows={6}
-              className="rt-textarea mt-2"
-              placeholder="Paste any feedback the recruiter shared, or note what you'd do differently next time."
+              rows={5}
+              className="rt-textarea w-full"
+              placeholder="Paste any feedback the recruiter shared…"
             />
           </div>
 
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
+          {error && <p role="alert" className="text-sm text-[#dc2626]">{error}</p>}
 
           <button type="submit" disabled={!picked || submitting} className="rt-btn w-full">
             {submitting ? "Logging…" : "Log outcome"}

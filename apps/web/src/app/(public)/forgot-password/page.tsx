@@ -43,8 +43,8 @@ export default function ForgotPasswordPage() {
   return (
     <PageEnter>
       <div className="min-h-screen flex items-center justify-center px-5">
-        <main id="main-content" className="w-full max-w-sm">
-          <div className="py-10 px-8">
+        <main id="main-content" className="w-full max-w-md">
+          <div className="rounded-3xl border border-border bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
             {/* Logo */}
             <FadeIn delay={0}>
               <Link href="/" className="inline-block mb-8">

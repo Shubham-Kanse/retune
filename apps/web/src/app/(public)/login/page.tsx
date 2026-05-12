@@ -1,5 +1,7 @@
 "use client";
+
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -42,81 +44,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#faf8f5]">
-      {/* Left panel */}
-      <div className="hidden lg:flex flex-1 flex-col justify-between p-16 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[#2d8a5e] rounded-r-[3rem]" />
-        <Link href="/" className="flex items-center gap-2.5 relative z-10 text-white">
-          <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-            <rect x="3" y="15" width="2" height="2" fill="currentColor" />
-            <rect x="3" y="13" width="2" height="2" fill="currentColor" />
-            <rect x="3" y="11" width="2" height="2" fill="currentColor" />
-            <rect x="3" y="9" width="2" height="2" fill="currentColor" />
-            <rect x="3" y="7" width="2" height="2" fill="currentColor" />
-            <rect x="3" y="5" width="2" height="2" fill="currentColor" />
-            <rect x="5" y="3" width="2" height="2" fill="currentColor" />
-            <rect x="7" y="3" width="2" height="2" fill="currentColor" />
-            <rect x="9" y="3" width="2" height="2" fill="currentColor" />
-            <rect x="11" y="5" width="2" height="2" fill="currentColor" />
-            <rect x="11" y="7" width="2" height="2" fill="currentColor" />
-            <rect x="11" y="15" width="2" height="2" fill="currentColor" />
-            <rect x="9" y="13" width="2" height="2" fill="currentColor" />
-            <rect x="13" y="13" width="2" height="2" fill="currentColor" />
-            <rect x="7" y="11" width="2" height="2" fill="currentColor" />
-            <rect x="15" y="11" width="2" height="2" fill="currentColor" />
-          </svg>
-          <span className="text-sm font-semibold">Retuned</span>
-        </Link>
-        <div className="relative z-10 max-w-md">
-          <h1 className="font-serif text-5xl font-normal text-white leading-[1.1] mb-6">
-            Welcome
-            <br />
-            <span className="text-white/50">back.</span>
-          </h1>
-          <p className="text-white/60 text-sm leading-relaxed">
-            Every decision the system makes is preserved. You can audit every specialist, every
-            claim, every reason — all the way back.
-          </p>
-        </div>
-        <div className="text-xs text-white/30 relative z-10">Retuned © 2026</div>
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      <div className="pointer-events-none fixed -right-32 md:-right-48 top-20 md:top-28 w-[500px] h-[500px] md:w-[700px] md:h-[700px] animate-orb-rotate scale-125 opacity-80 z-0">
+        <Image src="/images/orb.png" alt="" width={700} height={700} className="w-full h-full" priority unoptimized />
       </div>
 
-      {/* Right panel */}
-      <div className="flex-1 lg:max-w-[480px] flex flex-col items-center justify-center px-8 py-12">
-        <div className="w-full max-w-sm">
-          <Link href="/" className="flex items-center gap-2 mb-10 lg:hidden text-[#2d8a5e]">
-            <svg width="18" height="18" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <rect x="3" y="15" width="2" height="2" fill="currentColor" />
-              <rect x="3" y="13" width="2" height="2" fill="currentColor" />
-              <rect x="3" y="11" width="2" height="2" fill="currentColor" />
-              <rect x="3" y="9" width="2" height="2" fill="currentColor" />
-              <rect x="3" y="7" width="2" height="2" fill="currentColor" />
-              <rect x="3" y="5" width="2" height="2" fill="currentColor" />
-              <rect x="5" y="3" width="2" height="2" fill="currentColor" />
-              <rect x="7" y="3" width="2" height="2" fill="currentColor" />
-              <rect x="9" y="3" width="2" height="2" fill="currentColor" />
-              <rect x="11" y="5" width="2" height="2" fill="currentColor" />
-              <rect x="11" y="7" width="2" height="2" fill="currentColor" />
-              <rect x="11" y="15" width="2" height="2" fill="currentColor" />
-              <rect x="9" y="13" width="2" height="2" fill="currentColor" />
-              <rect x="13" y="13" width="2" height="2" fill="currentColor" />
-              <rect x="7" y="11" width="2" height="2" fill="currentColor" />
-              <rect x="15" y="11" width="2" height="2" fill="currentColor" />
-            </svg>
-            <span className="text-sm font-semibold text-[#1a1a1a]">Retuned</span>
+      <main className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-6 py-12">
+        <div className="w-full max-w-md rounded-3xl border border-border bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+          <Link href="/" className="inline-flex items-center font-serif text-lg font-semibold tracking-tight text-foreground mb-8">
+            Retuned
           </Link>
 
-          <h2 className="text-2xl font-semibold text-[#1a1a1a] mb-2">Sign in</h2>
-          <p className="text-sm text-[#6b6b6b] mb-8">
-            New here?{" "}
-            <Link href="/signup" className="text-[#2d8a5e] font-medium hover:underline">
-              Create an account
-            </Link>
+          <h1 className="font-serif text-4xl font-normal leading-tight text-foreground mb-2">Welcome back.</h1>
+          <p className="text-sm text-muted-foreground mb-8">
+            Sign in to continue your application workflow.
           </p>
 
           <a
             href="/api/auth/google"
-            className="flex items-center justify-center gap-3 w-full py-2.5 px-4 mb-6 rounded-lg border border-[#e5e2dd] bg-white hover:bg-[#f5f3f0] transition-colors text-sm font-medium text-[#1a1a1a]"
+            className="flex items-center justify-center gap-3 w-full py-2.5 px-4 mb-6 rounded-lg border border-border bg-white hover:bg-muted transition-colors text-sm font-medium text-foreground"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
               <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z"/>
@@ -128,14 +74,14 @@ export default function LoginPage() {
           </a>
 
           <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-[#e5e2dd]" />
-            <span className="text-xs text-[#999]">or</span>
-            <div className="flex-1 h-px bg-[#e5e2dd]" />
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <div className="flex-1 h-px bg-border" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
-              <label htmlFor="email" className="block text-xs font-medium text-[#6b6b6b] mb-2">
+              <label htmlFor="email" className="block text-xs font-medium text-muted-foreground mb-2">
                 Email
               </label>
               <input
@@ -151,7 +97,7 @@ export default function LoginPage() {
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-xs font-medium text-[#6b6b6b] mb-2">
+              <label htmlFor="password" className="block text-xs font-medium text-muted-foreground mb-2">
                 Password
               </label>
               <div className="relative">
@@ -168,16 +114,19 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999] hover:text-[#6b6b6b] transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-muted-foreground">
+                New here? <Link href="/signup" className="text-foreground hover:underline">Create an account</Link>
+              </p>
               <Link
                 href="/forgot-password"
-                className="text-xs text-[#6b6b6b] hover:text-[#1a1a1a] transition-colors"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
                 Forgot password?
               </Link>
@@ -201,7 +150,7 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

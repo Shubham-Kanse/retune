@@ -90,3 +90,39 @@ This repository contains both:
 - legacy/compatibility surfaces in parts of `apps/web` APIs and UI flows.
 
 The exhaustive map documents where those boundaries exist and which path is authoritative for generation execution.
+
+## Understand Anything Setup
+
+Understand Anything is installed and wired for this repo.
+
+- Verify setup:
+
+```bash
+pnpm understand:check
+```
+
+- Start the dashboard (expects `.understand-anything/knowledge-graph.json`):
+
+```bash
+pnpm understand:dashboard
+```
+
+- Generate/refresh graph from local command (no slash command needed):
+
+```bash
+pnpm understand:analyze
+```
+
+- Generate/refresh graph from Codex skills:
+
+```text
+/understand
+/understand --full
+/understand-dashboard
+```
+
+Generated files live under `.understand-anything/`:
+- `knowledge-graph.json`
+- `meta.json`
+- `fingerprints.json`
+- `.understandignore`

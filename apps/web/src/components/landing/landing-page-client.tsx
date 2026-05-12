@@ -175,7 +175,7 @@ function MagneticCta({
     <Link
       ref={ref}
       href={href}
-      className={cn("rt-btn transition-transform duration-150", className)}
+      className={cn("rt-btn-dark transition-transform duration-150", className)}
       onMouseMove={handleMove}
       onMouseLeave={handleLeave}
     >
@@ -318,7 +318,7 @@ function HowItWorksDemo() {
             </div>
             {/* Generate button */}
             <div
-              className="rt-btn w-full justify-center text-xs pointer-events-none select-none transition-all duration-150"
+              className="rt-btn-dark w-full justify-center text-xs pointer-events-none select-none transition-all duration-150"
               style={{
                 opacity: phase < 1 ? 0.4 : 1,
                 transform: btnFlash ? "scale(0.97)" : "scale(1)",
@@ -396,10 +396,10 @@ function HowItWorksDemo() {
                   <output.icon className="h-4 w-4 text-muted-foreground" />
                   {shown && (
                     <span
-                      className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center bg-brand rounded-full"
+                      className="absolute -top-1 -right-1 flex h-3 w-3 items-center justify-center bg-[#b84ed1] rounded-full"
                       style={{ animation: "animate-in zoom-in-50 duration-200" }}
                     >
-                      <Check className="h-2 w-2 text-brand-foreground" />
+                      <Check className="h-2 w-2 text-white" />
                     </span>
                   )}
                 </div>
@@ -516,7 +516,7 @@ function AnimatedPipeline() {
       <p className="mb-3 text-xs font-medium text-muted-foreground flex items-center gap-1.5">
         <span>Pipeline running</span>
         <span
-          className="inline-block w-1.5 h-3 bg-brand/80"
+          className="inline-block w-1.5 h-3 bg-[#b84ed1]/80"
           style={{ opacity: blink ? 1 : 0, transition: "opacity 0.1s" }}
         />
       </p>
@@ -540,7 +540,7 @@ function AnimatedPipeline() {
               <div
                 className="flex items-start gap-3 py-2.5 pl-3 pr-2 transition-all duration-300"
                 style={{
-                  borderLeft: isActive ? "2px solid var(--brand)" : "2px solid transparent",
+                  borderLeft: isActive ? "2px solid #b84ed1" : "2px solid transparent",
                 }}
               >
                 <span className="text-[10px] text-muted-foreground font-mono w-5 shrink-0 mt-0.5">
@@ -550,7 +550,7 @@ function AnimatedPipeline() {
                   className="flex h-4 w-4 items-center justify-center text-[9px] shrink-0 mt-0.5 transition-colors duration-300"
                   style={{
                     background: isDone
-                      ? "var(--brand)"
+                      ? "#b84ed1"
                       : isActive
                         ? "var(--foreground)"
                         : "transparent",
@@ -577,7 +577,7 @@ function AnimatedPipeline() {
                     {[0, 1, 2].map((d) => (
                       <span
                         key={d}
-                        className="w-1 h-1 rounded-full bg-brand/60"
+                      className="w-1 h-1 rounded-full bg-[#b84ed1]/60"
                         style={{ animation: `dotPulse 1s ease-in-out ${d * 0.2}s infinite` }}
                       />
                     ))}
@@ -702,16 +702,16 @@ export default function LandingPageClient({
                   >
                     Sign in
                   </Link>
-                  <Link href="/signup" className="rt-btn text-sm">
-                    Get started
+                  <Link href="/signup" className="rt-btn-dark text-sm">
+                    Join
                   </Link>
                 </>
               )}
             </div>
             <div className="flex items-center gap-2 md:hidden">
               {!session && (
-                <Link href="/signup" className="rt-btn text-xs min-h-8 px-3">
-                  Get started
+                <Link href="/signup" className="rt-btn-dark text-xs min-h-8 px-3">
+                  Join
                 </Link>
               )}
               <button
@@ -854,7 +854,7 @@ export default function LandingPageClient({
                   </MagneticCta>
                 ) : (
                   <MagneticCta href="/signup">
-                    Start for free <ArrowRight className="h-4 w-4" />
+                    Join <ArrowRight className="h-4 w-4" />
                   </MagneticCta>
                 )}
                 <p className="text-xs text-muted-foreground">
@@ -881,7 +881,7 @@ export default function LandingPageClient({
                   </p>
                   <p className="mt-0.5 text-sm font-medium">Senior Engineer · Vercel</p>
                 </div>
-                <span className="text-xs font-semibold text-brand">ATS 91%</span>
+                <span className="text-xs font-semibold text-[#7e22ce]">ATS 91%</span>
               </div>
               <div className="p-5">
                 <AnimatedPipeline />
@@ -1081,16 +1081,16 @@ export default function LandingPageClient({
                 <Reveal key={col.title} delay={i * 100}>
                   <div
                     className="bg-background p-8 h-full"
-                    style={{ borderTop: "2px solid var(--brand)" }}
+                    style={{ borderTop: "2px solid #b84ed1" }}
                   >
                     <div className="flex items-center gap-2.5 mb-6">
-                      <col.icon className="h-4 w-4 text-brand shrink-0" />
+                      <col.icon className="h-4 w-4 text-[#7e22ce] shrink-0" />
                       <h3 className="text-base font-medium">{col.title}</h3>
                     </div>
                     <ul className="space-y-3">
                       {col.items.map((item) => (
                         <li key={item} className="flex items-start gap-2.5">
-                          <Check className="h-3.5 w-3.5 shrink-0 mt-0.5 text-brand" />
+                          <Check className="h-3.5 w-3.5 shrink-0 mt-0.5 text-[#7e22ce]" />
                           <span className="text-sm text-muted-foreground leading-relaxed">
                             {item}
                           </span>
@@ -1161,7 +1161,7 @@ export default function LandingPageClient({
                           key={item}
                           className="flex items-center gap-2 text-[11px] text-muted-foreground"
                         >
-                          <Check className="h-3 w-3 text-brand shrink-0" />
+                          <Check className="h-3 w-3 text-[#7e22ce] shrink-0" />
                           {item}
                         </div>
                       ),
@@ -1196,7 +1196,7 @@ export default function LandingPageClient({
                     "Application strategy",
                     "ATS scoring report",
                   ],
-                  cta: "Get started free",
+                  cta: "Join",
                   href: "/signup",
                   popular: false,
                 },
@@ -1225,7 +1225,7 @@ export default function LandingPageClient({
                           <h3 className="text-base font-medium">{plan.name}</h3>
                           {plan.popular && (
                             <span
-                              className="bg-brand text-brand-foreground text-[10px] uppercase tracking-wider px-1.5 py-0.5 font-medium"
+                              className="bg-[#e9d5ff] text-[#7e22ce] text-[10px] uppercase tracking-wider px-1.5 py-0.5 font-medium"
                               style={{ animation: "pulseBadge 2.5s ease-in-out infinite" }}
                             >
                               Most popular
@@ -1244,7 +1244,7 @@ export default function LandingPageClient({
                     <ul className="space-y-2.5 mb-8 flex-1">
                       {plan.features.map((f) => (
                         <li key={f} className="flex items-start gap-2.5">
-                          <Check className="h-3.5 w-3.5 shrink-0 mt-0.5 text-brand" />
+                          <Check className="h-3.5 w-3.5 shrink-0 mt-0.5 text-[#7e22ce]" />
                           <span className="text-sm text-muted-foreground">{f}</span>
                         </li>
                       ))}
@@ -1303,7 +1303,7 @@ export default function LandingPageClient({
                     href="/signup"
                     className="inline-flex min-h-10 items-center justify-center gap-1.5 bg-background text-foreground text-sm font-medium px-6 py-2 hover:bg-background/90 active:opacity-80 transition-colors"
                   >
-                    Get started free <ArrowRight className="h-4 w-4" />
+                    Join <ArrowRight className="h-4 w-4" />
                   </Link>
                 )}
               </div>
@@ -1367,7 +1367,7 @@ export default function LandingPageClient({
                         href="/signup"
                         className="text-sm text-muted-foreground hover:text-foreground transition-colors block"
                       >
-                        Get started
+                        Join
                       </Link>
                     </>
                   )}
@@ -1384,7 +1384,7 @@ export default function LandingPageClient({
               </p>
               <div className="flex items-center gap-3">
                 <div
-                  className="w-2 h-2 rounded-full bg-brand"
+                  className="w-2 h-2 rounded-full bg-[#b84ed1]"
                   style={{ animation: "dotPulse 2s ease-in-out infinite" }}
                 />
                 <span className="text-sm text-muted-foreground">All systems operational</span>

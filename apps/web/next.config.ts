@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   transpilePackages: ["@retune/db", "@retune/auth", "@retune/agent", "@retune/billing"],
   // Keep worker/workflow Temporal packages out of web runtime boundary.
-  serverExternalPackages: ["bcrypt", "bcryptjs", "postgres", "@electric-sql/pglite"],
+  serverExternalPackages: ["bcrypt", "bcryptjs", "postgres", "@electric-sql/pglite", "pdf-parse", "pdfjs-dist"],
   outputFileTracingIncludes: {
     "/api/generate/[id]/stream": ["../../packages/agent/assets/**"],
   },

@@ -104,9 +104,9 @@ function VerifyEmailContent() {
       tabIndex={-1}
       className="min-h-screen flex items-center justify-center bg-background px-6"
     >
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md rounded-3xl border border-border bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
         <div className="text-center">
-          <h1 className="text-3xl font-bold mb-2">
+          <h1 className="text-3xl font-normal mb-2">
             {status === "success"
               ? "Email Verified"
               : status === "already_verified"
@@ -117,7 +117,7 @@ function VerifyEmailContent() {
           {status === "loading" && (
             <div className="mt-8" aria-live="polite" aria-label="Verifying email">
               <div className="inline-block">
-                <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin" />
               </div>
               <p className="mt-4 text-muted-foreground">Verifying your email...</p>
             </div>
@@ -238,7 +238,7 @@ export default function VerifyEmailPage() {
           className="min-h-screen flex items-center justify-center bg-background"
         >
           <div className="text-center">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-muted-foreground">Loading...</p>
           </div>
         </main>

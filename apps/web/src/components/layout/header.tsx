@@ -60,7 +60,7 @@ export default function Header() {
             <RetunedLogoMark size={20} />
             <span
               className="text-[0.9375rem] font-bold text-[#1a1a1a] tracking-tight"
-              style={{ letterSpacing: "-0.02em", fontFamily: "'Lora', Georgia, serif" }}
+              style={{ letterSpacing: "-0.02em" }}
             >
               retune
             </span>

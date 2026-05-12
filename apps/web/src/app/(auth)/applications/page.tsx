@@ -39,7 +39,7 @@ function statusStyle(verdict: string | null): string {
   switch (verdict) {
     case "ship":
     case "completed":
-      return "text-[#16a34a] bg-[#d4f5e0] border border-[#bbf7d0]";
+      return "text-brand bg-brand/10 border border-brand/20";
     case "refuse":
     case "refused":
       return "text-[#dc2626] bg-[#fef2f2] border border-[#fecaca]";
@@ -47,7 +47,7 @@ function statusStyle(verdict: string | null): string {
     case "pending":
       return "text-[#d97706] bg-[#fef9c3] border border-[#fde68a]";
     default:
-      return "text-[#6b6b6b] bg-[#f0ede8] border border-[#e5e2dd]";
+      return "text-muted-foreground bg-muted border border-[#e0ddd9]";
   }
 }
 
@@ -107,25 +107,19 @@ export default function ApplicationsPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-start justify-center pt-16 px-6">
-      <div className="w-full max-w-xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#f0ede8] flex items-center justify-center">
-              <FileText className="w-4 h-4 text-[#00d4d4]" />
-            </div>
-            <div>
-              <p className="rt-label">History</p>
-              <h1 className="font-serif text-2xl font-normal text-[#1a1a1a] leading-tight">
-                Applications
-              </h1>
-            </div>
-          </div>
-          <Link href="/dashboard" className="text-[#9a9690] hover:text-[#1a1a1a] transition-colors">
-            <X className="w-4 h-4" />
-          </Link>
+    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
+      {/* Header */}
+      <div className="flex items-end justify-between mb-12">
+        <div>
+          <p className="rt-label mb-3">History</p>
+          <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
+            Applications
+          </h1>
         </div>
+        <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors mb-2">
+          <X className="w-4 h-4" />
+        </Link>
+      </div>
 
         {/* Loading state */}
         {isLoading && (
@@ -134,14 +128,14 @@ export default function ApplicationsPage() {
               // biome-ignore lint/suspicious/noArrayIndexKey: skeleton
               <div
                 key={i}
-                className="flex items-center gap-4 p-4 bg-white border border-[#e5e2dd] rounded-xl"
+                className="flex items-center gap-4 p-4 rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]"
               >
-                <div className="h-3 w-20 bg-[#f0ede8] rounded-full animate-pulse" />
+                <div className="h-3 w-20 bg-muted rounded-full animate-pulse" />
                 <div className="flex-1 space-y-2">
-                  <div className="h-4 w-48 bg-[#f0ede8] rounded-full animate-pulse" />
-                  <div className="h-3 w-32 bg-[#f0ede8] rounded-full animate-pulse" />
+                  <div className="h-4 w-48 bg-muted rounded-full animate-pulse" />
+                  <div className="h-3 w-32 bg-muted rounded-full animate-pulse" />
                 </div>
-                <div className="h-6 w-16 bg-[#f0ede8] rounded-full animate-pulse" />
+                <div className="h-6 w-16 bg-muted rounded-full animate-pulse" />
               </div>
             ))}
           </div>
@@ -149,7 +143,7 @@ export default function ApplicationsPage() {
 
         {/* Error */}
         {!isLoading && error && (
-          <div className="p-6 text-sm rounded-2xl bg-[#fef2f2] border border-[#fecaca] text-[#dc2626]">
+          <div className="p-6 text-sm rounded-3xl border border-[#fecaca] bg-[#fef2f2]/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] text-[#dc2626]">
             Couldn&apos;t load applications.{" "}
             <Link href="/generate/new" className="underline text-[#1a1a1a]">
               Start a new one
@@ -161,11 +155,11 @@ export default function ApplicationsPage() {
         {/* Empty state */}
         {!isLoading && !error && items.length === 0 && (
           <div className="text-center py-16">
-            <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-[#f0ede8] flex items-center justify-center">
-              <FileText className="w-5 h-5 text-[#6b6b6b]" />
+            <div className="w-12 h-12 mx-auto mb-4 rounded-xl bg-muted flex items-center justify-center">
+              <FileText className="w-5 h-5 text-muted-foreground" />
             </div>
-            <p className="font-serif text-xl text-[#1a1a1a] mb-2">No applications yet</p>
-            <p className="text-sm text-[#6b6b6b] mb-6">
+            <p className="font-serif text-xl text-foreground mb-2">No applications yet</p>
+            <p className="text-sm text-muted-foreground mb-6">
               Generate your first application package to see it here.
             </p>
             <Link href="/generate/new" className="rt-btn text-sm">
@@ -199,16 +193,16 @@ export default function ApplicationsPage() {
                   }}
                 >
                   <div style={{ overflow: "hidden" }}>
-                    <div className="group flex items-center gap-4 p-5 bg-white border border-[#e5e2dd] rounded-xl hover:shadow-md hover:border-[#d5d2cd] mb-3">
+                    <div className="group flex items-center gap-4 p-5 rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] hover:shadow-lg hover:border-foreground/15 mb-3">
                       <Link href={href} className="flex items-center gap-4 flex-1 min-w-0">
-                        <span className="text-xs text-[#6b6b6b] shrink-0 w-20">
+                        <span className="text-xs text-muted-foreground shrink-0 w-20">
                           {formatDate(item.createdAt)}
                         </span>
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate text-[#1a1a1a]">
+                          <p className="font-medium text-sm truncate text-foreground">
                             {item.role || "Untitled role"}
                           </p>
-                          <p className="text-xs text-[#6b6b6b] truncate">
+                          <p className="text-xs text-muted-foreground truncate">
                             {item.company || "Unknown company"}
                           </p>
                         </div>
@@ -217,7 +211,7 @@ export default function ApplicationsPage() {
                         >
                           {statusLabel(item.verdict)}
                         </span>
-                        <span className="text-sm font-medium tabular-nums shrink-0 w-14 text-right text-[#1a1a1a]">
+                        <span className="text-sm font-medium tabular-nums shrink-0 w-14 text-right text-foreground">
                           {item.interviewReadyScore != null
                             ? `${Math.round(item.interviewReadyScore)}/100`
                             : "—"}
@@ -241,7 +235,7 @@ export default function ApplicationsPage() {
                         }}
                         disabled={isDeleting}
                         className={`shrink-0 opacity-0 group-hover:opacity-100 transition-all disabled:cursor-not-allowed ${
-                          isPendingDelete ? "text-[#dc2626] opacity-100" : "text-[#9a9690]"
+                          isPendingDelete ? "text-[#dc2626] opacity-100" : "text-muted-foreground"
                         }`}
                         aria-label={isPendingDelete ? "Confirm delete" : "Delete application"}
                       >
@@ -254,7 +248,6 @@ export default function ApplicationsPage() {
             })}
           </div>
         )}
-      </div>
     </div>
   );
 }

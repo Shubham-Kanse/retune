@@ -62,7 +62,7 @@ export interface CandidateProfile {
   visaStatus?: string;
   relocationPreferences?: string[];
   targetRoles: string[];
-  experienceLevel: "entry" | "mid" | "senior";
+  experienceLevel: "entry" | "early" | "mid" | "senior" | "staff";
   currentTitle?: string;
   experience: ExperienceEntry[];
   education: EducationEntry[];

@@ -4,37 +4,38 @@ vi.mock("@/lib/session", () => ({
   getSession: vi.fn(),
 }));
 
-const persistProfileAssemblyMock = vi.fn();
-const findMissingCoreFieldsMock = vi.fn(() => []);
-vi.mock("@/lib/profile-assembly", () => ({
-  persistProfileAssembly: persistProfileAssemblyMock,
-  findMissingCoreFields: findMissingCoreFieldsMock,
-}));
-
-const createResponseMock = vi.fn();
-vi.mock("openai", () => ({
-  default: vi.fn().mockImplementation(() => ({
-    responses: {
-      create: createResponseMock,
-    },
-  })),
-}));
-
-const dbMock = {
-  select: vi.fn(),
-  insert: vi.fn(),
-  update: vi.fn(),
-};
-
-vi.mock("@retune/db", () => ({
-  db: dbMock,
-  onboardingConversations: {},
-}));
+const importResumeAndPersistMock = vi.fn();
+vi.mock("@/lib/profile-domain", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/profile-domain")>();
+  return {
+    ...actual,
+    importResumeAndPersist: importResumeAndPersistMock,
+  };
+});
 
 describe("POST /api/onboarding/upload", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+    importResumeAndPersistMock.mockImplementation(async ({ file }) => {
+      const name = (file as File).name.toLowerCase();
+      if (!name.endsWith(".pdf") && !name.endsWith(".docx")) {
+        const { ResumeFileValidationError } = await import("@/lib/profile-domain");
+        throw new ResumeFileValidationError("Only PDF and DOCX files are supported.", 400);
+      }
+      const bytes = new Uint8Array(await (file as File).arrayBuffer());
+      const isPdf = bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+      if (name.endsWith(".pdf") && !isPdf) {
+        const { ResumeFileValidationError } = await import("@/lib/profile-domain");
+        throw new ResumeFileValidationError("File does not appear to be a valid PDF.", 400);
+      }
+      return {
+        extracted: { fullName: "Jane Doe", email: "jane@example.com", targetRoles: [] },
+        missingQuestions: [],
+        completenessScore: 80,
+        ingestionId: "ing-1",
+      };
+    });
   });
 
   it("returns 401 when unauthenticated", async () => {
@@ -105,7 +106,7 @@ describe("POST /api/onboarding/upload", () => {
     expect(res.status).toBe(400);
   });
 
-  it("persists extracted profile through ProfileAssemblyModule", async () => {
+  it("imports and persists extracted profile through profile-domain orchestrator", async () => {
     const { getSession } = await import("@/lib/session");
     vi.mocked(getSession).mockResolvedValue({
       userId: "u1",
@@ -113,24 +114,18 @@ describe("POST /api/onboarding/upload", () => {
       fullName: "User One",
     });
 
-    const selectLimitMock = vi.fn().mockResolvedValue([]);
-    const selectWhereMock = vi.fn().mockReturnValue({ limit: selectLimitMock });
-    const selectFromMock = vi.fn().mockReturnValue({ where: selectWhereMock });
-    dbMock.select.mockReturnValue({ from: selectFromMock });
-
-    const returningMock = vi.fn().mockResolvedValue([{ id: "c1" }]);
-    const valuesMock = vi.fn().mockReturnValue({ returning: returningMock });
-    dbMock.insert.mockReturnValue({ values: valuesMock });
-
-    createResponseMock.mockResolvedValue({
-      output_text: JSON.stringify({
+    importResumeAndPersistMock.mockResolvedValue({
+      extracted: {
         fullName: "Jane Doe",
         email: "jane@example.com",
         location: "Galway",
         currentTitle: "Software Engineer",
         experienceLevel: "mid",
         targetRoles: ["Backend Engineer"],
-      }),
+      },
+      missingQuestions: [],
+      completenessScore: 80,
+      ingestionId: "ing-1",
     });
 
     const { POST } = await import("@/app/api/onboarding/upload/route");
@@ -146,11 +141,14 @@ describe("POST /api/onboarding/upload", () => {
     const res = await POST(req);
 
     expect(res.status).toBe(200);
-    expect(persistProfileAssemblyMock).toHaveBeenCalledTimes(1);
-    expect(persistProfileAssemblyMock).toHaveBeenCalledWith(
+    expect(importResumeAndPersistMock).toHaveBeenCalledTimes(1);
+    expect(importResumeAndPersistMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        userId: "u1",
-        sessionEmail: "u@example.com",
+        source: "onboarding_upload",
+        session: expect.objectContaining({
+          userId: "u1",
+          email: "u@example.com",
+        }),
         markOnboardingCompleted: false,
       }),
     );
