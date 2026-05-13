@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "@/styles/globals.css";
 
 import { NavGuardProvider } from "@/components/layout/nav-guard-provider";
-import { MagneticCursor } from "@/components/ui/magnetic-cursor";
+
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { logWebStartupDiagnostics, resolveAppUrl } from "@/lib/startup-diagnostics";
 import { EB_Garamond } from "next/font/google";
@@ -61,7 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Image src="/images/orb.png" alt="" fill className="object-contain" unoptimized />
           </div>
         </div>
-        <MagneticCursor />
+
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:ring-2 focus:ring-[#2d8a5e]"
@@ -70,7 +70,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </a>
         <ErrorBoundary>
           <NavGuardProvider>
-            <div className="relative z-10 mx-3 my-3 h-[calc(100vh-24px)] rounded-[2rem] border border-[#e0ddd9] bg-background shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">{children}</div>
+            <div className="relative z-10 mx-3 my-3 h-[calc(100vh-24px)] rounded-[2rem] border border-[#e0ddd9] bg-background shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_8px_rgba(0,0,0,0.04)] overflow-y-auto overflow-x-hidden">{children}</div>
           </NavGuardProvider>
           <Toaster
             position="bottom-right"

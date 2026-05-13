@@ -1,245 +1,106 @@
-/**
- * session-store.ts
- * Thin DB adapter for onboarding_sessions and onboarding_extraction_jobs.
- * All SQL lives here — domain modules stay pure.
- */
-
-import type { ProfileNormalized } from "@/lib/profile-domain/contracts";
 import { createClient } from "@/lib/supabase/server";
+import type { SessionState, UserCareerProfile, OnboardingMeta, StoredMessage, ProfileField } from "./types";
 
-// ─── Types (owned by this module) ─────────────────────────────────────────────
-
-export type OnboardingStage = "greeting" | "collecting" | "complete";
-
-export interface OnboardingState {
-  stage: OnboardingStage;
-  /** Index into the chat route's question queue (0 = greeting). */
-  queueIndex: number;
-  profileDelta: Partial<ProfileNormalized>;
-  hardMinimumMet: boolean;
-  extractionStatus: "none" | "pending" | "done" | "failed";
-  confirmedSections: string[];
+function emptyField<T>(v: T): ProfileField<T> {
+  return { value: v, source: "system", confidence: 0, confirmed: false, lastUpdatedAt: "" };
 }
 
-export interface StoredSession {
-  id: string;
-  userId: string;
-  state: OnboardingState;
-  messages: StoredMessage[];
-}
-
-export interface StoredMessage {
-  role: "user" | "assistant" | "system";
-  content: string;
-  chips?: string[];
-  card?: { section: "experience" | "skills" | "education"; data: unknown };
-  ts: string;
-}
-
-export interface ExtractionJob {
-  id: string;
-  sessionId: string;
-  userId: string;
-  status: "pending" | "processing" | "done" | "failed";
-  filename: string;
-  contentHash: string;
-  extractedJson: Partial<ProfileNormalized> | null;
-  errorCode: string | null;
-}
-
-// ─── Initial state ────────────────────────────────────────────────────────────
-
-export function initialOnboardingState(): OnboardingState {
+export function createEmptyProfile(userId: string): UserCareerProfile {
   return {
-    stage: "greeting",
-    queueIndex: 0,
-    profileDelta: {},
-    hardMinimumMet: false,
-    extractionStatus: "none",
-    confirmedSections: [],
+    id: "", userId,
+    identity: { fullName: emptyField(""), email: emptyField(""), phone: emptyField(""), location: emptyField(""), linkedin: emptyField(""), github: emptyField(""), portfolio: emptyField("") },
+    professionalProfile: { currentTitles: emptyField([]), professionalIdentities: emptyField([]), yearsOfExperience: emptyField(0), domainExperience: emptyField([]) },
+    experience: emptyField([]),
+    education: emptyField([]),
+    skills: { technical: emptyField([]), tools: emptyField([]), business: emptyField([]), methodologies: emptyField([]), softSkills: emptyField([]), domainSkills: emptyField([]) },
+    projects: emptyField([]),
+    certifications: emptyField([]),
+    careerIntent: { interestedRoles: emptyField([]), careerDirection: emptyField(""), preferredMarkets: emptyField([]), workPreference: emptyField(""), seniorityComfort: emptyField([]), industriesOfInterest: emptyField([]) },
+    resumeWritingPreferences: { emphasisAreas: emptyField([]), deEmphasisAreas: emptyField([]) },
   };
 }
 
-// ─── Session ──────────────────────────────────────────────────────────────────
-
-export async function resetSession(userId: string): Promise<void> {
-  const supabase = await createClient();
-  const init = initialOnboardingState();
-  await supabase
-    .from("onboarding_sessions")
-    .update({
-      stage: init.stage,
-      messages: [],
-      profile_delta: {},
-      extraction_status: null,
-      extraction_result: null,
-      hard_minimum_met: false,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("user_id", userId);
+export function createEmptyMeta(): OnboardingMeta {
+  return {
+    currentPhase: "orb_intro",
+    answeredQuestionKeys: [],
+    skippedQuestionKeys: [],
+    resumeUploaded: false,
+    resumeParsed: false,
+    resumeSummarized: false,
+    identityConfirmed: false,
+    experienceConfirmed: false,
+    educationConfirmed: false,
+    skillsConfirmed: false,
+    enhancementTurns: 0,
+    resetCount: 0,
+  };
 }
 
-export async function getOrCreateSession(userId: string): Promise<StoredSession> {
-  const supabase = await createClient();
+function parseProfile(raw: unknown, userId: string): UserCareerProfile {
+  if (!raw || typeof raw !== "object") return createEmptyProfile(userId);
+  const obj = raw as Record<string, unknown>;
+  // Check if it's the new format (has identity.fullName as ProfileField)
+  if (obj.identity && typeof obj.identity === "object" && (obj.identity as any).fullName?.value !== undefined) {
+    return obj as unknown as UserCareerProfile;
+  }
+  // Legacy format — return empty profile
+  return createEmptyProfile(userId);
+}
 
+function parseMeta(raw: unknown): OnboardingMeta {
+  if (!raw || typeof raw !== "object") return createEmptyMeta();
+  const obj = raw as Record<string, unknown>;
+  // Check if it's the new format (has currentPhase)
+  if (typeof obj.currentPhase === "string") return obj as unknown as OnboardingMeta;
+  // Legacy format (was just a string like "collecting") — return empty meta
+  return createEmptyMeta();
+}
+
+export async function getOrCreateSession(userId: string): Promise<SessionState> {
+  const supabase = await createClient();
   const { data: existing } = await supabase
     .from("onboarding_sessions")
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
 
-  if (existing) return rowToSession(existing);
+  if (existing) {
+    return {
+      id: existing.id,
+      userId: existing.user_id,
+      responseChainId: existing.response_chain_id ?? null,
+      profile: parseProfile(existing.profile_delta, userId),
+      meta: parseMeta(existing.onboarding_state),
+      messages: Array.isArray(existing.messages) ? existing.messages : [],
+      turnCount: existing.turn_count ?? 0,
+    };
+  }
 
-  const init = initialOnboardingState();
+  const emptyProfile = createEmptyProfile(userId);
+  const emptyMeta = createEmptyMeta();
+
   const { data: created, error } = await supabase
     .from("onboarding_sessions")
-    .insert({
-      user_id: userId,
-      stage: init.stage,
-      messages: [],
-      profile_delta: init.profileDelta,
-      extraction_status: null,
-      extraction_result: null,
-      hard_minimum_met: false,
-    })
+    .insert({ user_id: userId, profile_delta: emptyProfile, onboarding_state: emptyMeta })
     .select("*")
     .single();
 
-  if (error || !created) throw new Error(`Failed to create onboarding session: ${error?.message}`);
-  return rowToSession(created);
+  if (error || !created) throw new Error(`Failed to create session: ${error?.message}`);
+  return { id: created.id, userId, responseChainId: null, profile: emptyProfile, meta: emptyMeta, messages: [], turnCount: 0 };
 }
 
-export async function saveSession(
-  userId: string,
-  state: OnboardingState,
-  messages: StoredMessage[],
-): Promise<void> {
+export async function saveSession(userId: string, state: SessionState): Promise<void> {
   const supabase = await createClient();
   await supabase
     .from("onboarding_sessions")
     .update({
-      stage: state.stage,
-      messages,
-      profile_delta: state.profileDelta,
-      extraction_status: state.extractionStatus === "none" ? null : state.extractionStatus,
-      hard_minimum_met: state.hardMinimumMet,
+      response_chain_id: state.responseChainId,
+      profile_delta: state.profile,
+      onboarding_state: state.meta,
+      messages: state.messages,
+      turn_count: state.turnCount,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", userId);
-}
-
-// ─── Extraction jobs ──────────────────────────────────────────────────────────
-
-export async function findExtractionJobByHash(
-  userId: string,
-  contentHash: string,
-): Promise<ExtractionJob | null> {
-  const supabase = await createClient();
-  const { data } = await supabase
-    .from("onboarding_extraction_jobs")
-    .select("*")
-    .eq("user_id", userId)
-    .eq("content_hash", contentHash)
-    .eq("status", "done")
-    .maybeSingle();
-  return data ? rowToJob(data) : null;
-}
-
-export async function createExtractionJob(params: {
-  sessionId: string;
-  userId: string;
-  filename: string;
-  contentHash: string;
-}): Promise<string> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("onboarding_extraction_jobs")
-    .insert({
-      session_id: params.sessionId,
-      user_id: params.userId,
-      filename: params.filename,
-      content_hash: params.contentHash,
-      status: "pending",
-    })
-    .select("id")
-    .single();
-  if (error || !data) throw new Error(`Failed to create extraction job: ${error?.message}`);
-  return data.id as string;
-}
-
-export async function markExtractionDone(
-  jobId: string,
-  result: Partial<ProfileNormalized>,
-): Promise<void> {
-  const supabase = await createClient();
-  await supabase
-    .from("onboarding_extraction_jobs")
-    .update({
-      status: "done",
-      extracted_json: result,
-      completed_at: new Date().toISOString(),
-    })
-    .eq("id", jobId);
-}
-
-export async function markExtractionFailed(jobId: string, errorCode: string): Promise<void> {
-  const supabase = await createClient();
-  await supabase
-    .from("onboarding_extraction_jobs")
-    .update({ status: "failed", error_code: errorCode, completed_at: new Date().toISOString() })
-    .eq("id", jobId);
-}
-
-// ─── Row mappers ──────────────────────────────────────────────────────────────
-
-// Legacy `stage` values in the DB may be one of the verbose engine names;
-// collapse them to the three values we actually use here.
-function normaliseStage(raw: unknown): OnboardingStage {
-  if (raw === "complete") return "complete";
-  if (raw === "greeting") return "greeting";
-  return "collecting";
-}
-
-function deriveQueueIndex(profileDelta: Partial<ProfileNormalized>, messageCount: number): number {
-  // Fall back to counting assistant turns in case the column is missing for
-  // older rows; the chat route will re-normalise on save.
-  return messageCount > 0 ? messageCount : Object.keys(profileDelta).length > 0 ? 1 : 0;
-}
-
-// biome-ignore lint/suspicious/noExplicitAny: supabase row
-function rowToSession(row: any): StoredSession {
-  const profileDelta = (row.profile_delta as Partial<ProfileNormalized>) ?? {};
-  const messages: StoredMessage[] = (row.messages as StoredMessage[]) ?? [];
-  const assistantCount = messages.filter((m) => m.role === "assistant").length;
-  const state: OnboardingState = {
-    stage: normaliseStage(row.stage),
-    queueIndex:
-      typeof row.queue_index === "number"
-        ? row.queue_index
-        : deriveQueueIndex(profileDelta, assistantCount),
-    profileDelta,
-    hardMinimumMet: row.hard_minimum_met ?? false,
-    extractionStatus: row.extraction_status ?? "none",
-    confirmedSections: (row.confirmed_sections as string[]) ?? [],
-  };
-  return {
-    id: row.id as string,
-    userId: row.user_id as string,
-    state,
-    messages,
-  };
-}
-
-// biome-ignore lint/suspicious/noExplicitAny: supabase row
-function rowToJob(row: any): ExtractionJob {
-  return {
-    id: row.id as string,
-    sessionId: row.session_id as string,
-    userId: row.user_id as string,
-    status: row.status as ExtractionJob["status"],
-    filename: row.filename as string,
-    contentHash: row.content_hash as string,
-    extractedJson: row.extracted_json as Partial<ProfileNormalized> | null,
-    errorCode: row.error_code as string | null,
-  };
 }

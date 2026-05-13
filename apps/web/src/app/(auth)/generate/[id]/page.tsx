@@ -2,10 +2,11 @@
 
 import { ColorOrb } from "@/components/ui/color-orb";
 import { useGenerationStream } from "@/stores/generation-stream";
-import { CheckCircle2, X } from "lucide-react";
+import { CheckCircle2, Circle, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 
 const SPECIALIST_TO_PHASE: Record<string, string> = {
   jd_span_extractor: "Reading the job description",
@@ -217,46 +218,65 @@ export default function GenerationPage() {
           </div>
         )}
 
-        {/* Phase stack (hidden while active orb loading is shown) */}
-        {!isActive && <div className="space-y-2 mb-4">
-          {/* Active phase pill — with pulse on the icon and current specialist as muted subtitle */}
-          {isActive && (activePhase || currentLabel) && (
-            <div className="flex items-center gap-3 px-5 py-3.5 rounded-3xl border border-[#e5d6f5] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
-              {/* Icon with iconShine pulse — same as nav bar hover effect */}
-              <div className="w-5 h-5 shrink-0 flex items-center justify-center">
-                <span
-                  className="inline-flex w-3 h-3 rounded-full bg-brand"
-                  style={{ animation: "iconShine 1.2s ease-in-out infinite" }}
-                />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">
-                  {activePhase?.label ?? currentLabel ?? "Starting up…"}
-                </p>
-                {/* Current specialist as muted subtitle */}
-                {currentLabel && activePhase && currentLabel !== activePhase.label && (
-                  <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{currentLabel}</p>
-                )}
-              </div>
-              {confidencePct != null && (
-                <span className="text-[11px] font-mono text-brand font-semibold shrink-0">
-                  {confidencePct}%
-                </span>
-              )}
+        {/* Phase timeline */}
+        {(isActive || phasesDone.length > 0) && (
+          <div className="mb-6 rounded-3xl border border-[#e0ddd9] bg-white/90 px-6 py-6 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
+            <div className="flex flex-col gap-0">
+              {PHASES.map((phase, i) => {
+                const isDone = phasesDone.some((p) => p.key === phase.key);
+                const isCurrent = phase.key === activePhaseKey;
+                const isLast = i === PHASES.length - 1;
+                return (
+                  <div key={phase.key} className="group relative flex gap-3">
+                    {/* Vertical line + icon */}
+                    <div className="relative flex flex-col items-center">
+                      <div
+                        className={cn(
+                          "w-6 h-6 rounded-full border flex items-center justify-center shrink-0",
+                          isDone && "border-brand bg-brand-light",
+                          isCurrent && "border-brand",
+                          !isDone && !isCurrent && "border-border",
+                        )}
+                      >
+                        {isDone ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-brand" />
+                        ) : isCurrent ? (
+                          <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
+                        ) : (
+                          <Circle className="w-3 h-3 text-muted-foreground/40" />
+                        )}
+                      </div>
+                      {!isLast && (
+                        <div
+                          className={cn(
+                            "w-[2px] flex-1 min-h-[20px]",
+                            isDone ? "bg-brand/30" : "bg-border",
+                          )}
+                        />
+                      )}
+                    </div>
+                    {/* Label */}
+                    <div className="pb-4 pt-0.5">
+                      <p
+                        className={cn(
+                          "text-sm font-medium",
+                          isDone && "text-foreground",
+                          isCurrent && "text-foreground",
+                          !isDone && !isCurrent && "text-muted-foreground/60",
+                        )}
+                      >
+                        {phase.label}
+                      </p>
+                      {isCurrent && currentLabel && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{currentLabel}</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
-
-          {/* Completed phases */}
-          {phasesDone.map(({ key, label }) => (
-            <div
-              key={key}
-              className="flex items-center gap-3 px-5 py-3 rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]"
-            >
-              <CheckCircle2 className="w-4 h-4 shrink-0 text-brand" />
-              <span className="text-sm text-foreground">{label}</span>
-            </div>
-          ))}
-        </div>}
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono px-1 mt-4">

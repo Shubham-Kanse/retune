@@ -1,0 +1,14 @@
+node_modules/
+.git/
+.next/
+dist/
+build/
+coverage/
+*.log
+*.log.*
+.env
+.env.*
+Dockerfile*
+.dockerignore
+pnpm-lock.yaml
+turbo/

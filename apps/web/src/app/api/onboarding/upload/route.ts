@@ -1,8 +1,14 @@
+/**
+ * POST /api/onboarding/upload
+ *
+ * Pure extraction endpoint. Extracts structured profile fields from a resume file.
+ * Does NOT mutate session state — the client sends extracted fields to POST /chat
+ * as { kind: "resume_data", profile: {...} }.
+ */
 import { getSession } from "@/lib/session";
-import {
-  ResumeFileValidationError,
-  importResumeAndPersist,
-} from "@/lib/profile-domain";
+import { ResumeFileValidationError } from "@/lib/profile-domain";
+import { extractProfileFromResumeFile } from "@/lib/profile-domain/extractors/openai-resume-extractor";
+import { readAndValidateResumeFile } from "@/lib/profile-domain/utils/resume-file";
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
@@ -14,26 +20,25 @@ export async function POST(request: Request) {
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
-    const result = await importResumeAndPersist({
-      file,
-      source: "onboarding_upload",
-      session,
-      markOnboardingCompleted: false,
-      saveConversation: true,
+    const { buffer, mediaType } = await readAndValidateResumeFile(file);
+
+    const { extracted } = await extractProfileFromResumeFile({
+      filename: file.name,
+      mediaType,
+      buffer,
+      existingProfile: null,
     });
 
-    return NextResponse.json({
-      extracted: result.extracted,
-      missingQuestions: result.missingQuestions,
-      stage: 1,
-      ingestionId: result.ingestionId,
-      completenessScore: result.completenessScore,
-    });
-  } catch (error) {
-    if (error instanceof ResumeFileValidationError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+    if (!extracted) {
+      return NextResponse.json({ error: "Could not extract profile from resume" }, { status: 422 });
     }
-    console.error("[onboarding/upload] failed", error);
-    return NextResponse.json({ error: "Failed to process resume. Please try again." }, { status: 500 });
+
+    return NextResponse.json({ result: extracted });
+  } catch (err) {
+    if (err instanceof ResumeFileValidationError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
+    console.error("[onboarding/upload]", err);
+    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }

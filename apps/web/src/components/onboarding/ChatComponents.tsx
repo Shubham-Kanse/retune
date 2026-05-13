@@ -36,8 +36,8 @@ export function QuickReplyChips({ chips, onSelect, disabled }: QuickReplyChipsPr
           whileTap={disabled ? {} : { scale: 0.96 }}
           className={cn(
             "px-4 py-2 rounded-full border text-[0.8125rem] font-medium transition-colors",
-            "border-[#e5e2dd] bg-white text-[#1a1a1a]",
-            "hover:border-[#b84ed1] hover:text-[#7e22ce] hover:bg-[#f3e8ff]",
+            "border-transparent bg-[#1a1a1a] text-white",
+            "hover:bg-[#333]",
             "disabled:opacity-40 disabled:cursor-not-allowed",
           )}
         >

@@ -5,6 +5,7 @@ import { applications, profiles } from "@retune/db/schema";
 import { eq } from "drizzle-orm";
 import { ChevronRight, CreditCard, FileText, Sparkles, User } from "lucide-react";
 import Link from "next/link";
+import { ShineBorder } from "@/components/ui/shine-border";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -142,9 +143,10 @@ export default async function DashboardPage() {
         </Link>
 
         {/* Generate card */}
+        <ShineBorder color={["#2d8a5e", "#00d4d4", "#2d8a5e"]} borderWidth={3} duration={10}>
         <Link
           href="/generate/new"
-          className="relative flex flex-col rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] hover:shadow-lg transition-shadow group min-h-[220px] overflow-hidden"
+          className="relative flex flex-col rounded-3xl bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] hover:shadow-lg transition-shadow group min-h-[220px] overflow-hidden w-full"
         >
           <div className="w-9 h-9 rounded-full bg-violet-500/12 flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-violet-700 icon-shine" />
@@ -157,6 +159,7 @@ export default async function DashboardPage() {
           <ChevronRight className="w-4 h-4 text-muted-foreground/40 mt-4 opacity-0 group-hover:opacity-100 transition-opacity" />
           <div className="absolute -bottom-12 -right-12 w-48 h-48 bg-violet-500 rounded-full opacity-10" style={{ filter: "blur(72px)" }} />
         </Link>
+        </ShineBorder>
 
         {/* Billing / Settings card */}
         <Link

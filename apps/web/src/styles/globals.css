@@ -573,6 +573,22 @@ p, span, a, li, label, input, textarea, button {
   display: none;
 }
 
+/* ─── Shine border rotation ──────────────────────────────────────────────── */
+
+@property --shine-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes shine-rotate {
+  to { --shine-angle: 360deg; }
+}
+
+.shine-border-glow {
+  animation: shine-rotate 3s linear infinite;
+}
+
 /* ─── Reduced motion ─────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {

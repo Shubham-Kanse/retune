@@ -1,29 +1,23 @@
 "use client";
 
-import { AnimatedOrb } from "@/components/onboarding/AnimatedOrb";
 import { BloomTransition } from "@/components/onboarding/BloomTransition";
-import {
-  CompletionAnimation,
-  QuickReplyChips,
-  SectionCard,
-  UploadDropzone,
-} from "@/components/onboarding/ChatComponents";
-import { type UIMessage, useOnboardingChat } from "@/hooks/use-onboarding-chat";
-import { CHAT_GUTTER_CLASS, UPLOAD_CHIP_LABEL } from "@/lib/onboarding/chat-ui";
-import {
-  TRANSITION_INTRO_COMPLETE_MS,
-  TRANSITION_INTRO_STEP_MS,
-} from "@/lib/onboarding/transition";
+import { ConfirmDialog } from "@/components/onboarding/ConfirmDialog";
+import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
+import { ProfileStrengthBar } from "@/components/onboarding/ProfileStrengthBar";
+import { ColorOrb } from "@/components/ui/color-orb";
+import { ShiningText } from "@/components/ui/shining-text";
+import { type UIMessage, type Pill, type DisplayCard, useOnboardingChat } from "@/hooks/use-onboarding-chat";
 import { cn } from "@/lib/utils";
 import { ArrowUp, Paperclip, User } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { TRANSITION_INTRO_COMPLETE_MS, TRANSITION_INTRO_STEP_MS } from "@/lib/onboarding/transition";
 
 // ─── Intro ────────────────────────────────────────────────────────────────────
 
 function IntroPhase({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0);
-
   useEffect(() => {
     const t = [
       setTimeout(() => setStep(1), TRANSITION_INTRO_STEP_MS[0]),
@@ -36,212 +30,105 @@ function IntroPhase({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-7 w-full h-full">
-      <motion.div
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 360, damping: 26, delay: 0.1 }}
-      >
-        <AnimatedOrb size={88} />
+      <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 360, damping: 26, delay: 0.1 }}>
+        <ColorOrb dimension="88px" spinDuration={20} />
       </motion.div>
-
       <div className="text-center space-y-2">
         <AnimatePresence>
-          {step >= 1 && (
-            <motion.p
-              key="hello"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="font-serif text-[2.25rem] text-[#1a1a1a] leading-tight"
-            >
-              Hello
-            </motion.p>
-          )}
+          {step >= 1 && <motion.p key="hello" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="font-serif text-[2.25rem] text-[#1a1a1a]">Hello</motion.p>}
         </AnimatePresence>
         <AnimatePresence>
-          {step >= 2 && (
-            <motion.p
-              key="tagline"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
-              className="text-[0.9375rem] text-[#6b6b6b]"
-            >
-              I&apos;m retune — your career companion.
-            </motion.p>
-          )}
+          {step >= 2 && <motion.p key="tag" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-[0.9375rem] text-[#6b6b6b]">I&apos;m Retuned — your career profile builder.</motion.p>}
         </AnimatePresence>
         <AnimatePresence>
-          {step >= 3 && (
-            <motion.p
-              key="action"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
-              className="text-[0.9375rem] text-[#6b6b6b]"
-            >
-              Let&apos;s build your professional profile together.
-            </motion.p>
-          )}
+          {step >= 3 && <motion.p key="act" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-[0.9375rem] text-[#6b6b6b]">Upload your resume and I&apos;ll build your profile from it.</motion.p>}
         </AnimatePresence>
       </div>
     </div>
   );
 }
 
-// ─── MessageBubble ────────────────────────────────────────────────────────────
-// Single component handling user + assistant + streaming states with
-// consistent styling — no abrupt bubble-shape changes mid-stream.
+// ─── Message Bubble ───────────────────────────────────────────────────────────
 
-function MessageBubble({
-  role,
-  content,
-  isStreaming,
-}: {
-  role: "user" | "assistant";
-  content: string;
-  isStreaming?: boolean;
-}) {
-  const isUser = role === "user";
+function MessageBubble({ msg, isLast, isStreaming }: { msg: UIMessage; isLast: boolean; isStreaming: boolean }) {
+  const isUser = msg.role === "user";
+
+  if (msg.isProcessing) {
+    return (
+      <motion.div className="flex max-w-[80%] gap-2 items-end mr-auto" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+        <ColorOrb dimension="32px" spinDuration={20} />
+        <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white border border-[#e8e5e0]">
+          <ShiningText text={msg.content} />
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
-    <motion.div
-      className={cn(
-        "flex max-w-[90%] md:max-w-[80%] gap-2 items-end",
-        isUser ? "ml-auto flex-row-reverse" : "mr-auto",
-      )}
-      initial={{ opacity: 0, y: 6 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-    >
-      <div
-        className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-          isUser && "bg-white",
-        )}
-        style={{
-          boxShadow: isUser
-            ? "rgba(14,63,126,0.04) 0px 0px 0px 1px, rgba(42,51,69,0.04) 0px 1px 1px -0.5px, rgba(42,51,70,0.04) 0px 3px 3px -1.5px"
-            : "none",
-        }}
-      >
-        {isUser ? <User className="w-4 h-4 text-stone-800" /> : <AnimatedOrb size={32} />}
+    <motion.div className={cn("flex max-w-[80%] gap-2 items-end", isUser ? "ml-auto flex-row-reverse" : "mr-auto")} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", isUser && "bg-white border border-[#e8e5e0]")}>
+        {isUser ? <User className="w-4 h-4 text-stone-800" /> : <ColorOrb dimension="32px" spinDuration={isStreaming && isLast ? 20 : 0} />}
       </div>
-
-      <div
-        className={cn(
-          "px-4 py-3 rounded-2xl text-sm text-stone-800 bg-white",
-          isUser ? "rounded-br-md" : "rounded-bl-md",
-        )}
-        style={{
-          boxShadow:
-            "rgba(14,63,126,0.04) 0px 0px 0px 1px, rgba(42,51,69,0.04) 0px 1px 1px -0.5px, rgba(42,51,70,0.04) 0px 3px 3px -1.5px",
-        }}
-      >
-        {isStreaming && content.length === 0 ? (
-          <TypingDots />
-        ) : (
-          <p className="whitespace-pre-wrap break-words">
-            {content}
-            {isStreaming && content.length > 0 && <StreamingCursor />}
-          </p>
-        )}
+      <div className={cn("px-4 py-3 rounded-2xl text-sm text-stone-800 bg-white border border-[#e8e5e0]", isUser ? "rounded-br-md" : "rounded-bl-md")}>
+        <p className="whitespace-pre-wrap break-words">{msg.content}</p>
       </div>
     </motion.div>
   );
 }
 
-function TypingDots() {
+// ─── Display Cards ────────────────────────────────────────────────────────────
+
+function CardList({ cards }: { cards: DisplayCard[] }) {
+  if (!cards.length) return null;
   return (
-    <span className="inline-flex items-center gap-1" style={{ height: "1.1em" }}>
-      {[0, 1, 2].map((i) => (
-        <motion.span
-          key={i}
-          className="w-1.5 h-1.5 rounded-full bg-stone-400 inline-block"
-          animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
-          transition={{
-            duration: 1.1,
-            repeat: Number.POSITIVE_INFINITY,
-            delay: i * 0.18,
-            ease: "easeInOut",
-          }}
-        />
+    <div className="ml-10 space-y-2">
+      {cards.map((card, i) => (
+        <motion.div key={card.id ?? i} className="rounded-xl border border-[#e8e5e0] bg-white p-3" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+          <p className="text-sm font-medium text-[#1a1a1a]">{card.title}</p>
+          {card.subtitle && <p className="text-xs text-[#6b6b6b] mt-0.5">{card.subtitle}</p>}
+          {card.metadata?.length ? <div className="flex flex-wrap gap-1 mt-2">{card.metadata.map(m => <span key={m} className="px-2 py-0.5 rounded-full bg-[#f0ede8] text-[0.7rem] text-[#555]">{m}</span>)}</div> : null}
+        </motion.div>
       ))}
-    </span>
-  );
-}
-
-function StreamingCursor() {
-  return (
-    <span className="inline-block w-[2px] h-[0.9em] ml-[2px] align-middle bg-[#b84ed1] opacity-75 rounded-sm animate-[blink_0.9s_ease-in-out_infinite]" />
-  );
-}
-
-// ─── Message row (bubble + optional attachments) ──────────────────────────────
-
-function MessageRow({
-  msg,
-  isLast,
-  isStreaming,
-  disabled,
-  onSelectChip,
-}: {
-  msg: UIMessage;
-  isLast: boolean;
-  isStreaming: boolean;
-  disabled: boolean;
-  onSelectChip: (chip: string) => void;
-}) {
-  const showChips =
-    isLast && !isStreaming && msg.role === "assistant" && (msg.chips?.length ?? 0) > 0;
-
-  return (
-    <div className="space-y-3">
-      <MessageBubble
-        role={msg.role}
-        content={msg.content}
-        isStreaming={isStreaming && msg.role === "assistant" && isLast}
-      />
-      {msg.card && (
-        <div className={CHAT_GUTTER_CLASS}>
-          <SectionCard section={msg.card.section} data={msg.card.data} />
-        </div>
-      )}
-      {showChips && (
-        <div className={CHAT_GUTTER_CLASS}>
-          <QuickReplyChips chips={msg.chips ?? []} onSelect={onSelectChip} disabled={disabled} />
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── ChatView ─────────────────────────────────────────────────────────────────
+// ─── Pills ────────────────────────────────────────────────────────────────────
+
+function PillList({ pills, onSelect, disabled }: { pills: Pill[]; onSelect: (p: Pill) => void; disabled: boolean }) {
+  if (!pills.length) return null;
+  return (
+    <motion.div className="ml-10 flex flex-wrap gap-2" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+      {pills.map((pill) => (
+        <button key={pill.value} type="button" disabled={disabled} onClick={() => onSelect(pill)}
+          className={cn("px-4 py-2 rounded-full text-[0.8125rem] font-medium transition-colors", pill.recommended ? "bg-[#1a1a1a] text-white hover:bg-[#333]" : "border border-[#e0ddd9] bg-white text-[#1a1a1a] hover:bg-[#f5f3f0]", "disabled:opacity-40 disabled:cursor-not-allowed")}>
+          {pill.label}
+        </button>
+      ))}
+    </motion.div>
+  );
+}
+
+// ─── Chat View ────────────────────────────────────────────────────────────────
 
 function ChatView() {
-  const {
-    messages,
-    isStreaming,
-    isComplete,
-    extractionStatus,
-    errorMessage,
-    sendMessage,
-    confirmChip,
-    uploadFile,
-  } = useOnboardingChat();
+  const router = useRouter();
+  const { messages, isStreaming, isComplete, phase, readiness, currentPills, currentCards, errorMessage, extractionStatus, sendMessage, clickPill, uploadFile, startOver } = useOnboardingChat();
 
   const [inputValue, setInputValue] = useState("");
-  const [showDropzone, setShowDropzone] = useState(false);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [showStartOverConfirm, setShowStartOverConfirm] = useState(false);
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: scroll on any content change
+  // Smart auto-scroll
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0;
-    }
-  }, [messages, isStreaming, showDropzone, isComplete]);
+    const el = scrollRef.current;
+    if (!el) return;
+    const isNearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+    if (isNearBottom) el.scrollTop = el.scrollHeight;
+  }, [messages]);
 
   const handleSend = () => {
     const text = inputValue.trim();
@@ -251,178 +138,67 @@ function ChatView() {
     sendMessage(text);
   };
 
-  const handleChipSelect = (chip: string) => {
-    if (chip === UPLOAD_CHIP_LABEL) {
-      setShowDropzone(true);
+  const handlePillClick = (pill: Pill) => {
+    if (pill.action === "navigate" && pill.value === "upload") {
+      fileInputRef.current?.click();
       return;
     }
-    confirmChip(chip);
+    const lastAssistant = messages.filter(m => m.role === "assistant").pop();
+    clickPill(pill, (lastAssistant as any)?.questionKey);
   };
 
-  const handleInput = () => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      textarea.style.height = "auto";
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
-    }
+  const handleSkip = async () => {
+    setShowSkipConfirm(false);
+    await fetch("/api/onboarding/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ kind: "skip_onboarding" }) });
+    router.push("/dashboard");
   };
 
-  const [canScrollUp, setCanScrollUp] = useState(false);
-
-  const handleScroll = () => {
-    if (scrollContainerRef.current) {
-      // In flex-col-reverse, scrollTop > 0 means user has scrolled up (away from bottom)
-      setCanScrollUp(scrollContainerRef.current.scrollTop > 40);
-    }
-  };
-
-  const lastIndex = messages.length - 1;
+  const lastIdx = messages.length - 1;
+  const visibleMessages = messages.filter(m => m.content?.trim());
 
   return (
-    <div className="relative mx-auto flex h-full w-full max-w-[680px] flex-col overflow-hidden">
-      {/* Subtle scroll indicator — only visible when user has scrolled up */}
-      <AnimatePresence>
-        {canScrollUp && (
-          <motion.div
-            className="absolute top-2 left-1/2 -translate-x-1/2 z-10 pointer-events-none"
-            initial={{ opacity: 0, y: -4 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.2 }}
-          >
-            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-white/80 backdrop-blur-sm shadow-sm border border-[#e5e2dd]">
-              <ArrowUp className="w-3.5 h-3.5 text-stone-400" />
+    <div className="flex flex-col h-full">
+      <OnboardingHeader stage={phase} isStreaming={isStreaming} onStartOver={() => setShowStartOverConfirm(true)} onSkip={() => setShowSkipConfirm(true)} />
+
+      {readiness.score > 0 && phase !== "orb_intro" && phase !== "resume_upload" && (
+        <ProfileStrengthBar filledCount={Math.round(readiness.score)} totalRequired={100} />
+      )}
+
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 md:px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="max-w-[680px] mx-auto space-y-4 pt-4 pb-4">
+          {visibleMessages.map((msg, i) => (
+            <div key={msg.id} className="space-y-3">
+              <MessageBubble msg={msg} isLast={i === lastIdx} isStreaming={isStreaming} />
+              {msg.cards && i === visibleMessages.length - 1 && <CardList cards={msg.cards} />}
+              {msg.pills && i === visibleMessages.length - 1 && !isStreaming && (
+                <PillList pills={msg.pills} onSelect={handlePillClick} disabled={isStreaming || isComplete} />
+              )}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* flex-col-reverse: items stack from bottom up; overflow scrolls upward naturally */}
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 min-h-0 overflow-y-auto flex flex-col-reverse px-3 md:px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        <div className="space-y-4 pt-4 pb-4">
-          {messages.map((msg, i) => (
-            <MessageRow
-              key={msg.id}
-              msg={msg}
-              isLast={i === lastIndex}
-              isStreaming={isStreaming}
-              disabled={isStreaming || isComplete}
-              onSelectChip={handleChipSelect}
-            />
           ))}
-
-          <AnimatePresence>
-            {showDropzone && !isComplete && (
-              <motion.div
-                key="dropzone"
-                className={CHAT_GUTTER_CLASS}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.97 }}
-                transition={{ duration: 0.2 }}
-              >
-                <UploadDropzone
-                  onFile={(f) => {
-                    setShowDropzone(false);
-                    uploadFile(f);
-                  }}
-                  disabled={extractionStatus === "pending"}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {errorMessage && !isStreaming && (
-            <div className={cn(CHAT_GUTTER_CLASS, "text-xs text-red-600")}>{errorMessage}</div>
-          )}
-
-          <AnimatePresence>
-            {isComplete && (
-              <motion.div
-                key="completion"
-                className="flex items-center justify-center py-8"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <CompletionAnimation />
-              </motion.div>
-            )}
-          </AnimatePresence>
-
+          {errorMessage && <div className="ml-10 text-xs text-red-600">{errorMessage}</div>}
         </div>
       </div>
 
-      {/* Composer — pinned bottom of the column */}
+      {/* Composer */}
       {!isComplete && (
         <div className="flex-shrink-0 px-3 md:px-4 pb-3 pt-2">
-          <div
-            className="flex flex-col gap-3 p-4 bg-white rounded-3xl w-full"
-            style={{
-              boxShadow:
-                "rgba(14, 63, 126, 0.06) 0px 0px 0px 1px, rgba(42, 51, 69, 0.06) 0px 1px 1px -0.5px, rgba(42, 51, 70, 0.06) 0px 3px 3px -1.5px, rgba(42, 51, 70, 0.06) 0px 6px 6px -3px, rgba(14, 63, 126, 0.06) 0px 12px 12px -6px, rgba(14, 63, 126, 0.06) 0px 24px 24px -12px",
-            }}
-          >
+          <div className="max-w-[680px] mx-auto flex flex-col gap-3 p-4 bg-white rounded-2xl border border-[#e0ddd9]">
             <div className="flex gap-2 items-center">
-              <textarea
-                ref={textareaRef}
-                value={inputValue}
-                onChange={(e) => {
-                  setInputValue(e.target.value);
-                  handleInput();
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                placeholder="Type a message..."
-                disabled={isStreaming}
-                rows={1}
-                className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none disabled:opacity-50 max-h-[200px] overflow-y-auto"
-              />
-              <button
-                type="button"
-                onClick={handleSend}
-                disabled={!inputValue.trim() || isStreaming}
-                className={cn(
-                  "relative h-9 w-9 shrink-0 rounded-full flex items-center justify-center transition-all bg-[#1a1a1a]",
-                  !inputValue.trim() || isStreaming
-                    ? "opacity-40 cursor-not-allowed"
-                    : "cursor-pointer hover:scale-105 hover:bg-[#333]",
-                )}
-                aria-label="Send message"
-              >
+              <textarea ref={textareaRef} value={inputValue}
+                onChange={(e) => { setInputValue(e.target.value); if (textareaRef.current) { textareaRef.current.style.height = "auto"; textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`; } }}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                placeholder="Type a message..." disabled={isStreaming} rows={1}
+                className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none disabled:opacity-50 max-h-[200px]" />
+              <button type="button" onClick={handleSend} disabled={!inputValue.trim() || isStreaming} aria-label="Send"
+                className={cn("h-9 w-9 shrink-0 rounded-full flex items-center justify-center bg-[#1a1a1a]", !inputValue.trim() || isStreaming ? "opacity-40" : "hover:scale-105 hover:bg-[#333]")}>
                 <ArrowUp className="w-4 h-4 text-white" />
               </button>
             </div>
             <div className="flex items-center gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.docx"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) {
-                    setShowDropzone(false);
-                    uploadFile(f);
-                  }
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isStreaming || extractionStatus === "pending"}
-                className="h-9 w-9 shrink-0 bg-zinc-100 hover:bg-zinc-200 text-stone-700 rounded-full flex items-center justify-center transition-colors disabled:opacity-50"
-                title="Attach resume"
-                aria-label="Attach resume"
-              >
+              <input ref={fileInputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); }} />
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isStreaming || extractionStatus === "pending"} aria-label="Attach resume"
+                className="h-9 w-9 shrink-0 bg-zinc-100 hover:bg-zinc-200 text-stone-700 rounded-full flex items-center justify-center disabled:opacity-50">
                 <Paperclip className="w-4 h-4" />
               </button>
               <span className="text-xs text-stone-400">PDF or DOCX</span>
@@ -430,6 +206,9 @@ function ChatView() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog open={showStartOverConfirm} title="Start over?" description="This will clear your profile and start fresh." confirmLabel="Start over" onConfirm={() => { setShowStartOverConfirm(false); startOver(); }} onCancel={() => setShowStartOverConfirm(false)} />
+      <ConfirmDialog open={showSkipConfirm} title="Skip onboarding?" description="You can build your profile later from Settings." confirmLabel="Skip" onConfirm={handleSkip} onCancel={() => setShowSkipConfirm(false)} />
     </div>
   );
 }
@@ -441,14 +220,8 @@ export default function OnboardingPage() {
   const handleIntroComplete = useCallback(() => setShowChat(true), []);
 
   return (
-    <div className="h-full w-full px-2 md:px-4">
-      <div className="relative h-full w-full max-w-[760px] mx-auto">
-        <BloomTransition
-          showChat={showChat}
-          introContent={<IntroPhase onComplete={handleIntroComplete} />}
-          chatContent={<ChatView />}
-        />
-      </div>
+    <div className="h-full w-full">
+      <BloomTransition showChat={showChat} introContent={<IntroPhase onComplete={handleIntroComplete} />} chatContent={<ChatView />} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import ColorOrb from "@/components/ui/color-orb";
+import { ColorOrb } from "@/components/ui/color-orb";
 import {
   DRIFT_LEVEL_OPTIONS,
   type DriftAnswer,
