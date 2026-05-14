@@ -25,10 +25,10 @@ export const CHAT_GUTTER_CLASS = "ml-10";
 
 /** Fallback copy when the greeting stream fails. */
 export const GREETING_FALLBACK_CONTENT =
-  "Hi! I'm retune — your career companion. How would you like to build your profile?";
+  "Hi, I'm Retuned. Upload your resume and I'll build your career profile from it.";
 
 /** Fallback chips that accompany the greeting fallback. */
-export const GREETING_FALLBACK_CHIPS = ["Upload resume", "Start from scratch"] as const;
+export const GREETING_FALLBACK_CHIPS = ["Upload resume"] as const;
 
 /** The chip label that opens the file dropzone (not sent to the server). */
 export const UPLOAD_CHIP_LABEL = "Upload resume";

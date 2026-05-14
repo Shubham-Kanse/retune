@@ -1,8 +1,12 @@
+import type { ProfileNormalized } from "@/lib/profile-domain/contracts";
+
 // ─── Profile Field Wrapper ────────────────────────────────────────────────────
+
+export type ProfileFieldSource = "resume" | "user" | "ai_inferred" | "system";
 
 export interface ProfileField<T> {
   value: T;
-  source: "resume" | "user" | "ai_inferred" | "system";
+  source: ProfileFieldSource;
   confidence: number;
   confirmed: boolean;
   lastUpdatedAt: string;
@@ -57,11 +61,14 @@ export interface Pill {
   label: string;
   value: string;
   action: "set_field" | "confirm_field" | "ask_text" | "skip" | "navigate" | "edit_card" | "remove_card";
+  field?: string;
   recommended?: boolean;
+  selected?: boolean;
+  reason?: string;
 }
 
 export interface DisplayCard {
-  type: "identity" | "experience" | "education" | "skill_group" | "project" | "certification";
+  type: "identity" | "experience" | "education" | "skill_group" | "career_intent" | "project" | "certification";
   id?: string;
   title: string;
   subtitle?: string;
@@ -179,6 +186,7 @@ export interface SkippedQuestion {
   questionKey: string;
   field: string;
   skippedAt: string;
+  skipScope?: "this_session" | "this_profile" | "ask_later";
 }
 
 export interface PendingTextInput {
@@ -227,6 +235,27 @@ export interface StoredMessage {
   cards?: DisplayCard[];
   pills?: Pill[];
 }
+
+export interface OnboardingTurnPayload {
+  stage: OnboardingPhase;
+  message?: string;
+  question?: OnboardingQuestion | null;
+  cards?: DisplayCard[];
+  profilePreview?: unknown;
+  readiness?: ProfileReadiness;
+  hardMinimumMet?: boolean;
+}
+
+export type ProfileDraft = Partial<ProfileNormalized> & {
+  professionalIdentities?: string[];
+  careerDirection?: "same" | "slight_shift" | "major_switch" | "not_sure";
+  interestedRoles?: string[];
+  preferredMarkets?: string[];
+  workPreference?: "remote" | "hybrid" | "onsite" | "open";
+  seniorityComfort?: string[];
+  emphasisAreas?: string[];
+  deEmphasisAreas?: string[];
+};
 
 // ─── Session State ───────────────────────────────────────────────────────────
 

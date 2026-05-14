@@ -19,29 +19,34 @@ describe("computeReadiness", () => {
     profile.experience.confirmed = true;
     profile.education.value = [{ id: "ed1", degree: "BSc CS", institution: "MIT" }];
     profile.education.confirmed = true;
-    profile.skills.technical.value = ["TypeScript", "React"];
+    profile.skills.technical.value = ["TypeScript", "React", "Node.js", "SQL", "AWS"];
     profile.professionalProfile.professionalIdentities.value = ["Software Engineer"];
     profile.professionalProfile.professionalIdentities.confirmed = true;
     profile.careerIntent.interestedRoles.confirmed = true;
+    profile.careerIntent.interestedRoles.value = ["Software Engineer"];
     profile.careerIntent.preferredMarkets.confirmed = true;
+    profile.careerIntent.preferredMarkets.value = ["UK"];
     profile.careerIntent.workPreference.confirmed = true;
+    profile.careerIntent.workPreference.value = "hybrid";
+    profile.resumeWritingPreferences.emphasisAreas.value = ["Backend engineering"];
+    profile.resumeWritingPreferences.emphasisAreas.confirmed = true;
     const r = computeReadiness(profile);
     expect(r.canEnterDashboard).toBe(true);
   });
 
-  it("missing name → blocker includes 'Full name missing'", () => {
+  it("missing name → blocker asks for confirmed identity", () => {
     const profile = createEmptyProfile("u1");
     profile.identity.email.value = "a@b.com";
     profile.identity.location.value = "NYC";
     const r = computeReadiness(profile);
-    expect(r.blockers).toContain("Full name missing");
+    expect(r.blockers).toContain("Confirm your name, email, and location.");
   });
 
-  it("missing experience → blocker includes 'No experience entries'", () => {
+  it("missing experience → blocker asks for an experience entry", () => {
     const profile = createEmptyProfile("u1");
     profile.identity.fullName.value = "Jane";
     const r = computeReadiness(profile);
-    expect(r.blockers).toContain("No experience entries");
+    expect(r.blockers).toContain("Add or confirm at least one experience entry.");
   });
 
   it("score is 0-100 range", () => {

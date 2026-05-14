@@ -2,13 +2,15 @@
 
 import { BloomTransition } from "@/components/onboarding/BloomTransition";
 import { ConfirmDialog } from "@/components/onboarding/ConfirmDialog";
+import { ProfileDisplayCard } from "@/components/onboarding/ChatComponents";
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
+import { ProfilePreviewPanel } from "@/components/onboarding/ProfilePreviewPanel";
 import { ProfileStrengthBar } from "@/components/onboarding/ProfileStrengthBar";
 import { ColorOrb } from "@/components/ui/color-orb";
 import { ShiningText } from "@/components/ui/shining-text";
 import { type UIMessage, type Pill, type DisplayCard, useOnboardingChat } from "@/hooks/use-onboarding-chat";
 import { cn } from "@/lib/utils";
-import { ArrowUp, Paperclip, User } from "lucide-react";
+import { ArrowUp, Check, Paperclip, User } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -76,6 +78,34 @@ function MessageBubble({ msg, isLast, isStreaming }: { msg: UIMessage; isLast: b
   );
 }
 
+function ThinkingBubble() {
+  return (
+    <motion.div className="flex max-w-[80%] gap-2 items-end mr-auto" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+      <ColorOrb dimension="32px" spinDuration={20} />
+      <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white border border-[#e8e5e0]">
+        <ShiningText text="Thinking..." />
+      </div>
+    </motion.div>
+  );
+}
+
+function CompletionOverlay() {
+  return (
+    <motion.div
+      className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#fbfaf8]/85 backdrop-blur-sm"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.25 }}
+    >
+      <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 24 }}>
+        <ColorOrb dimension="88px" spinDuration={16} />
+      </motion.div>
+      <p className="mt-7 font-serif text-3xl text-[#1a1a1a]">Thank you</p>
+      <p className="mt-2 text-sm text-stone-500">Your Retuned profile is complete. Opening your dashboard...</p>
+    </motion.div>
+  );
+}
+
 // ─── Display Cards ────────────────────────────────────────────────────────────
 
 function CardList({ cards }: { cards: DisplayCard[] }) {
@@ -83,13 +113,73 @@ function CardList({ cards }: { cards: DisplayCard[] }) {
   return (
     <div className="ml-10 space-y-2">
       {cards.map((card, i) => (
-        <motion.div key={card.id ?? i} className="rounded-xl border border-[#e8e5e0] bg-white p-3" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-          <p className="text-sm font-medium text-[#1a1a1a]">{card.title}</p>
-          {card.subtitle && <p className="text-xs text-[#6b6b6b] mt-0.5">{card.subtitle}</p>}
-          {card.metadata?.length ? <div className="flex flex-wrap gap-1 mt-2">{card.metadata.map(m => <span key={m} className="px-2 py-0.5 rounded-full bg-[#f0ede8] text-[0.7rem] text-[#555]">{m}</span>)}</div> : null}
-        </motion.div>
+        <ProfileDisplayCard key={`${card.type}-${card.id ?? card.title}-${i}`} card={card} />
       ))}
     </div>
+  );
+}
+
+type SkillBuckets = { technical: string[]; tools: string[]; business: string[] };
+
+function splitSkills(value: string) {
+  return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+}
+
+function cardsToSkillBuckets(cards: DisplayCard[]): SkillBuckets {
+  return {
+    technical: cards.find((card) => card.id === "technical")?.metadata ?? [],
+    tools: cards.find((card) => card.id === "tools")?.metadata ?? [],
+    business: cards.find((card) => card.id === "business")?.metadata ?? [],
+  };
+}
+
+function SkillEditor({
+  initial,
+  onCancel,
+  onSave,
+}: {
+  initial: SkillBuckets;
+  onCancel: () => void;
+  onSave: (skills: SkillBuckets) => void;
+}) {
+  const [technical, setTechnical] = useState(initial.technical.join(", "));
+  const [tools, setTools] = useState(initial.tools.join(", "));
+  const [business, setBusiness] = useState(initial.business.join(", "));
+
+  return (
+    <motion.div className="ml-10 rounded-2xl border border-[#e0ddd9] bg-white p-4" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+      <p className="text-sm font-medium text-[#1a1a1a]">Edit extracted skills</p>
+      <div className="mt-3 space-y-3">
+        {[
+          ["Tier 1 skills", technical, setTechnical],
+          ["Tier 2 tools", tools, setTools],
+          ["Tier 3 strengths", business, setBusiness],
+        ].map(([label, value, setter]) => (
+          <label key={String(label)} className="block">
+            <span className="text-xs text-stone-500">{String(label)}</span>
+            <textarea
+              value={String(value)}
+              onChange={(event) => (setter as (next: string) => void)(event.target.value)}
+              rows={2}
+              className="mt-1 w-full resize-none rounded-xl border border-[#e8e5e0] bg-[#fbfaf8] px-3 py-2 text-sm text-stone-800 outline-none focus:border-[#1a1a1a]"
+              placeholder="Java, Spring Boot, REST APIs"
+            />
+          </label>
+        ))}
+      </div>
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onSave({ technical: splitSkills(technical), tools: splitSkills(tools), business: splitSkills(business) })}
+          className="rounded-full bg-[#1a1a1a] px-4 py-2 text-[0.8125rem] font-medium text-white hover:bg-[#333]"
+        >
+          Save skills
+        </button>
+        <button type="button" onClick={onCancel} className="rounded-full border border-[#e0ddd9] bg-white px-4 py-2 text-[0.8125rem] font-medium text-[#1a1a1a] hover:bg-[#f5f3f0]">
+          Cancel
+        </button>
+      </div>
+    </motion.div>
   );
 }
 
@@ -99,12 +189,29 @@ function PillList({ pills, onSelect, disabled }: { pills: Pill[]; onSelect: (p: 
   if (!pills.length) return null;
   return (
     <motion.div className="ml-10 flex flex-wrap gap-2" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-      {pills.map((pill) => (
-        <button key={pill.value} type="button" disabled={disabled} onClick={() => onSelect(pill)}
-          className={cn("px-4 py-2 rounded-full text-[0.8125rem] font-medium transition-colors", pill.recommended ? "bg-[#1a1a1a] text-white hover:bg-[#333]" : "border border-[#e0ddd9] bg-white text-[#1a1a1a] hover:bg-[#f5f3f0]", "disabled:opacity-40 disabled:cursor-not-allowed")}>
-          {pill.label}
-        </button>
-      ))}
+      {pills.map((pill) => {
+        const disabledUntilSelected =
+          pill.action === "confirm_field" &&
+          pill.label === "Continue" &&
+          !pills.some((candidate) => candidate.field === pill.field && candidate.action === "set_field" && candidate.selected);
+        const isDisabled = disabled || disabledUntilSelected;
+
+        return (
+          <button key={pill.value} type="button" disabled={isDisabled} onClick={() => onSelect(pill)}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[0.8125rem] font-medium transition-colors",
+              pill.selected
+                ? "border border-[#1a1a1a] bg-[#1a1a1a] text-white"
+                : pill.recommended
+                  ? "bg-[#1a1a1a] text-white hover:bg-[#333]"
+                  : "border border-[#e0ddd9] bg-white text-[#1a1a1a] hover:bg-[#f5f3f0]",
+              "disabled:opacity-40 disabled:cursor-not-allowed",
+            )}>
+            {pill.selected && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+            {pill.label}
+          </button>
+        );
+      })}
     </motion.div>
   );
 }
@@ -113,9 +220,10 @@ function PillList({ pills, onSelect, disabled }: { pills: Pill[]; onSelect: (p: 
 
 function ChatView() {
   const router = useRouter();
-  const { messages, isStreaming, isComplete, phase, readiness, currentPills, currentCards, errorMessage, extractionStatus, sendMessage, clickPill, uploadFile, startOver } = useOnboardingChat();
+  const { messages, isStreaming, isComplete, phase, readiness, errorMessage, extractionStatus, sendMessage, clickPill, stageMultiSelect, submitMultiSelect, submitSkills, uploadFile, startOver } = useOnboardingChat();
 
   const [inputValue, setInputValue] = useState("");
+  const [skillEditor, setSkillEditor] = useState<SkillBuckets | null>(null);
   const [showStartOverConfirm, setShowStartOverConfirm] = useState(false);
   const [showSkipConfirm, setShowSkipConfirm] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -139,12 +247,31 @@ function ChatView() {
   };
 
   const handlePillClick = (pill: Pill) => {
-    if (pill.action === "navigate" && pill.value === "upload") {
-      fileInputRef.current?.click();
+    if (pill.action === "navigate" && (pill.value === "upload" || pill.value === "upload_resume")) {
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+        fileInputRef.current.click();
+      }
       return;
     }
     const lastAssistant = messages.filter(m => m.role === "assistant").pop();
-    clickPill(pill, (lastAssistant as any)?.questionKey);
+    const isMultiSelect = lastAssistant?.pills?.some((candidate) => candidate.action === "confirm_field" && candidate.field === pill.field && candidate.label === "Continue");
+    if (isMultiSelect && pill.action === "set_field") {
+      stageMultiSelect(lastAssistant?.questionKey, pill);
+      return;
+    }
+    if (isMultiSelect && pill.action === "confirm_field" && pill.field) {
+      const values = lastAssistant?.pills
+        ?.filter((candidate) => candidate.field === pill.field && candidate.action === "set_field" && candidate.selected)
+        .map((candidate) => candidate.value) ?? [];
+      submitMultiSelect(lastAssistant?.questionKey, pill.field, values);
+      return;
+    }
+    if (pill.action === "ask_text" && pill.field === "skills") {
+      setSkillEditor(cardsToSkillBuckets(lastAssistant?.cards ?? []));
+      return;
+    }
+    clickPill(pill, lastAssistant?.questionKey);
   };
 
   const handleSkip = async () => {
@@ -155,9 +282,11 @@ function ChatView() {
 
   const lastIdx = messages.length - 1;
   const visibleMessages = messages.filter(m => m.content?.trim());
+  const showThinking = isStreaming && !visibleMessages.some((m) => m.isProcessing);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="relative h-full w-full">
+      <div className="mx-auto flex h-full max-w-[760px] min-h-0 flex-col">
       <OnboardingHeader stage={phase} isStreaming={isStreaming} onStartOver={() => setShowStartOverConfirm(true)} onSkip={() => setShowSkipConfirm(true)} />
 
       {readiness.score > 0 && phase !== "orb_intro" && phase !== "resume_upload" && (
@@ -171,11 +300,22 @@ function ChatView() {
             <div key={msg.id} className="space-y-3">
               <MessageBubble msg={msg} isLast={i === lastIdx} isStreaming={isStreaming} />
               {msg.cards && i === visibleMessages.length - 1 && <CardList cards={msg.cards} />}
+              {skillEditor && i === visibleMessages.length - 1 && (
+                <SkillEditor
+                  initial={skillEditor}
+                  onCancel={() => setSkillEditor(null)}
+                  onSave={(skills) => {
+                    setSkillEditor(null);
+                    submitSkills(skills);
+                  }}
+                />
+              )}
               {msg.pills && i === visibleMessages.length - 1 && !isStreaming && (
                 <PillList pills={msg.pills} onSelect={handlePillClick} disabled={isStreaming || isComplete} />
               )}
             </div>
           ))}
+          {showThinking && <ThinkingBubble />}
           {errorMessage && <div className="ml-10 text-xs text-red-600">{errorMessage}</div>}
         </div>
       </div>
@@ -197,7 +337,7 @@ function ChatView() {
             </div>
             <div className="flex items-center gap-2">
               <input ref={fileInputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); }} />
-              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isStreaming || extractionStatus === "pending"} aria-label="Attach resume"
+              <button type="button" onClick={() => { if (fileInputRef.current) { fileInputRef.current.value = ""; fileInputRef.current.click(); } }} disabled={isStreaming || extractionStatus === "pending"} aria-label="Attach resume"
                 className="h-9 w-9 shrink-0 bg-zinc-100 hover:bg-zinc-200 text-stone-700 rounded-full flex items-center justify-center disabled:opacity-50">
                 <Paperclip className="w-4 h-4" />
               </button>
@@ -209,6 +349,11 @@ function ChatView() {
 
       <ConfirmDialog open={showStartOverConfirm} title="Start over?" description="This will clear your profile and start fresh." confirmLabel="Start over" onConfirm={() => { setShowStartOverConfirm(false); startOver(); }} onCancel={() => setShowStartOverConfirm(false)} />
       <ConfirmDialog open={showSkipConfirm} title="Skip onboarding?" description="You can build your profile later from Settings." confirmLabel="Skip" onConfirm={handleSkip} onCancel={() => setShowSkipConfirm(false)} />
+      {isComplete && <CompletionOverlay />}
+      </div>
+      <div className="pointer-events-none absolute bottom-8 left-[calc(50%+420px)] top-8 hidden w-[190px] xl:block">
+        <ProfilePreviewPanel readiness={readiness} />
+      </div>
     </div>
   );
 }
