@@ -10,7 +10,7 @@ interface BloomTransitionProps {
 
 export function BloomTransition({ showChat, introContent, chatContent }: BloomTransitionProps) {
   return (
-    <div className="relative h-full">
+    <div className="relative h-full min-h-[100dvh]">
       <AnimatePresence>
         {!showChat && (
           <motion.div

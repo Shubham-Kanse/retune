@@ -31,9 +31,9 @@ function IntroPhase({ onComplete }: { onComplete: () => void }) {
   }, [onComplete]);
 
   return (
-    <div className="flex flex-col items-center justify-center gap-7 w-full h-full">
+    <div className="flex h-full min-h-[100dvh] w-full flex-col items-center justify-center gap-7 px-6">
       <motion.div initial={{ scale: 0, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 360, damping: 26, delay: 0.1 }}>
-        <ColorOrb dimension="88px" spinDuration={20} />
+        <ColorOrb dimension="96px" spinDuration={20} />
       </motion.div>
       <div className="text-center space-y-2">
         <AnimatePresence>
@@ -285,17 +285,19 @@ function ChatView() {
   const showThinking = isStreaming && !visibleMessages.some((m) => m.isProcessing);
 
   return (
-    <div className="relative h-full w-full">
-      <div className="mx-auto flex h-full max-w-[760px] min-h-0 flex-col">
+    <div className="relative flex h-full w-full flex-col">
       <OnboardingHeader stage={phase} isStreaming={isStreaming} onStartOver={() => setShowStartOverConfirm(true)} onSkip={() => setShowSkipConfirm(true)} />
 
+      <div className="flex-1 min-h-0">
+        <div className="mx-auto grid h-full max-w-6xl grid-cols-1 gap-8 px-4 md:px-6 xl:grid-cols-[1fr_220px]">
+          <div className="flex h-full min-h-0 flex-col">
       {readiness.score > 0 && phase !== "orb_intro" && phase !== "resume_upload" && (
         <ProfileStrengthBar filledCount={Math.round(readiness.score)} totalRequired={100} />
       )}
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-3 md:px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="max-w-[680px] mx-auto space-y-4 pt-4 pb-4">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="mx-auto w-full max-w-[680px] space-y-4 pt-6 pb-4">
           {visibleMessages.map((msg, i) => (
             <div key={msg.id} className="space-y-3">
               <MessageBubble msg={msg} isLast={i === lastIdx} isStreaming={isStreaming} />
@@ -322,8 +324,8 @@ function ChatView() {
 
       {/* Composer */}
       {!isComplete && (
-        <div className="flex-shrink-0 px-3 md:px-4 pb-3 pt-2">
-          <div className="max-w-[680px] mx-auto flex flex-col gap-3 p-4 bg-card/90 rounded-3xl border border-border shadow-sm backdrop-blur-md">
+        <div className="flex-shrink-0 pb-4 pt-2">
+          <div className="mx-auto flex w-full max-w-[680px] flex-col gap-3 rounded-3xl border border-border bg-card/90 p-4 shadow-sm backdrop-blur-md">
             <div className="flex gap-2 items-center">
               <textarea ref={textareaRef} value={inputValue}
                 onChange={(e) => { setInputValue(e.target.value); if (textareaRef.current) { textareaRef.current.style.height = "auto"; textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`; } }}
@@ -347,13 +349,19 @@ function ChatView() {
         </div>
       )}
 
+          </div>
+
+          <aside className="hidden xl:block">
+            <div className="sticky top-8 py-8">
+              <ProfilePreviewPanel readiness={readiness} />
+            </div>
+          </aside>
+        </div>
+      </div>
+
       <ConfirmDialog open={showStartOverConfirm} title="Start over?" description="This will clear your profile and start fresh." confirmLabel="Start over" onConfirm={() => { setShowStartOverConfirm(false); startOver(); }} onCancel={() => setShowStartOverConfirm(false)} />
       <ConfirmDialog open={showSkipConfirm} title="Skip onboarding?" description="You can build your profile later from Settings." confirmLabel="Skip" onConfirm={handleSkip} onCancel={() => setShowSkipConfirm(false)} />
       {isComplete && <CompletionOverlay />}
-      </div>
-      <div className="pointer-events-none absolute bottom-8 left-[calc(50%+420px)] top-8 hidden w-[190px] xl:block">
-        <ProfilePreviewPanel readiness={readiness} />
-      </div>
     </div>
   );
 }
@@ -365,7 +373,7 @@ export default function OnboardingPage() {
   const handleIntroComplete = useCallback(() => setShowChat(true), []);
 
   return (
-    <div className="h-full w-full">
+    <div className="h-full min-h-[100dvh] w-full">
       <BloomTransition showChat={showChat} introContent={<IntroPhase onComplete={handleIntroComplete} />} chatContent={<ChatView />} />
     </div>
   );

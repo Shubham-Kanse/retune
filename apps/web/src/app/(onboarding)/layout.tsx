@@ -11,11 +11,12 @@ export default async function OnboardingLayout({ children }: { children: React.R
   if (!session) redirect("/login");
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="border-b border-border px-6 py-3">
-        <span className="text-base font-semibold tracking-tight">Retuned</span>
-      </header>
-      <main id="main-content" className="flex-1 min-h-0 overflow-hidden">
+    <div className="relative h-[100dvh] w-full bg-background text-foreground">
+      <div
+        aria-hidden
+        className="pointer-events-none fixed left-1/2 top-32 -z-0 hidden h-[360px] w-[820px] -translate-x-1/2 bg-orange-100 opacity-50 blur-3xl dark:opacity-20 md:block"
+      />
+      <main id="main-content" className="relative z-10 h-full overflow-hidden">
         {children}
       </main>
     </div>

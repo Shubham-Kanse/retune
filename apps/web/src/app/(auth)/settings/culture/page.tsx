@@ -1,5 +1,7 @@
 "use client";
 
+import { PageHeader, PageShell } from "@/components/app/page-shell";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -88,58 +90,56 @@ export default function CultureSettingsPage() {
   }
 
   return (
-    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
-        {/* Header */}
-        <div className="flex items-end justify-between mb-12">
-          <div>
-            <p className="rt-label mb-3">Settings</p>
-            <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
-              Cultural Preferences
-            </h1>
+    <PageShell>
+      <PageHeader
+        eyebrow="Settings"
+        title="Cultural preferences"
+        subtitle="Set your work style preferences so applications are calibrated to roles that suit you."
+        action={
+          <div className="flex items-center gap-3">
+            {saved ? (
+              <span className="text-xs text-muted-foreground">Saved</span>
+            ) : null}
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/settings">Back to settings</Link>
+            </Button>
           </div>
-          <div className="flex items-center gap-3 mb-2">
-            {saved && <span className="text-xs text-brand">Saved</span>}
-            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors text-sm">✕</Link>
-          </div>
+        }
+      />
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
         </div>
-
-        <p className="text-sm text-muted-foreground mb-8">
-          Set your work style preferences so applications are calibrated to roles that suit you.
-        </p>
-
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="h-5 w-5 border-2 border-[#e0ddd9] border-t-[#2d8a5e] rounded-full animate-spin" />
-          </div>
-        ) : (
-          <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] space-y-8">
-            {AXES.map(({ key, left, right }) => {
-              const value = axes[key];
-              return (
-                <div key={key}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-muted-foreground">{left}</span>
-                    <span className="text-xs text-muted-foreground">{right}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="-100"
-                    max="100"
-                    step="10"
-                    value={value}
-                    onChange={(e) => handleChange(key, e.target.value)}
-                    className="w-full accent-brand"
-                  />
-                  <div className="flex justify-center mt-1">
-                    <span className="text-[10px] text-muted-foreground tabular-nums">
-                      {value > 0 ? `+${value}` : value === 0 ? "Balanced" : value}
-                    </span>
-                  </div>
+      ) : (
+        <div className="space-y-6 rounded-2xl border border-border bg-card p-6 md:p-8">
+          {AXES.map(({ key, left, right }) => {
+            const value = axes[key];
+            return (
+              <div key={key} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{left}</span>
+                  <span className="text-xs text-muted-foreground">{right}</span>
                 </div>
-              );
-            })}
-          </div>
-        )}
-    </div>
+                <input
+                  type="range"
+                  min="-100"
+                  max="100"
+                  step="10"
+                  value={value}
+                  onChange={(e) => handleChange(key, e.target.value)}
+                  className="w-full accent-foreground"
+                />
+                <div className="flex justify-center">
+                  <span className="text-[10px] tabular-nums text-muted-foreground">
+                    {value > 0 ? `+${value}` : value === 0 ? "Balanced" : value}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </PageShell>
   );
 }

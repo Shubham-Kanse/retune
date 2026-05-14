@@ -1,4 +1,7 @@
 "use client";
+
+import { PageHeader, PageShell } from "@/components/app/page-shell";
+import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 // Inlined from @retune/ui/cognitive (package not yet built)
@@ -50,12 +53,13 @@ function VoiceFingerprintRadar({
         })}
         <polygon
           points={points.map((p) => `${p.x},${p.y}`).join(" ")}
-          fill="rgba(27,48,40,0.12)"
-          stroke="#2d8a5e"
+          fill="currentColor"
+          fillOpacity={0.12}
+          stroke="currentColor"
           strokeWidth={1.5}
         />
         {points.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="#2d8a5e" />
+          <circle key={i} cx={p.x} cy={p.y} r={2.5} fill="currentColor" />
         ))}
         {entries.map(([k], i) => {
           const a = (Math.PI * 2 * i) / n - Math.PI / 2;
@@ -99,74 +103,75 @@ export default function VoiceFingerprintSettingsPage() {
   }, []);
 
   return (
-    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
-      {/* Header */}
-      <div className="flex items-end justify-between mb-12">
-        <div>
-          <p className="rt-label mb-3">Voice & Style</p>
-          <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
-            Writing Voice
-          </h1>
+    <PageShell>
+      <PageHeader
+        eyebrow="Voice & style"
+        title="Writing voice"
+        subtitle="Your voice fingerprint captures how you naturally write. It's used to keep generated content authentic to your style."
+        action={
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/settings">Back to settings</Link>
+          </Button>
+        }
+      />
+
+      {loading ? (
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
         </div>
-        <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors mb-2">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </Link>
-      </div>
-
-        <p className="text-sm text-muted-foreground mb-6">
-          Your voice fingerprint captures how you naturally write. It&apos;s used to keep
-          generated content authentic to your style.
-        </p>
-
-        {loading ? (
-          <div className="flex min-h-[40vh] items-center justify-center">
-            <div className="h-5 w-5 border-2 border-[#e0ddd9] border-t-[#2d8a5e] rounded-full animate-spin" />
-          </div>
-        ) : fingerprint ? (
-          <div className="space-y-4">
-            <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
-              <div className="flex items-center justify-between mb-4">
-                <span className="rt-label">Fingerprint Status</span>
-                <span className="text-xs text-brand bg-[#d4f5e0] px-2 py-0.5 rounded-full">Active</span>
+      ) : fingerprint ? (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
+            <div className="mb-4 flex items-center justify-between">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Fingerprint status
+              </span>
+              <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-foreground">
+                Active
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-muted-foreground">Documents analyzed</span>
+                <p className="font-medium text-foreground">{fingerprint.sampleSize}</p>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground text-xs">Documents analyzed</span>
-                  <p className="font-medium text-foreground">{fingerprint.sampleSize}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground text-xs">Last updated</span>
-                  <p className="font-medium text-foreground">
-                    {new Date(fingerprint.updatedAt).toLocaleDateString()}
-                  </p>
-                </div>
+              <div>
+                <span className="text-xs text-muted-foreground">Last updated</span>
+                <p className="font-medium text-foreground">
+                  {new Date(fingerprint.updatedAt).toLocaleDateString()}
+                </p>
               </div>
             </div>
-
-            {fingerprint.dimensions && Object.keys(fingerprint.dimensions).length > 0 && (
-              <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
-                <h3 className="rt-label mb-4">Style Characteristics</h3>
-                <VoiceFingerprintRadar dimensions={fingerprint.dimensions} className="flex justify-center" />
-              </div>
-            )}
-
-            <p className="text-xs text-muted-foreground">
-              Your voice fingerprint updates automatically as you upload more documents and complete
-              more generations. To reset it, contact support.
-            </p>
           </div>
-        ) : (
-          <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] text-center">
-            <p className="text-sm text-muted-foreground mb-4">
-              No voice fingerprint yet. It will be created automatically during your first generation.
-            </p>
-            <Link href="/generate/new" className="rt-btn inline-flex">
-              Start a generation
-            </Link>
-          </div>
-        )}
-    </div>
+
+          {fingerprint.dimensions && Object.keys(fingerprint.dimensions).length > 0 && (
+            <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
+              <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Style characteristics
+              </h3>
+              <VoiceFingerprintRadar
+                dimensions={fingerprint.dimensions}
+                className="flex justify-center text-foreground"
+              />
+            </div>
+          )}
+
+          <p className="text-xs text-muted-foreground">
+            Your voice fingerprint updates automatically as you upload more documents and complete
+            more generations. To reset it, contact support.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-border bg-card p-8 text-center">
+          <p className="mb-4 text-sm text-muted-foreground">
+            No voice fingerprint yet. It will be created automatically during your first
+            generation.
+          </p>
+          <Button asChild>
+            <Link href="/generate/new">Start a generation</Link>
+          </Button>
+        </div>
+      )}
+    </PageShell>
   );
 }
