@@ -206,7 +206,7 @@ export default function GenerationPage() {
             )}
           </MessageContent>
 
-          <div className="mt-4 rounded-xl border border-border bg-card/40 p-4">
+          <div className="mt-4 border-t border-border/50 pt-4">
             <ChainOfThought>
               {PHASES.map((phase) => {
                 const s = phaseState(phase.key);

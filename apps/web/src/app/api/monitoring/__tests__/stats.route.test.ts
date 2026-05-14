@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({
-  getSession: vi.fn(),
+  getApiSession: vi.fn(),
 }));
 
 // Mock the safe browser entry (technical-2.0 §12.3).
@@ -16,8 +16,8 @@ describe("GET /api/monitoring/stats", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(null);
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(null);
     const { GET } = await import("@/app/api/monitoring/stats/route");
 
     const res = await GET();
@@ -25,9 +25,9 @@ describe("GET /api/monitoring/stats", () => {
   });
 
   it("returns metrics shape for authenticated user", async () => {
-    const { getSession } = await import("@/lib/session");
+    const { getApiSession } = await import("@/lib/session");
     const { getAgentExecutionStats } = await import("@retune/agent/web");
-    vi.mocked(getSession).mockResolvedValue({ userId: "u1", email: "u@x.com", fullName: "User" });
+    vi.mocked(getApiSession).mockResolvedValue({ userId: "u1", email: "u@x.com", fullName: "User" });
     vi.mocked(getAgentExecutionStats).mockReturnValue({
       requestMetrics: {
         totalRequests: 10,
@@ -54,9 +54,9 @@ describe("GET /api/monitoring/stats", () => {
   });
 
   it("returns 500 when agent stats retrieval throws", async () => {
-    const { getSession } = await import("@/lib/session");
+    const { getApiSession } = await import("@/lib/session");
     const { getAgentExecutionStats } = await import("@retune/agent/web");
-    vi.mocked(getSession).mockResolvedValue({ userId: "u1", email: "u@x.com", fullName: "User" });
+    vi.mocked(getApiSession).mockResolvedValue({ userId: "u1", email: "u@x.com", fullName: "User" });
     vi.mocked(getAgentExecutionStats).mockImplementation(() => {
       throw new Error("stats unavailable");
     });

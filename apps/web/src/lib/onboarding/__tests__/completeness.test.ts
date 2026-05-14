@@ -15,6 +15,10 @@ describe("computeReadiness", () => {
     profile.identity.fullName.value = "Jane Doe";
     profile.identity.email.value = "jane@example.com";
     profile.identity.location.value = "London, UK";
+    profile.onboarding.resumeUploaded = true;
+    profile.onboarding.resumeParsed = true;
+    profile.onboarding.resumeSummarized = true;
+    profile.onboarding.parseQuality.score = 90;
     profile.experience.value = [{ id: "e1", title: "SWE", company: "Acme", responsibilities: [], achievements: [], tools: [], skills: [] }];
     profile.experience.confirmed = true;
     profile.education.value = [{ id: "ed1", degree: "BSc CS", institution: "MIT" }];
@@ -28,8 +32,11 @@ describe("computeReadiness", () => {
     profile.careerIntent.preferredMarkets.value = ["UK"];
     profile.careerIntent.workPreference.confirmed = true;
     profile.careerIntent.workPreference.value = "hybrid";
+    profile.careerIntent.seniorityComfort.value = ["Senior IC"];
+    profile.careerIntent.seniorityComfort.confirmed = true;
     profile.resumeWritingPreferences.emphasisAreas.value = ["Backend engineering"];
     profile.resumeWritingPreferences.emphasisAreas.confirmed = true;
+    profile.resumeWritingPreferences.deEmphasisAreas.confirmed = true;
     const r = computeReadiness(profile);
     expect(r.canEnterDashboard).toBe(true);
   });
@@ -39,14 +46,14 @@ describe("computeReadiness", () => {
     profile.identity.email.value = "a@b.com";
     profile.identity.location.value = "NYC";
     const r = computeReadiness(profile);
-    expect(r.blockers).toContain("Confirm your name, email, and location.");
+    expect(r.blockers).toContain("Add your full name.");
   });
 
   it("missing experience → blocker asks for an experience entry", () => {
     const profile = createEmptyProfile("u1");
     profile.identity.fullName.value = "Jane";
     const r = computeReadiness(profile);
-    expect(r.blockers).toContain("Add or confirm at least one experience entry.");
+    expect(r.blockers).toContain("Add or confirm at least one experience or project entry.");
   });
 
   it("score is 0-100 range", () => {

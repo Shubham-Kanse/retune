@@ -1,10 +1,10 @@
-import { getSession } from "@/lib/session";
+import { getApiSession } from "@/lib/session";
 import { db } from "@retune/db";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const session = await getSession();
+  const session = await getApiSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

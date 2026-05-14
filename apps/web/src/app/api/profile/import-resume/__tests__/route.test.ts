@@ -2,11 +2,15 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({
-  getSession: vi.fn(),
+  getApiSession: vi.fn(),
 }));
 
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: vi.fn(() => ({ success: true })),
+}));
+
+vi.mock("@/lib/profile-domain/services/resume-import-orchestrator", () => ({
+  importResumeAndPersist: vi.fn(),
 }));
 
 vi.mock("@retune/db", () => ({
@@ -43,8 +47,8 @@ describe("POST /api/profile/import-resume", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(null);
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(null);
     const { POST } = await import("@/app/api/profile/import-resume/route");
 
     const req = new NextRequest("http://localhost/api/profile/import-resume", {
@@ -56,8 +60,8 @@ describe("POST /api/profile/import-resume", () => {
   });
 
   it("returns 400 when file is missing", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue({
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue({
       userId: "u1",
       email: "u@example.com",
       fullName: "User One",
@@ -70,8 +74,8 @@ describe("POST /api/profile/import-resume", () => {
   });
 
   it("returns 400 when file is too large", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue({
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue({
       userId: "u1",
       email: "u@example.com",
       fullName: "User One",
@@ -85,8 +89,8 @@ describe("POST /api/profile/import-resume", () => {
   });
 
   it("returns 400 for unsupported extension", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue({
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue({
       userId: "u1",
       email: "u@example.com",
       fullName: "User One",

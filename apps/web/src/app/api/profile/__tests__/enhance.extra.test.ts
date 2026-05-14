@@ -1,12 +1,13 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/session", () => ({ getSession: vi.fn() }));
+vi.mock("@/lib/session", () => ({ getApiSession: vi.fn() }));
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: vi.fn(() => ({ success: true })) }));
 
-const createMock = vi.fn();
-vi.mock("@anthropic-ai/sdk", () => ({
-  default: vi.fn().mockImplementation(() => ({ messages: { create: createMock } })),
+const createMock = vi.hoisted(() => vi.fn());
+vi.mock("@retune/agent/web", () => ({
+  getModels: () => ({ fast: "test-fast-model" }),
+  getProvider: () => ({ createMessage: createMock }),
 }));
 
 function session() {
@@ -32,8 +33,8 @@ describe("POST /api/profile/enhance-section — additional coverage", () => {
   });
 
   it("returns 400 for invalid intent name", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { POST } = await import("@/app/api/profile/enhance-section/route");
 
     const res = await POST(
@@ -43,8 +44,8 @@ describe("POST /api/profile/enhance-section — additional coverage", () => {
   });
 
   it("returns 400 when profile payload is missing", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { POST } = await import("@/app/api/profile/enhance-section/route");
 
     const res = await POST(buildReq({ section: "summary", intent: "make_recruiter_ready" }));
@@ -52,8 +53,8 @@ describe("POST /api/profile/enhance-section — additional coverage", () => {
   });
 
   it("returns patch for summary section", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     createMock.mockResolvedValue({
       content: [{ type: "text", text: '{"voiceNotes":"Improved summary text."}' }],
     });
@@ -68,8 +69,8 @@ describe("POST /api/profile/enhance-section — additional coverage", () => {
   });
 
   it("returns patch for experience section", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     createMock.mockResolvedValue({
       content: [
         {
@@ -93,8 +94,8 @@ describe("POST /api/profile/enhance-section — additional coverage", () => {
   });
 
   it("returns patch for projects section", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     createMock.mockResolvedValue({
       content: [
         { type: "text", text: '{"projects":[{"name":"MyApp","description":"A cool app."}]}' },
@@ -115,8 +116,8 @@ describe("POST /api/profile/enhance-section — additional coverage", () => {
   });
 
   it("returns 502 when AI patch fails schema validation", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     // voiceNotes must be a string, not a number
     createMock.mockResolvedValue({
       content: [{ type: "text", text: '{"voiceNotes":12345}' }],
@@ -130,8 +131,8 @@ describe("POST /api/profile/enhance-section — additional coverage", () => {
   });
 
   it("ignores fields outside the selected section", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     // AI returns both voiceNotes (correct for summary) and experience (wrong section)
     createMock.mockResolvedValue({
       content: [
@@ -154,8 +155,8 @@ describe("POST /api/profile/enhance-section — additional coverage", () => {
   });
 
   it("returns 502 when AI returns no patch for the section", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     // AI returns a field that doesn't belong to summary section
     createMock.mockResolvedValue({
       content: [{ type: "text", text: '{"education":[]}' }],
@@ -169,8 +170,8 @@ describe("POST /api/profile/enhance-section — additional coverage", () => {
   });
 
   it("rejects experience patch that introduces unknown company/title entities", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     createMock.mockResolvedValue({
       content: [
         {
@@ -195,8 +196,8 @@ describe("POST /api/profile/enhance-section — additional coverage", () => {
   });
 
   it("allows experience patch when entity identity matches source profile", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     createMock.mockResolvedValue({
       content: [
         {

@@ -4,14 +4,21 @@ import { eq } from "drizzle-orm";
 import type { ProfileNormalized } from "../contracts";
 import { parseJsonSafe, stringifyJson } from "../utils/json";
 import { buildProfileMarkdown } from "../services/markdown";
+import {
+  CAREER_PROFILE_VERSION,
+  careerProfileToNormalized,
+  isCareerProfileV1,
+} from "@/lib/onboarding/career-profile.schema";
+import type { CareerProfileV1, ProfileReadiness } from "@/lib/onboarding/types";
 
 export interface PersistProfileOptions {
   userId: string;
   sessionEmail: string;
   sessionFullName?: string | null;
-  profile: ProfileNormalized;
+  profile: ProfileNormalized | CareerProfileV1;
   markOnboardingCompleted: boolean;
   profileMarkdownOverride?: string;
+  readiness?: ProfileReadiness;
 }
 
 export async function getProfileByUserId(userId: string): Promise<Record<string, unknown> | null> {
@@ -41,18 +48,28 @@ export async function getProfileByUserId(userId: string): Promise<Record<string,
     skillsTier2: parseJsonSafe<unknown[]>(row.skillsTier2, []),
     skillsTier3: parseJsonSafe<unknown[]>(row.skillsTier3, []),
     voiceNotes: row.voiceNotes,
+    careerProfile: (row as { careerProfile?: unknown }).careerProfile ?? null,
+    careerProfileVersion: (row as { careerProfileVersion?: unknown }).careerProfileVersion ?? null,
+    profileReadiness: (row as { profileReadiness?: unknown }).profileReadiness ?? null,
   };
 }
 
 export async function persistProfile(opts: PersistProfileOptions): Promise<{ completenessScore: number }> {
-  const profileMarkdown = opts.profileMarkdownOverride || buildProfileMarkdown(opts.profile);
-  const completenessScore = dbModule.computeCompletenessScore({ ...opts.profile, profileMarkdown });
-  const extra = opts.profile as ProfileNormalized & {
+  const inputProfile = opts.profile;
+  const careerProfile = isCareerProfileV1(inputProfile) ? inputProfile : null;
+  const normalized: ProfileNormalized = careerProfile
+    ? careerProfileToNormalized(careerProfile, opts.sessionEmail, opts.sessionFullName ?? "")
+    : inputProfile as ProfileNormalized;
+  const readiness = opts.readiness ?? (careerProfile?.onboarding.readiness as ProfileReadiness | null) ?? null;
+  const profileMarkdown = opts.profileMarkdownOverride || buildProfileMarkdown(normalized);
+  const completenessScore = readiness?.score ?? dbModule.computeCompletenessScore({ ...normalized, profileMarkdown });
+  const extra = normalized as ProfileNormalized & {
     professionalIdentities?: string[];
     careerDirection?: string;
     preferredMarkets?: string[];
     workPreference?: string;
     emphasisAreas?: string[];
+    deEmphasisAreas?: string[];
     onboardingProfile?: unknown;
   };
 
@@ -63,38 +80,45 @@ export async function persistProfile(opts: PersistProfileOptions): Promise<{ com
   // by postgres-js (which the Drizzle schema incorrectly types as text).
   const row = {
     user_id: opts.userId,
-    full_name: opts.profile.fullName || opts.sessionFullName || "",
-    email: opts.profile.email || opts.sessionEmail,
-    phone: opts.profile.phone ?? null,
-    linkedin: opts.profile.linkedin ?? null,
-    linkedin_url: opts.profile.linkedin ?? null,
-    location: opts.profile.location ?? "",
-    city: splitLocation(opts.profile.location).city,
-    country: splitLocation(opts.profile.location).country,
-    visa_status: opts.profile.visaStatus ?? null,
-    relocation_preferences: stringifyJson(opts.profile.relocationPreferences),
-    target_roles: stringifyJson(opts.profile.targetRoles),
-    experience_level: opts.profile.experienceLevel ?? null,
-    current_title: opts.profile.currentTitle ?? null,
-    experience: stringifyJson(opts.profile.experience),
-    education: stringifyJson(opts.profile.education),
-    certifications: stringifyJson(opts.profile.certifications),
-    projects: stringifyJson(opts.profile.projects),
-    skills_tier1: stringifyJson(opts.profile.skillsTier1),
-    skills_tier2: stringifyJson(opts.profile.skillsTier2),
-    skills_tier3: stringifyJson(opts.profile.skillsTier3),
-    technical_skills: opts.profile.skillsTier1.map((skill) => skill.name).filter(Boolean),
-    professional_skills: [...opts.profile.skillsTier2, ...opts.profile.skillsTier3].map((skill) => skill.name).filter(Boolean),
-    voice_notes: opts.profile.voiceNotes ?? null,
-    professional_summary: opts.profile.summary ?? opts.profile.voiceNotes ?? null,
+    full_name: normalized.fullName || opts.sessionFullName || "",
+    email: normalized.email || opts.sessionEmail,
+    phone: normalized.phone ?? null,
+    linkedin: normalized.linkedin ?? null,
+    linkedin_url: normalized.linkedin ?? null,
+    github_url: careerProfile?.identity.github.value || null,
+    portfolio_url: careerProfile?.identity.portfolio.value || careerProfile?.identity.website.value || null,
+    location: normalized.location ?? "",
+    city: splitLocation(normalized.location).city,
+    country: splitLocation(normalized.location).country,
+    visa_status: normalized.visaStatus ?? null,
+    relocation_preferences: stringifyJson(normalized.relocationPreferences),
+    target_roles: stringifyJson(normalized.targetRoles),
+    experience_level: normalized.experienceLevel ?? null,
+    current_title: normalized.currentTitle ?? null,
+    experience: stringifyJson(normalized.experience),
+    education: stringifyJson(normalized.education),
+    certifications: stringifyJson(normalized.certifications),
+    projects: stringifyJson(normalized.projects),
+    skills_tier1: stringifyJson(normalized.skillsTier1),
+    skills_tier2: stringifyJson(normalized.skillsTier2),
+    skills_tier3: stringifyJson(normalized.skillsTier3),
+    technical_skills: normalized.skillsTier1.map((skill) => skill.name).filter(Boolean),
+    professional_skills: [...normalized.skillsTier2, ...normalized.skillsTier3].map((skill) => skill.name).filter(Boolean),
+    voice_notes: normalized.voiceNotes ?? null,
+    professional_summary: normalized.summary ?? normalized.voiceNotes ?? null,
     professional_identities: extra.professionalIdentities ?? [],
     career_direction: extra.careerDirection ?? null,
     preferred_markets: extra.preferredMarkets ?? [],
     work_preference: extra.workPreference ?? null,
     emphasis_areas: extra.emphasisAreas ?? [],
-    onboarding_profile: extra.onboardingProfile ?? {},
+    de_emphasis_areas: extra.deEmphasisAreas ?? careerProfile?.resumeWritingPreferences.deEmphasisAreas.value ?? [],
+    onboarding_profile: extra.onboardingProfile ?? careerProfile ?? {},
+    career_profile: careerProfile ?? {},
+    career_profile_version: CAREER_PROFILE_VERSION,
+    profile_readiness: readiness ?? {},
     profile_markdown: profileMarkdown,
     completeness_score: completenessScore,
+    ...(opts.markOnboardingCompleted ? { onboarding_completed_at: new Date().toISOString() } : {}),
     updated_at: new Date().toISOString(),
   };
 
@@ -110,6 +134,7 @@ export async function persistProfile(opts: PersistProfileOptions): Promise<{ com
       .from("users")
       .update({
         onboarding_completed: true,
+        ...(opts.markOnboardingCompleted && "onboarding_completed_at" in row ? { onboarding_completed_at: row.onboarding_completed_at } : {}),
         full_name: row.full_name || opts.sessionFullName,
         updated_at: new Date().toISOString(),
       })

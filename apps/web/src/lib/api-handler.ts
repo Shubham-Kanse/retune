@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { AuthError, ForbiddenError, RateLimitError, toErrorResponse } from "./errors";
 import { rateLimit } from "./rate-limit";
-import { getSession } from "./session";
+import { getApiSession } from "./session";
 
 function checkOrigin(request: Request): void {
   if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") return;
@@ -37,7 +37,7 @@ export function withAuth(handler: SimpleHandler) {
       const { success } = rateLimit(request as NextRequest, 60);
       if (!success) throw new RateLimitError();
 
-      const session = await getSession();
+      const session = await getApiSession();
       if (!session) throw new AuthError();
       return await handler(request, session);
     } catch (err) {
@@ -58,7 +58,7 @@ export function withAuthParams(handler: ParamsHandler) {
       const { success } = rateLimit(request as NextRequest, 60);
       if (!success) throw new RateLimitError();
 
-      const session = await getSession();
+      const session = await getApiSession();
       if (!session) throw new AuthError();
       const resolved = await params;
       return await handler(request, session, resolved);

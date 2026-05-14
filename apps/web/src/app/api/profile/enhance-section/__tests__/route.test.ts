@@ -2,18 +2,17 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({
-  getSession: vi.fn(),
+  getApiSession: vi.fn(),
 }));
 
 vi.mock("@/lib/rate-limit", () => ({
   rateLimit: vi.fn(() => ({ success: true })),
 }));
 
-const createMock = vi.fn();
-vi.mock("@anthropic-ai/sdk", () => ({
-  default: vi.fn().mockImplementation(() => ({
-    messages: { create: createMock },
-  })),
+const createMock = vi.hoisted(() => vi.fn());
+vi.mock("@retune/agent/web", () => ({
+  getModels: () => ({ fast: "test-fast-model" }),
+  getProvider: () => ({ createMessage: createMock }),
 }));
 
 describe("POST /api/profile/enhance-section", () => {
@@ -23,8 +22,8 @@ describe("POST /api/profile/enhance-section", () => {
   });
 
   it("returns 401 when unauthenticated", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(null);
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(null);
     const { POST } = await import("@/app/api/profile/enhance-section/route");
 
     const req = new NextRequest("http://localhost/api/profile/enhance-section", {
@@ -36,8 +35,8 @@ describe("POST /api/profile/enhance-section", () => {
   });
 
   it("returns 413 when request body is too large", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue({
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue({
       userId: "u1",
       email: "u@example.com",
       fullName: "User One",
@@ -54,8 +53,8 @@ describe("POST /api/profile/enhance-section", () => {
   });
 
   it("returns 400 for invalid request payload", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue({
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue({
       userId: "u1",
       email: "u@example.com",
       fullName: "User One",
@@ -72,8 +71,8 @@ describe("POST /api/profile/enhance-section", () => {
   });
 
   it("returns 502 when AI response is not valid JSON", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue({
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue({
       userId: "u1",
       email: "u@example.com",
       fullName: "User One",

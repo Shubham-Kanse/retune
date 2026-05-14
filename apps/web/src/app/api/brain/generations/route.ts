@@ -1,12 +1,12 @@
 import { apiUrl } from "@/lib/api-config";
 import { safeFetch, safeQuery } from "@/lib/errors";
-import { getSession } from "@/lib/session";
+import { getApiSession } from "@/lib/session";
 import { applications, db } from "@retune/db";
 import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const session = await getSession();
+  const session = await getApiSession();
   if (!session) return NextResponse.json([], { status: 401 });
 
   // 1. Fetch legacy generations from SQLite

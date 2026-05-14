@@ -25,9 +25,9 @@ function HonestyCalibrationTable({
     );
   return (
     <div
-      className={`overflow-hidden rounded-xl border border-border text-sm ${className ?? ""}`}
+      className={`text-sm ${className ?? ""}`}
     >
-      <div className="grid grid-cols-[1fr_80px_60px_40px] gap-2 border-b border-border bg-muted/40 px-4 py-3 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      <div className="grid grid-cols-[1fr_80px_60px_40px] gap-2 border-b border-border/50 pb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
         <span>Claim type</span>
         <span className="text-right">Trust</span>
         <span className="text-right">Samples</span>
@@ -36,7 +36,7 @@ function HonestyCalibrationTable({
       {rows.map((row) => (
         <div
           key={row.claimType}
-          className="grid grid-cols-[1fr_80px_60px_40px] items-center gap-2 border-b border-border px-4 py-3 last:border-b-0"
+          className="grid grid-cols-[1fr_80px_60px_40px] items-center gap-2 border-b border-border/30 py-3 last:border-b-0"
         >
           <span className="truncate text-xs capitalize text-foreground">
             {row.claimType.replace(/_/g, " ")}
@@ -105,7 +105,7 @@ export default function HonestyCalibrationPage() {
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
         </div>
       ) : (
-        <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
+        <div>
           <HonestyCalibrationTable rows={calibrations} />
         </div>
       )}

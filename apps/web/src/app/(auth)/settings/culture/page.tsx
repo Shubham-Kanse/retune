@@ -112,7 +112,7 @@ export default function CultureSettingsPage() {
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
         </div>
       ) : (
-        <div className="space-y-6 rounded-2xl border border-border bg-card p-6 md:p-8">
+        <div className="space-y-6">
           {AXES.map(({ key, left, right }) => {
             const value = axes[key];
             return (

@@ -12,6 +12,8 @@ export const FALLBACK_MESSAGES: Record<string, string> = {
     "I found your education details. Should I keep these?",
   skills_confirm:
     "I found these skills from your resume. Which ones should I keep?",
+  projects_certifications_review:
+    "I found projects and certifications that may help future resumes. Should I keep these?",
   professional_identity:
     "Based on your resume, I can position you a few ways. Which feels closest?",
   career_direction:
@@ -24,8 +26,14 @@ export const FALLBACK_MESSAGES: Record<string, string> = {
     "What work setup do you prefer?",
   seniority_comfort:
     "What seniority levels are you comfortable targeting?",
+  industries_of_interest:
+    "Which industries should Retuned keep in mind for future resumes?",
   emphasis_preferences:
     "What should future resumes highlight most?",
+  de_emphasis_preferences:
+    "What should future resumes avoid over-highlighting?",
+  tone_preferences:
+    "What tone should future resumes use?",
   profile_ready:
     "Thank you. Your Retuned profile is complete, and I'm taking you to the dashboard now.",
 };

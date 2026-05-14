@@ -1,8 +1,8 @@
-import { getSession } from "@/lib/session";
+import { getApiSession } from "@/lib/session";
 import { getAgentExecutionStats } from "@retune/agent/web";
 
 export async function GET() {
-  const session = await getSession();
+  const session = await getApiSession();
 
   if (!session) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {

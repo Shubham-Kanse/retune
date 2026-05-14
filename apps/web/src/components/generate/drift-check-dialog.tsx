@@ -1,6 +1,5 @@
 "use client";
 
-import { ColorOrb } from "@/components/ui/color-orb";
 import {
   DRIFT_LEVEL_OPTIONS,
   type DriftAnswer,
@@ -11,20 +10,15 @@ import {
 import * as Dialog from "@radix-ui/react-dialog";
 import { AlertCircle, ArrowRight, CheckCircle2, Info, Sparkles, X } from "lucide-react";
 import { motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { BrainIcon, type BrainIconHandle } from "@/components/ui/brain-icon";
 
 export function DriftCheckLoading({ label = "Retune is checking profile drift..." }: { label?: string }) {
-  const orbTones = {
-    base: "oklch(96% 0.01 120)",
-    accent1: "oklch(60% 0.16 155)",
-    accent2: "oklch(82% 0.12 155)",
-    accent3: "oklch(55% 0.12 170)",
-  };
+  const brainRef = useRef<BrainIconHandle>(null);
+  useEffect(() => { brainRef.current?.startAnimation(); }, []);
   return (
     <div className="flex flex-col items-center gap-4 py-6">
-      <motion.div animate={{ scale: [1, 1.05, 1] }} transition={{ duration: 2, repeat: Infinity }}>
-        <ColorOrb dimension="80px" tones={orbTones} spinDuration={8} />
-      </motion.div>
+      <BrainIcon ref={brainRef} size={36} className="text-[#2d8a5e]" />
       <p className="text-sm text-[#6f6a64]">{label}</p>
       <div className="inline-flex items-center gap-1.5 text-[#7c746b]">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]" />

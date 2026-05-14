@@ -1,11 +1,11 @@
 import { apiUrl } from "@/lib/api-config";
-import { getSession } from "@/lib/session";
+import { getApiSession } from "@/lib/session";
 import { applications, db } from "@retune/db";
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession();
+  const session = await getApiSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;

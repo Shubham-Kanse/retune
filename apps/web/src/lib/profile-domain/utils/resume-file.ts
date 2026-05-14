@@ -34,11 +34,12 @@ export async function readAndValidateResumeFile(file: File): Promise<{ buffer: B
 
   const isPdf = buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46;
   const isDocx = buffer[0] === 0x50 && buffer[1] === 0x4b;
+  const hasWordParts = isDocx && buffer.includes(Buffer.from("word/"));
 
   if (lowerName.endsWith(".pdf") && !isPdf) {
     throw new ResumeFileValidationError("File does not appear to be a valid PDF.", 400);
   }
-  if (lowerName.endsWith(".docx") && !isDocx) {
+  if (lowerName.endsWith(".docx") && (!isDocx || !hasWordParts)) {
     throw new ResumeFileValidationError("File does not appear to be a valid DOCX.", 400);
   }
 

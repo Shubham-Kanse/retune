@@ -65,6 +65,7 @@ describe("planNextQuestion", () => {
     meta.experienceConfirmed = true;
     meta.educationConfirmed = true;
     meta.skillsConfirmed = true;
+    meta.projectsCertificationsReviewed = true;
     profile.professionalProfile.professionalIdentities.confirmed = false;
     const q = planNextQuestion(profile, meta);
     expect(q).not.toBeNull();
@@ -128,6 +129,7 @@ describe("planNextQuestion", () => {
     meta.experienceConfirmed = true;
     meta.educationConfirmed = true;
     meta.skillsConfirmed = true;
+    meta.projectsCertificationsReviewed = true;
     profile.professionalProfile.professionalIdentities.confirmed = true;
     profile.professionalProfile.professionalIdentities.value = ["Software Engineer"];
     profile.careerIntent.careerDirection.confirmed = true;
@@ -138,10 +140,65 @@ describe("planNextQuestion", () => {
     profile.careerIntent.preferredMarkets.value = ["UK"];
     profile.careerIntent.workPreference.confirmed = true;
     profile.careerIntent.workPreference.value = "hybrid";
+    profile.careerIntent.seniorityComfort.confirmed = true;
+    profile.careerIntent.seniorityComfort.value = ["Senior IC"];
+    profile.careerIntent.industriesOfInterest.confirmed = true;
+    profile.careerIntent.industriesOfInterest.value = ["SaaS"];
     profile.resumeWritingPreferences.emphasisAreas.confirmed = true;
     profile.resumeWritingPreferences.emphasisAreas.value = ["Backend engineering"];
+    profile.resumeWritingPreferences.deEmphasisAreas.confirmed = true;
+    profile.resumeWritingPreferences.deEmphasisAreas.value = ["Legacy tools"];
     const q = planNextQuestion(profile, meta);
     expect(q).toBeNull();
+  });
+
+  it("skills confirmed → reviews projects and certifications before strategy questions", () => {
+    const profile = createEmptyProfile("u1");
+    profile.projects.value = [{ id: "p1", title: "Payments API", description: "Built API", techStack: ["Java"], impact: "20% faster" }];
+    const meta = createEmptyMeta();
+    meta.resumeUploaded = true;
+    meta.resumeParsed = true;
+    meta.resumeSummarized = true;
+    meta.identityConfirmed = true;
+    meta.experienceConfirmed = true;
+    meta.educationConfirmed = true;
+    meta.skillsConfirmed = true;
+    const q = planNextQuestion(profile, meta);
+    expect(q!.phase).toBe("projects_certifications_review");
+    expect(q!.cards?.[0]?.type).toBe("project");
+  });
+
+  it("after work preference → asks seniority then industries then de-emphasis", () => {
+    const profile = createEmptyProfile("u1");
+    const meta = createEmptyMeta();
+    meta.resumeUploaded = true;
+    meta.resumeParsed = true;
+    meta.resumeSummarized = true;
+    meta.identityConfirmed = true;
+    meta.experienceConfirmed = true;
+    meta.educationConfirmed = true;
+    meta.skillsConfirmed = true;
+    meta.projectsCertificationsReviewed = true;
+    profile.professionalProfile.professionalIdentities.confirmed = true;
+    profile.professionalProfile.professionalIdentities.value = ["Software Engineer"];
+    profile.careerIntent.careerDirection.confirmed = true;
+    profile.careerIntent.careerDirection.value = "same";
+    profile.careerIntent.interestedRoles.confirmed = true;
+    profile.careerIntent.interestedRoles.value = ["Backend Engineer"];
+    profile.careerIntent.preferredMarkets.confirmed = true;
+    profile.careerIntent.preferredMarkets.value = ["UK"];
+    profile.careerIntent.workPreference.confirmed = true;
+    profile.careerIntent.workPreference.value = "hybrid";
+
+    expect(planNextQuestion(profile, meta)!.phase).toBe("seniority_comfort");
+    profile.careerIntent.seniorityComfort.confirmed = true;
+    profile.careerIntent.seniorityComfort.value = ["Senior IC"];
+    expect(planNextQuestion(profile, meta)!.phase).toBe("industries_of_interest");
+    profile.careerIntent.industriesOfInterest.confirmed = true;
+    profile.careerIntent.industriesOfInterest.value = ["SaaS"];
+    profile.resumeWritingPreferences.emphasisAreas.confirmed = true;
+    profile.resumeWritingPreferences.emphasisAreas.value = ["Backend engineering"];
+    expect(planNextQuestion(profile, meta)!.phase).toBe("de_emphasis_preferences");
   });
 
   it("AI education + SWE experience → asks a cross-domain career direction question", () => {
@@ -169,6 +226,7 @@ describe("planNextQuestion", () => {
     meta.experienceConfirmed = true;
     meta.educationConfirmed = true;
     meta.skillsConfirmed = true;
+    meta.projectsCertificationsReviewed = true;
     profile.professionalProfile.professionalIdentities.confirmed = true;
     profile.professionalProfile.professionalIdentities.value = ["Software Engineer"];
 
@@ -192,6 +250,7 @@ describe("planNextQuestion", () => {
     meta.experienceConfirmed = true;
     meta.educationConfirmed = true;
     meta.skillsConfirmed = true;
+    meta.projectsCertificationsReviewed = true;
     profile.professionalProfile.professionalIdentities.confirmed = true;
     profile.professionalProfile.professionalIdentities.value = ["Software Engineer"];
     profile.careerIntent.careerDirection.confirmed = true;

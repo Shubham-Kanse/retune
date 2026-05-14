@@ -1,8 +1,9 @@
 import { withAuth } from "@/lib/api-handler";
+import { importResumeAndPersist } from "@/lib/profile-domain/services/resume-import-orchestrator";
 import {
+  assertValidResumeFile,
   ResumeFileValidationError,
-  importResumeAndPersist,
-} from "@/lib/profile-domain";
+} from "@/lib/profile-domain/utils/resume-file";
 import { NextResponse } from "next/server";
 
 export const POST = withAuth(async (request, session) => {
@@ -10,6 +11,7 @@ export const POST = withAuth(async (request, session) => {
     const formData = await request.formData();
     const file = formData.get("file") as File | null;
     if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    assertValidResumeFile(file);
 
     const result = await importResumeAndPersist({
       file,

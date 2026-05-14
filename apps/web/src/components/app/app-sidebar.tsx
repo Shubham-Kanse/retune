@@ -1,6 +1,6 @@
 "use client";
 
-import { ThemeCycleButton } from "@/components/theme/theme-cycle";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import {
   Sidebar,
   SidebarContent,
@@ -211,7 +211,7 @@ export function AppSidebar({
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <ThemeCycleButton />
+                  <AnimatedThemeToggler className="inline-flex h-8 w-full items-center justify-start gap-2 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-foreground" />
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroupContent>

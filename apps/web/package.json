@@ -94,6 +94,7 @@
     "@types/node": "^22.10.10",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "@types/three": "^0.184.1",
     "@types/turndown": "^5.0.6",
     "@vitest/ui": "^2.1.8",
     "jsdom": "^26.0.0",

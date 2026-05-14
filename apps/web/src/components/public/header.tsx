@@ -1,6 +1,6 @@
 import { MainNav } from "@/components/public/main-nav";
 import { MobileNav } from "@/components/public/mobile-nav";
-import { ThemeSwitch } from "@/components/theme/theme-switch";
+import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -19,7 +19,7 @@ export function PublicHeader() {
           <Button asChild size="sm">
             <Link href="/signup">Get started</Link>
           </Button>
-          <ThemeSwitch />
+          <AnimatedThemeToggler className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-foreground transition-colors hover:bg-accent" />
         </div>
       </div>
     </header>

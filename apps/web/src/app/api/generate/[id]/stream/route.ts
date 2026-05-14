@@ -1,10 +1,10 @@
 import { apiUrl } from "@/lib/api-config";
 import { signGenerationAccessToken, userOwnsGeneration } from "@/lib/generation-access";
-import { getSession } from "@/lib/session";
+import { getApiSession } from "@/lib/session";
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await getSession();
+  const session = await getApiSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;

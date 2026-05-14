@@ -197,7 +197,7 @@ function NewGenerationInner() {
       />
 
       {busy ? (
-        <div className="rounded-2xl border border-border bg-card p-8">
+        <div className="py-8">
           <div className="flex items-start gap-4">
             <Loader variant="circular" />
             <div className="space-y-1">

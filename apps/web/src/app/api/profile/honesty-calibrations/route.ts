@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/session";
+import { getApiSession } from "@/lib/session";
 import { applications, db } from "@retune/db";
 import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
@@ -11,7 +11,7 @@ import { NextResponse } from "next/server";
  * the user's recent applications.
  */
 export async function GET() {
-  const session = await getSession();
+  const session = await getApiSession();
   if (!session) return NextResponse.json([], { status: 401 });
 
   const rows = await db

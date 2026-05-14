@@ -559,15 +559,69 @@ export const profiles = pgTable("profiles", {
   education: text("education").notNull(),
   certifications: text("certifications"),
   projects: text("projects"),
+  careerProfile: jsonb("career_profile").notNull().default(sql`'{}'::jsonb`),
+  careerProfileVersion: text("career_profile_version").notNull().default("career-profile-v1"),
+  profileReadiness: jsonb("profile_readiness").notNull().default(sql`'{}'::jsonb`),
+  deEmphasisAreas: jsonb("de_emphasis_areas").notNull().default(sql`'[]'::jsonb`),
   skillsTier1: text("skills_tier1"),
   skillsTier2: text("skills_tier2"),
   skillsTier3: text("skills_tier3"),
   voiceNotes: text("voice_notes"),
   profileMarkdown: text("profile_markdown").notNull(),
   completenessScore: integer("completeness_score").notNull().default(0),
+  onboardingCompletedAt: timestamp("onboarding_completed_at", { withTimezone: true }),
   createdAt: tcol("created_at"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const onboardingSessions = pgTable("onboarding_sessions", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" })
+    .unique(),
+  responseChainId: text("response_chain_id"),
+  targetRole: text("target_role"),
+  onboardingState: jsonb("onboarding_state").notNull().default(sql`'{}'::jsonb`),
+  metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+  messages: jsonb("messages").notNull().default(sql`'[]'::jsonb`),
+  profileDelta: jsonb("profile_delta").notNull().default(sql`'{}'::jsonb`),
+  evidenceReadinessScore: doublePrecision("evidence_readiness_score").notNull().default(0),
+  turnCount: integer("turn_count").notNull().default(0),
+  version: integer("version").notNull().default(0),
+  status: text("status").notNull().default("draft"),
+  resumeFileHash: text("resume_file_hash"),
+  extractionStatus: text("extraction_status"),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt: tcol("created_at"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const onboardingEvents = pgTable(
+  "onboarding_events",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionId: uuid("session_id").references(() => onboardingSessions.id, { onDelete: "cascade" }),
+    traceId: text("trace_id"),
+    eventType: text("event_type").notNull(),
+    phase: text("phase"),
+    durationMs: integer("duration_ms"),
+    aiModel: text("ai_model"),
+    aiLatencyMs: integer("ai_latency_ms"),
+    aiCostUsd: doublePrecision("ai_cost_usd"),
+    errorCode: text("error_code"),
+    payload: jsonb("payload").notNull().default(sql`'{}'::jsonb`),
+    createdAt: tcol("created_at"),
+  },
+  (t) => ({
+    userIdx: index("onboarding_events_user_id_idx").on(t.userId),
+    sessionIdx: index("onboarding_events_session_id_idx").on(t.sessionId),
+    traceIdx: index("onboarding_events_trace_id_idx").on(t.traceId),
+  }),
+);
 
 export const onboardingConversations = pgTable("onboarding_conversations", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -760,6 +814,8 @@ export const pg_schema = {
   ontology_versions,
   // Legacy v1 product tables
   profiles,
+  onboardingSessions,
+  onboardingEvents,
   onboardingConversations,
   subscriptions,
   passwordResetTokens,

@@ -37,20 +37,20 @@ function statusLabel(v: string | null) {
   }
 }
 
-function statusTone(v: string | null) {
+function statusColor(v: string | null) {
   switch (v) {
     case "ship":
     case "completed":
-      return "bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400";
+      return "text-emerald-600 dark:text-emerald-400";
     case "refuse":
     case "refused":
     case "failed":
-      return "bg-destructive/10 text-destructive border-destructive/20";
+      return "text-red-500";
     case "running":
     case "pending":
-      return "bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400";
+      return "text-amber-600 dark:text-amber-400";
     default:
-      return "bg-muted text-muted-foreground border-border";
+      return "text-muted-foreground";
   }
 }
 
@@ -59,7 +59,6 @@ function fmt(iso: string | null) {
   return new Date(iso).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
-    year: "numeric",
   });
 }
 
@@ -108,7 +107,7 @@ export default function ApplicationsPage() {
       <PageHeader
         eyebrow="History"
         title="Applications"
-        subtitle="Every tuning you've run, with current status and readiness score."
+        subtitle="Every tuning you've run."
         action={
           <Button asChild size="sm">
             <Link href="/generate/new">
@@ -119,32 +118,29 @@ export default function ApplicationsPage() {
       />
 
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-lg border border-border bg-muted/30" />
+            <div key={i} className="h-12 animate-pulse rounded-md bg-muted/40" />
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+        <p className="text-sm text-destructive">
           Couldn&apos;t load applications.{" "}
           <Link href="/generate/new" className="underline">
             Start a new tuning
           </Link>
           .
-        </div>
+        </p>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border p-12 text-center">
-          <FileText className="mx-auto size-6 text-muted-foreground" />
-          <p className="mt-4 text-sm font-medium">No applications yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Run your first tuning to see it here.
-          </p>
+        <div className="py-16 text-center">
+          <FileText className="mx-auto size-5 text-muted-foreground/60" />
+          <p className="mt-4 text-sm text-muted-foreground">No applications yet</p>
           <Button asChild size="sm" className="mt-5">
             <Link href="/generate/new">Run a tuning</Link>
           </Button>
         </div>
       ) : (
-        <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+        <div className="divide-y divide-border/50">
           {items.map((item) => {
             const href =
               item.verdict === "ship" || item.verdict === "completed"
@@ -153,12 +149,12 @@ export default function ApplicationsPage() {
             const pending = confirmId === item.id;
             const deleting = deletingId === item.id;
             return (
-              <li
+              <div
                 key={item.id}
-                className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent"
+                className="group flex items-center gap-4 py-3 -mx-2 px-2 rounded-md transition-colors hover:bg-muted/30"
               >
                 <Link href={href} className="flex min-w-0 flex-1 items-center gap-4">
-                  <span className="hidden w-20 shrink-0 text-xs text-muted-foreground sm:inline">
+                  <span className="hidden w-16 shrink-0 text-xs text-muted-foreground sm:inline">
                     {fmt(item.createdAt)}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -167,17 +163,15 @@ export default function ApplicationsPage() {
                       {item.company || "Unknown company"}
                     </p>
                   </div>
-                  <span
-                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${statusTone(item.verdict)}`}
-                  >
+                  <span className={`shrink-0 text-xs font-medium ${statusColor(item.verdict)}`}>
                     {statusLabel(item.verdict)}
                   </span>
-                  <span className="hidden w-14 shrink-0 text-right font-mono text-xs tabular-nums text-foreground sm:inline">
+                  <span className="hidden w-10 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground sm:inline">
                     {item.interviewReadyScore != null
-                      ? `${Math.round(item.interviewReadyScore)}/100`
+                      ? Math.round(item.interviewReadyScore)
                       : "—"}
                   </span>
-                  <ArrowRight className="size-4 text-muted-foreground" />
+                  <ArrowRight className="size-3.5 text-muted-foreground/50" />
                 </Link>
                 <button
                   type="button"
@@ -197,12 +191,12 @@ export default function ApplicationsPage() {
                     pending ? "text-destructive opacity-100" : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <Trash2 className="size-4" />
+                  <Trash2 className="size-3.5" />
                 </button>
-              </li>
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
     </PageShell>
   );

@@ -4,20 +4,55 @@ import type { ProfileNormalized } from "@/lib/profile-domain/contracts";
 
 export type ProfileFieldSource = "resume" | "user" | "ai_inferred" | "system";
 
+export interface ProfileFieldEdit<T> {
+  previousValue: T;
+  nextValue: T;
+  source: ProfileFieldSource;
+  reason: string;
+  actor: "user" | "router" | "extractor" | "system";
+  at: string;
+}
+
+export interface ProfileEvidence {
+  source: "resume_text" | "resume_file" | "user_message" | "ai_inference";
+  quote?: string;
+  page?: number;
+  messageId?: string;
+  confidence: number;
+}
+
 export interface ProfileField<T> {
   value: T;
   source: ProfileFieldSource;
   confidence: number;
   confirmed: boolean;
   lastUpdatedAt: string;
+  evidence: ProfileEvidence[];
+  editHistory: ProfileFieldEdit<T>[];
 }
 
 export function makeField<T>(value: T, source: ProfileField<T>["source"] = "system", confidence = 1): ProfileField<T> {
-  return { value, source, confidence, confirmed: false, lastUpdatedAt: new Date().toISOString() };
+  return {
+    value,
+    source,
+    confidence,
+    confirmed: false,
+    lastUpdatedAt: new Date().toISOString(),
+    evidence: [],
+    editHistory: [],
+  };
 }
 
 export function emptyField<T>(defaultValue: T): ProfileField<T> {
-  return { value: defaultValue, source: "system", confidence: 0, confirmed: false, lastUpdatedAt: "" };
+  return {
+    value: defaultValue,
+    source: "system",
+    confidence: 0,
+    confirmed: false,
+    lastUpdatedAt: "",
+    evidence: [],
+    editHistory: [],
+  };
 }
 
 // ─── Onboarding Phases ───────────────────────────────────────────────────────
@@ -31,13 +66,17 @@ export type OnboardingPhase =
   | "experience_confirm"
   | "education_confirm"
   | "skills_confirm"
+  | "projects_certifications_review"
   | "professional_identity"
   | "career_direction"
   | "role_interests"
   | "market_preferences"
   | "work_preferences"
   | "seniority_comfort"
+  | "industries_of_interest"
   | "emphasis_preferences"
+  | "de_emphasis_preferences"
+  | "tone_preferences"
   | "profile_gap_fill"
   | "profile_ready"
   | "profile_enhancement"
@@ -68,7 +107,19 @@ export interface Pill {
 }
 
 export interface DisplayCard {
-  type: "identity" | "experience" | "education" | "skill_group" | "career_intent" | "project" | "certification";
+  type:
+    | "identity"
+    | "experience"
+    | "education"
+    | "skill_group"
+    | "career_intent"
+    | "project"
+    | "certification"
+    | "summary"
+    | "language"
+    | "award"
+    | "publication"
+    | "volunteering";
   id?: string;
   title: string;
   subtitle?: string;
@@ -89,9 +140,12 @@ export interface ExperienceEntry {
   isCurrent?: boolean;
   responsibilities: string[];
   achievements: string[];
+  metrics?: Array<{ metric?: string; value?: string; context?: string; direction?: string }>;
   tools: string[];
   skills: string[];
   domain?: string;
+  industry?: string;
+  teamSize?: number;
   confidence?: number;
 }
 
@@ -105,14 +159,38 @@ export interface EducationEntry {
   graduationYear?: string;
   location?: string;
   grade?: string;
+  coursework?: string[];
+  capstone?: string;
 }
 
-export interface CertificationEntry { name: string; issuer: string; year?: string; }
-export interface ProjectEntry { title: string; description: string; techStack?: string[]; link?: string; impact?: string; }
+export interface CertificationEntry { id?: string; name: string; issuer: string; year?: string; expiresAt?: string; }
+export interface ProjectEntry {
+  id?: string;
+  title: string;
+  description: string;
+  techStack?: string[];
+  link?: string;
+  impact?: string;
+  role?: string;
+  year?: string;
+}
+
+export interface ParseQuality {
+  score: number;
+  textExtractionMethod: "pdf_text" | "docx_text" | "openai_file" | "manual_paste" | "unknown";
+  hasIdentity: boolean;
+  hasExperience: boolean;
+  hasEducation: boolean;
+  hasSkills: boolean;
+  hasProjects: boolean;
+  weakAreas: string[];
+  warnings: string[];
+}
 
 // ─── User Career Profile ─────────────────────────────────────────────────────
 
-export interface UserCareerProfile {
+export interface CareerProfileV1 {
+  schemaVersion: "career-profile-v1";
   id: string;
   userId: string;
 
@@ -124,13 +202,16 @@ export interface UserCareerProfile {
     linkedin: ProfileField<string>;
     github: ProfileField<string>;
     portfolio: ProfileField<string>;
+    website: ProfileField<string>;
   };
 
   professionalProfile: {
     currentTitles: ProfileField<string[]>;
     professionalIdentities: ProfileField<string[]>;
-    yearsOfExperience: ProfileField<number>;
+    yearsOfExperience: ProfileField<number | null>;
+    summarySignals: ProfileField<string[]>;
     domainExperience: ProfileField<string[]>;
+    careerHighlights: ProfileField<string[]>;
   };
 
   experience: ProfileField<ExperienceEntry[]>;
@@ -147,6 +228,10 @@ export interface UserCareerProfile {
 
   projects: ProfileField<ProjectEntry[]>;
   certifications: ProfileField<CertificationEntry[]>;
+  languages: ProfileField<string[]>;
+  awards: ProfileField<string[]>;
+  publications: ProfileField<string[]>;
+  volunteering: ProfileField<string[]>;
 
   careerIntent: {
     interestedRoles: ProfileField<string[]>;
@@ -155,13 +240,32 @@ export interface UserCareerProfile {
     workPreference: ProfileField<"remote" | "hybrid" | "onsite" | "open" | "">;
     seniorityComfort: ProfileField<string[]>;
     industriesOfInterest: ProfileField<string[]>;
+    roleDealbreakers: ProfileField<string[]>;
   };
 
   resumeWritingPreferences: {
     emphasisAreas: ProfileField<string[]>;
     deEmphasisAreas: ProfileField<string[]>;
+    toneSignals: ProfileField<string[]>;
+    styleConstraints: ProfileField<string[]>;
   };
+
+  onboarding: {
+    currentPhase: OnboardingPhase;
+    parseQuality: ParseQuality;
+    readiness: ProfileReadiness | null;
+    resumeUploaded: boolean;
+    resumeParsed: boolean;
+    resumeSummarized: boolean;
+    educationNotApplicable: boolean;
+    completedAt: string | null;
+  };
+
+  createdAt: string;
+  updatedAt: string;
 }
+
+export type UserCareerProfile = CareerProfileV1;
 
 // ─── Onboarding Meta ─────────────────────────────────────────────────────────
 
@@ -177,9 +281,16 @@ export interface OnboardingMeta {
   experienceConfirmed: boolean;
   educationConfirmed: boolean;
   skillsConfirmed: boolean;
+  projectsCertificationsReviewed: boolean;
+  educationNotApplicable: boolean;
+  optionalTonePrompted: boolean;
   pendingTextInput?: PendingTextInput;
   enhancementTurns: number;
   resetCount: number;
+  status: "draft" | "ready" | "completed";
+  resumeFileHash?: string | null;
+  extractionStatus?: "pending" | "processing" | "done" | "failed" | null;
+  completedAt?: string | null;
 }
 
 export interface SkippedQuestion {
@@ -195,17 +306,6 @@ export interface PendingTextInput {
   expectedFormat: "name" | "email" | "phone" | "location" | "experience" | "education" | "skills" | "role" | "market" | "general_text";
 }
 
-// ─── Parse Quality ───────────────────────────────────────────────────────────
-
-export interface ParseQuality {
-  score: number;
-  hasIdentity: boolean;
-  hasExperience: boolean;
-  hasEducation: boolean;
-  hasSkills: boolean;
-  weakAreas: string[];
-}
-
 // ─── Profile Readiness ───────────────────────────────────────────────────────
 
 export interface ProfileReadiness {
@@ -217,11 +317,15 @@ export interface ProfileReadiness {
   completedCategories: {
     identity: number;
     experience: number;
+    experienceOrProjects?: number;
     education: number;
+    educationOrNotApplicable?: number;
     skills: number;
     professionalProfile: number;
     careerIntent: number;
     resumeWritingSignals: number;
+    resumeWritingPreferences?: number;
+    qualityAndConfirmation?: number;
   };
 }
 
@@ -253,8 +357,10 @@ export type ProfileDraft = Partial<ProfileNormalized> & {
   preferredMarkets?: string[];
   workPreference?: "remote" | "hybrid" | "onsite" | "open";
   seniorityComfort?: string[];
+  industriesOfInterest?: string[];
   emphasisAreas?: string[];
   deEmphasisAreas?: string[];
+  toneSignals?: string[];
 };
 
 // ─── Session State ───────────────────────────────────────────────────────────
@@ -267,4 +373,9 @@ export interface SessionState {
   meta: OnboardingMeta;
   messages: StoredMessage[];
   turnCount: number;
+  version: number;
+  status: "draft" | "ready" | "completed";
+  resumeFileHash?: string | null;
+  extractionStatus?: "pending" | "processing" | "done" | "failed" | null;
+  completedAt?: string | null;
 }

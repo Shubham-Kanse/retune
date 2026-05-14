@@ -1,17 +1,21 @@
 import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/session", () => ({ getSession: vi.fn() }));
+vi.mock("@/lib/session", () => ({ getApiSession: vi.fn() }));
 vi.mock("@/lib/rate-limit", () => ({ rateLimit: vi.fn(() => ({ success: true })) }));
 
 const revalidateMock = vi.fn();
 vi.mock("next/cache", () => ({ revalidatePath: (...a: unknown[]) => revalidateMock(...a) }));
 
-const dbMock = { insert: vi.fn(), transaction: vi.fn((fn: () => unknown) => fn()) };
+const persistProfileMock = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/profile-domain/repositories/profile-repository", () => ({
+  persistProfile: persistProfileMock,
+}));
+
 vi.mock("@retune/db", () => ({
-  db: dbMock,
+  db: {},
   profiles: { userId: "user_id" },
-  computeCompletenessScore: vi.fn(() => 80),
 }));
 
 function session() {
@@ -30,63 +34,67 @@ describe("PATCH /api/profile — additional coverage", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
-    dbMock.transaction.mockImplementation((fn: () => unknown) => fn());
-    const run = vi.fn();
-    const onConflictDoUpdate = vi.fn().mockReturnValue({ run });
-    const values = vi.fn().mockReturnValue({ onConflictDoUpdate });
-    dbMock.insert.mockReturnValue({ values });
+    persistProfileMock.mockResolvedValue({ completenessScore: 80 });
   });
 
-  it("computes and stores completeness score", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
-    const { computeCompletenessScore } = await import("@retune/db");
+  it("persists normalized profile data and returns completeness score", async () => {
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     const res = await PATCH(buildReq({ fullName: "Jane Doe", location: "Dublin" }));
     expect(res.status).toBe(200);
-    expect(computeCompletenessScore).toHaveBeenCalled();
+    expect(await res.json()).toEqual({ ok: true, completenessScore: 80 });
+    expect(persistProfileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u1",
+        sessionEmail: "u@x.com",
+        sessionFullName: "User One",
+        markOnboardingCompleted: true,
+        profile: expect.objectContaining({ fullName: "Jane Doe", location: "Dublin" }),
+      }),
+    );
   });
 
-  it("rebuilds profileMarkdown when not provided", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+  it("delegates markdown rebuilding to the repository when markdown is not provided", async () => {
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     const res = await PATCH(buildReq({ fullName: "Jane Doe", targetRoles: ["Engineer"] }));
     expect(res.status).toBe(200);
-    // insert was called with a profileMarkdown that includes the name
-    const insertCall = vi.mocked(dbMock.insert().values).mock.calls[0]?.[0] as
-      | Record<string, unknown>
-      | undefined;
-    expect(String(insertCall?.profileMarkdown ?? "")).toContain("Jane Doe");
+    expect(persistProfileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: expect.objectContaining({ fullName: "Jane Doe", targetRoles: ["Engineer"] }),
+        profileMarkdownOverride: undefined,
+      }),
+    );
   });
 
   it("uses provided profileMarkdown when supplied", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     const res = await PATCH(buildReq({ profileMarkdown: "# Custom Markdown" }));
     expect(res.status).toBe(200);
-    const insertCall = vi.mocked(dbMock.insert().values).mock.calls[0]?.[0] as
-      | Record<string, unknown>
-      | undefined;
-    expect(insertCall?.profileMarkdown).toBe("# Custom Markdown");
+    expect(persistProfileMock).toHaveBeenCalledWith(
+      expect.objectContaining({ profileMarkdownOverride: "# Custom Markdown" }),
+    );
   });
 
   it("accepts nullable optional fields (phone, linkedin, voiceNotes)", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     const res = await PATCH(buildReq({ phone: null, linkedin: null, voiceNotes: null }));
     expect(res.status).toBe(200);
   });
 
-  it("serializes arrays to JSON strings", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+  it("passes normalized array fields to the repository", async () => {
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     await PATCH(
@@ -96,17 +104,19 @@ describe("PATCH /api/profile — additional coverage", () => {
       }),
     );
 
-    const insertCall = vi.mocked(dbMock.insert().values).mock.calls[0]?.[0] as
-      | Record<string, unknown>
-      | undefined;
-    expect(typeof insertCall?.targetRoles).toBe("string");
-    expect(JSON.parse(insertCall?.targetRoles as string)).toEqual(["Engineer", "Analyst"]);
-    expect(typeof insertCall?.skillsTier1).toBe("string");
+    expect(persistProfileMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: expect.objectContaining({
+          targetRoles: ["Engineer", "Analyst"],
+          skillsTier1: [expect.objectContaining({ name: "TypeScript" })],
+        }),
+      }),
+    );
   });
 
   it("returns 400 for invalid JSON body", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     const req = new NextRequest("http://localhost/api/profile", {
@@ -119,8 +129,8 @@ describe("PATCH /api/profile — additional coverage", () => {
   });
 
   it("strips unknown extra fields silently (Zod 4 default behavior)", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     const res = await PATCH(buildReq({ unknownField: "should be stripped" }));
@@ -128,8 +138,8 @@ describe("PATCH /api/profile — additional coverage", () => {
   });
 
   it("returns 400 when fullName exceeds max length", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     const res = await PATCH(buildReq({ fullName: "A".repeat(101) }));
@@ -137,8 +147,8 @@ describe("PATCH /api/profile — additional coverage", () => {
   });
 
   it("returns 400 when experience array exceeds max items", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     const tooMany = Array.from({ length: 31 }, (_, i) => ({
@@ -150,8 +160,8 @@ describe("PATCH /api/profile — additional coverage", () => {
   });
 
   it("returns 400 when skillsTier1 exceeds max items", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     const tooMany = Array.from({ length: 51 }, (_, i) => ({ name: `Skill${i}`, evidence: "x" }));
@@ -160,8 +170,8 @@ describe("PATCH /api/profile — additional coverage", () => {
   });
 
   it("returns 400 for invalid experienceLevel enum", async () => {
-    const { getSession } = await import("@/lib/session");
-    vi.mocked(getSession).mockResolvedValue(session());
+    const { getApiSession } = await import("@/lib/session");
+    vi.mocked(getApiSession).mockResolvedValue(session());
     const { PATCH } = await import("@/app/api/profile/route");
 
     const res = await PATCH(buildReq({ experienceLevel: "expert" }));

@@ -92,9 +92,26 @@ export function DashboardClient({
 
       <JdPrompt onStart={handleStart} />
 
-      <div className="mt-14">
-        <div className="mb-4 flex items-end justify-between">
-          <h2 className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
+      {/* Stats row — flat, no card wrappers */}
+      <div className="mt-14 grid grid-cols-3 gap-6">
+        {[
+          { label: "Profile", value: `${profileScore}%`, href: "/profile" },
+          { label: "Tunings", value: String(totalGenerations || "—"), href: "/applications" },
+          { label: "Shipped", value: String(shippedCount || "—"), href: "/applications" },
+        ].map((s) => (
+          <Link key={s.label} href={s.href} className="group">
+            <p className="text-xs text-muted-foreground">{s.label}</p>
+            <p className="mt-0.5 text-2xl font-semibold tracking-tight group-hover:text-foreground/80 transition-colors">
+              {s.value}
+            </p>
+          </Link>
+        ))}
+      </div>
+
+      {/* Recent tunings — flat list with dividers, no card wrapper */}
+      <div className="mt-10">
+        <div className="mb-3 flex items-end justify-between">
+          <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Recent tunings
           </h2>
           <Link
@@ -104,80 +121,63 @@ export function DashboardClient({
             View all
           </Link>
         </div>
+
         {loading ? (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-14 animate-pulse rounded-lg border border-border bg-muted/30" />
+              <div key={i} className="h-12 animate-pulse rounded-md bg-muted/40" />
             ))}
           </div>
         ) : recent.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border p-8 text-center">
-            <FileText className="mx-auto size-5 text-muted-foreground" />
-            <p className="mt-3 text-sm font-medium">No tunings yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">
+          <div className="py-12 text-center">
+            <FileText className="mx-auto size-5 text-muted-foreground/60" />
+            <p className="mt-3 text-sm text-muted-foreground">No tunings yet</p>
+            <p className="mt-1 text-xs text-muted-foreground/70">
               Paste a JD above to run your first tuning.
             </p>
           </div>
         ) : (
-          <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+          <div className="divide-y divide-border/50">
             {recent.map((r) => {
               const href =
                 r.verdict === "ship" || r.verdict === "completed"
                   ? `/generate/${r.id}/result`
                   : `/generate/${r.id}`;
               return (
-                <li key={r.id}>
-                  <Link
-                    href={href}
-                    className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">{r.role || "Untitled role"}</p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {r.company || "Unknown"} · {timeAgo(r.createdAt)}
-                      </p>
-                    </div>
-                    {r.interviewReadyScore != null ? (
-                      <span className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:inline">
-                        {Math.round(r.interviewReadyScore)}/100
-                      </span>
-                    ) : null}
-                    <ArrowRight className="size-4 text-muted-foreground" />
-                  </Link>
-                </li>
+                <Link
+                  key={r.id}
+                  href={href}
+                  className="flex items-center gap-4 py-3 transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-md"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{r.role || "Untitled role"}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {r.company || "Unknown"} · {timeAgo(r.createdAt)}
+                    </p>
+                  </div>
+                  {r.interviewReadyScore != null && (
+                    <span className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:inline">
+                      {Math.round(r.interviewReadyScore)}
+                    </span>
+                  )}
+                  <ArrowRight className="size-3.5 text-muted-foreground/50" />
+                </Link>
               );
             })}
-          </ul>
+          </div>
         )}
       </div>
 
-      <div className="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        {[
-          { label: "Profile readiness", value: `${profileScore}%`, href: "/profile" },
-          { label: "Total tunings", value: String(totalGenerations || "—"), href: "/applications" },
-          { label: "Shipped", value: String(shippedCount || "—"), href: "/applications" },
-        ].map((s) => (
-          <Link
-            key={s.label}
-            href={s.href}
-            className="rounded-xl border border-border bg-card p-4 transition-colors hover:border-foreground/20"
-          >
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">{s.label}</p>
-            <p className="mt-1 text-2xl font-semibold tracking-tight">{s.value}</p>
-          </Link>
-        ))}
-      </div>
-
-      {profileScore < 60 ? (
-        <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
-          <p className="text-sm">
-            Your profile is <span className="font-medium">{profileScore}%</span> complete. Tunings improve sharply above 60%.
+      {profileScore < 60 && (
+        <div className="mt-8 flex items-center justify-between border-t border-border/50 pt-6">
+          <p className="text-sm text-muted-foreground">
+            Profile is <span className="font-medium text-foreground">{profileScore}%</span> complete. Tunings improve above 60%.
           </p>
-          <Button asChild size="sm" variant="outline" className="mt-3">
-            <Link href="/profile">Improve profile</Link>
+          <Button asChild size="sm" variant="ghost">
+            <Link href="/profile">Improve →</Link>
           </Button>
         </div>
-      ) : null}
+      )}
     </PageShell>
   );
 }

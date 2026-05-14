@@ -38,7 +38,7 @@ export function OnboardingHeader({ stage, isStreaming, onStartOver, onSkip }: On
               disabled={isStreaming}
               className="text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
             >
-              Skip for now
+              Finish later
             </button>
           )}
         </div>

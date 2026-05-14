@@ -120,24 +120,20 @@ export default function VoiceFingerprintSettingsPage() {
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-border border-t-foreground" />
         </div>
       ) : fingerprint ? (
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
+        <div className="space-y-8">
+          <div>
             <div className="mb-4 flex items-center justify-between">
-              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Fingerprint status
-              </span>
-              <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-foreground">
-                Active
-              </span>
+              <span className="text-xs text-muted-foreground">Status</span>
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Active</span>
             </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-2 gap-6 text-sm">
               <div>
-                <span className="text-xs text-muted-foreground">Documents analyzed</span>
-                <p className="font-medium text-foreground">{fingerprint.sampleSize}</p>
+                <p className="text-xs text-muted-foreground">Documents analyzed</p>
+                <p className="mt-0.5 text-lg font-semibold">{fingerprint.sampleSize}</p>
               </div>
               <div>
-                <span className="text-xs text-muted-foreground">Last updated</span>
-                <p className="font-medium text-foreground">
+                <p className="text-xs text-muted-foreground">Last updated</p>
+                <p className="mt-0.5 text-lg font-semibold">
                   {new Date(fingerprint.updatedAt).toLocaleDateString()}
                 </p>
               </div>
@@ -145,8 +141,8 @@ export default function VoiceFingerprintSettingsPage() {
           </div>
 
           {fingerprint.dimensions && Object.keys(fingerprint.dimensions).length > 0 && (
-            <div className="rounded-2xl border border-border bg-card p-6 md:p-8">
-              <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <div className="border-t border-border/50 pt-8">
+              <h3 className="mb-4 text-xs text-muted-foreground">
                 Style characteristics
               </h3>
               <VoiceFingerprintRadar
@@ -157,17 +153,15 @@ export default function VoiceFingerprintSettingsPage() {
           )}
 
           <p className="text-xs text-muted-foreground">
-            Your voice fingerprint updates automatically as you upload more documents and complete
-            more generations. To reset it, contact support.
+            Updates automatically as you upload documents and complete generations.
           </p>
         </div>
       ) : (
-        <div className="rounded-2xl border border-border bg-card p-8 text-center">
-          <p className="mb-4 text-sm text-muted-foreground">
-            No voice fingerprint yet. It will be created automatically during your first
-            generation.
+        <div className="py-12 text-center">
+          <p className="text-sm text-muted-foreground">
+            No voice fingerprint yet. It will be created during your first generation.
           </p>
-          <Button asChild>
+          <Button asChild className="mt-4">
             <Link href="/generate/new">Start a generation</Link>
           </Button>
         </div>

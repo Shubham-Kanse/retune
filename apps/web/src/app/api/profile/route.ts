@@ -4,10 +4,10 @@ import { db, profiles } from "@retune/db";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { patchProfileSchema } from "@/lib/profile-domain";
+import { patchProfileSchema } from "@/lib/profile-domain/schemas";
 import { normalizeProfile } from "@/lib/profile-domain/services/normalizer";
 import { persistProfile } from "@/lib/profile-domain/repositories/profile-repository";
-import { parseJsonSafe } from "@/lib/profile-domain";
+import { parseJsonSafe } from "@/lib/profile-domain/utils/json";
 
 export const GET = withAuth(async (_request, session) => {
   const rows = await db.select().from(profiles).where(eq(profiles.userId, session.userId)).limit(1);
@@ -33,6 +33,9 @@ export const GET = withAuth(async (_request, session) => {
     skillsTier2: parseJsonSafe(profile.skillsTier2, []),
     skillsTier3: parseJsonSafe(profile.skillsTier3, []),
     voiceNotes: profile.voiceNotes,
+    careerProfile: (profile as { careerProfile?: unknown }).careerProfile ?? null,
+    careerProfileVersion: (profile as { careerProfileVersion?: unknown }).careerProfileVersion ?? null,
+    profileReadiness: (profile as { profileReadiness?: unknown }).profileReadiness ?? null,
     profileMarkdown: profile.profileMarkdown,
     completenessScore: profile.completenessScore,
   });

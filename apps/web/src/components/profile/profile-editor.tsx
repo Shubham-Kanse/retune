@@ -260,25 +260,18 @@ function Section({
   pendingPoints?: number;
 }) {
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
-        <div className="flex items-center gap-3">
-          {Icon ? (
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground">
-              <Icon className="size-4" />
-            </div>
-          ) : null}
-          <div>
-            <h2 className="flex items-center text-sm font-semibold tracking-tight">
-              {title}
-              {pendingPoints ? <PointsBadge points={pendingPoints} /> : null}
-            </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
-          </div>
+    <section>
+      <div className="flex items-center justify-between gap-3 pb-4">
+        <div>
+          <h2 className="flex items-center text-sm font-semibold tracking-tight">
+            {title}
+            {pendingPoints ? <PointsBadge points={pendingPoints} /> : null}
+          </h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
         </div>
         {actions ? <div className="flex shrink-0 gap-2">{actions}</div> : null}
       </div>
-      <div className="p-5">{children}</div>
+      <div>{children}</div>
     </section>
   );
 }
@@ -409,7 +402,7 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-10 divide-y divide-border/50 [&>*:not(:first-child)]:pt-10">
         <Section
           title="Personal info"
           subtitle="Basic details and contact information."
@@ -583,7 +576,7 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
             {form.experience.map((exp, idx) => (
               <div
                 key={idx}
-                className="group relative space-y-3 rounded-lg border border-border p-4"
+                className="group relative space-y-3 border-b border-border/40 pb-4 last:border-b-0 last:pb-0"
               >
                 <button
                   type="button"
@@ -710,7 +703,7 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
               </button>
             ) : null}
             {form.education.map((edu, idx) => (
-              <div key={idx} className="group relative rounded-lg border border-border p-4">
+              <div key={idx} className="group relative border-b border-border/40 pb-4 last:border-b-0 last:pb-0">
                 <button
                   type="button"
                   onClick={() =>

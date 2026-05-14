@@ -46,11 +46,15 @@ export function useOnboardingChat() {
     completedCategories: {
       identity: 0,
       experience: 0,
+      experienceOrProjects: 0,
       education: 0,
+      educationOrNotApplicable: 0,
       skills: 0,
       professionalProfile: 0,
       careerIntent: 0,
       resumeWritingSignals: 0,
+      resumeWritingPreferences: 0,
+      qualityAndConfirmation: 0,
     },
   });
   const [currentQuestion, setCurrentQuestion] = useState<OnboardingQuestion | null>(null);
@@ -229,7 +233,13 @@ export function useOnboardingChat() {
       return;
     }
 
-    void sendTurn({ kind: "pill", questionKey: questionKey ?? currentQuestion?.questionKey, pill });
+    void sendTurn({
+      kind: "pill_click",
+      questionKey: questionKey ?? currentQuestion?.questionKey,
+      action: pill.action,
+      field: pill.field,
+      value: pill.value,
+    });
   }, [currentQuestion, sendTurn, router]);
 
   const stageMultiSelect = useCallback((questionKey: string | undefined, pill: Pill) => {
@@ -261,8 +271,8 @@ export function useOnboardingChat() {
 
   const submitSkills = useCallback((skills: { technical: string[]; tools: string[]; business: string[] }) => {
     setMessages(prev => [...prev, { id: `user-${Date.now()}`, role: "user", content: "Updated skills" }]);
-    void sendTurn({ kind: "skills_update", skills });
-  }, [sendTurn]);
+    void sendTurn({ kind: "skills_update", questionKey: currentQuestion?.questionKey, skills });
+  }, [currentQuestion, sendTurn]);
 
   // ── Public: upload file ─────────────────────────────────────────────────
   const uploadFile = useCallback(async (file: File) => {
@@ -279,7 +289,7 @@ export function useOnboardingChat() {
       // Remove processing message
       setMessages(prev => prev.filter(m => !m.isProcessing));
 
-      if (!res.ok || !data.result) {
+      if (!res.ok || !data.ok) {
         setExtractionStatus("failed");
         setMessages(prev => [...prev, { id: `err-${Date.now()}`, role: "assistant", content: "Couldn't read that file. Try a different format?", pills: [{ label: "Try again", value: "upload_resume", action: "navigate", field: "resume" }] }]);
         void sendTurn({ kind: "resume_failed" });
@@ -287,7 +297,13 @@ export function useOnboardingChat() {
       }
 
       setExtractionStatus("done");
-      void sendTurn({ kind: "resume_data", profile: data.result });
+      if (data.readiness) setReadiness(data.readiness);
+      if (data.nextQuestion) {
+        setCurrentQuestion(data.nextQuestion);
+        setCurrentPills(data.nextQuestion.pills ?? []);
+        setCurrentCards(data.nextQuestion.cards ?? data.cards ?? []);
+      }
+      void sendTurn({ kind: "resume_uploaded" });
     } catch {
       setExtractionStatus("failed");
       setMessages(prev => prev.filter(m => !m.isProcessing));
@@ -306,13 +322,17 @@ export function useOnboardingChat() {
       warnings: [],
       suggestions: [],
       completedCategories: {
-        identity: 0,
-        experience: 0,
-        education: 0,
-        skills: 0,
-        professionalProfile: 0,
-        careerIntent: 0,
-        resumeWritingSignals: 0,
+          identity: 0,
+          experience: 0,
+          experienceOrProjects: 0,
+          education: 0,
+          educationOrNotApplicable: 0,
+          skills: 0,
+          professionalProfile: 0,
+          careerIntent: 0,
+          resumeWritingSignals: 0,
+          resumeWritingPreferences: 0,
+          qualityAndConfirmation: 0,
       },
     });
     setCurrentPills([]);

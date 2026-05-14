@@ -10,10 +10,17 @@ export const GET = withAuth(async (_request, session) => {
   const nextQuestion = planNextQuestion(stored.profile, stored.meta);
 
   return NextResponse.json({
+    sessionId: stored.id,
     phase: stored.meta.currentPhase,
+    status: stored.status,
     messages: stored.messages,
     readiness,
     nextQuestion,
+    profilePreview: {
+      identity: stored.profile.identity,
+      professionalProfile: stored.profile.professionalProfile,
+      careerIntent: stored.profile.careerIntent,
+    },
     turnCount: stored.turnCount,
     isReturning: stored.messages.length > 0,
   });

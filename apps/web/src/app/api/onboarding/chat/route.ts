@@ -10,10 +10,12 @@ import { rateLimit } from "@/lib/rate-limit";
 import type { NextRequest } from "next/server";
 import OpenAI from "openai";
 
+import { applyRouterDecision } from "@/lib/onboarding/apply-patch";
 import { COACH_INSTRUCTIONS } from "@/lib/onboarding/coach-prompt";
 import { logOnboardingEvent } from "@/lib/onboarding/events";
 import { fallbackFor } from "@/lib/onboarding/fallback-templates";
 import { applyInputGuardrails, stripOutputLeaks, isDuplicateMessage } from "@/lib/onboarding/guardrails";
+import { routeFreeText } from "@/lib/onboarding/text-router";
 import { normalizeSkill, normalizeStringArray } from "@/lib/onboarding/normalization";
 import { planNextQuestion } from "@/lib/onboarding/planner";
 import { buildProfileContext } from "@/lib/onboarding/profile-context";
@@ -21,7 +23,8 @@ import { calculateProfileReadiness } from "@/lib/onboarding/readiness";
 import { createEmptyProfile, getOrCreateSession, saveSession } from "@/lib/onboarding/session-store";
 import { SSE_HEADERS, sseEvent } from "@/lib/onboarding/sse";
 import { ONBOARDING_TOOLS } from "@/lib/onboarding/tools";
-import { normalizeProfile } from "@/lib/profile-domain/services/normalizer";
+import { resolveTrustedPillAction, resolveTrustedMultiSelectAction, resolveTrustedSkillsUpdateAction } from "@/lib/onboarding/action-validation";
+import { attachFieldEdit, updateProfileOnboardingReadiness } from "@/lib/onboarding/career-profile.schema";
 import { persistProfile } from "@/lib/profile-domain/repositories/profile-repository";
 import type { OnboardingQuestion, Pill, ProfileReadiness, SessionState, StoredMessage, UserCareerProfile } from "@/lib/onboarding/types";
 
@@ -32,13 +35,13 @@ type ChatRequest =
   | { kind: "message"; text: string }
   | { kind: "text_input"; text: string }
   | { kind: "pill"; pill: Pill; questionKey?: string }
-  | { kind: "pill_click"; questionKey: string; pill: Pill }
+  | { kind: "pill_click"; questionKey: string; action: Pill["action"]; field?: string; value: string; pill?: Pill }
   | { kind: "multi_select"; questionKey: string; field: string; values: string[] }
-  | { kind: "skills_update"; skills: { technical: string[]; tools: string[]; business: string[] } }
-  | { kind: "resume_data"; profile: Record<string, unknown> }
+  | { kind: "skills_update"; questionKey?: string; skills: { technical: string[]; tools: string[]; business: string[] } }
+  | { kind: "resume_uploaded" }
   | { kind: "resume_failed" }
   | { kind: "start_over" }
-  | { kind: "skip_onboarding" };
+  | { kind: "finish_later" };
 
 function parseBody(raw: unknown): ChatRequest {
   if (!raw || typeof raw !== "object") throw new ValidationError("Invalid body");
@@ -46,8 +49,9 @@ function parseBody(raw: unknown): ChatRequest {
 
   if (r.kind === "greeting") return { kind: "greeting" };
   if (r.kind === "resume_failed") return { kind: "resume_failed" };
+  if (r.kind === "resume_uploaded") return { kind: "resume_uploaded" };
   if (r.kind === "start_over") return { kind: "start_over" };
-  if (r.kind === "skip_onboarding") return { kind: "skip_onboarding" };
+  if (r.kind === "finish_later") return { kind: "finish_later" };
 
   if (r.kind === "message" || r.kind === "text_input") {
     const text = typeof r.text === "string" ? r.text.trim() : "";
@@ -56,12 +60,18 @@ function parseBody(raw: unknown): ChatRequest {
   }
 
   if (r.kind === "pill" || r.kind === "pill_click") {
-    if (!r.pill || typeof r.pill !== "object") throw new ValidationError("Pill is required");
+    if (r.kind === "pill" && (!r.pill || typeof r.pill !== "object")) throw new ValidationError("Pill is required");
+    if (r.kind === "pill_click" && typeof r.value !== "string" && !(r.pill && typeof r.pill === "object")) throw new ValidationError("Pill value is required");
+    const action = typeof r.action === "string" ? r.action as Pill["action"] : (r.pill as Pill | undefined)?.action;
+    if (!action) throw new ValidationError("Pill action is required");
     return {
       kind: r.kind,
       questionKey: typeof r.questionKey === "string" ? r.questionKey : "",
-      pill: r.pill as Pill,
-    };
+      pill: r.pill as Pill | undefined,
+      action,
+      field: typeof r.field === "string" ? r.field : (r.pill as Pill | undefined)?.field,
+      value: typeof r.value === "string" ? r.value : (r.pill as Pill | undefined)?.value ?? "",
+    } as ChatRequest;
   }
 
   if (r.kind === "multi_select") {
@@ -76,6 +86,7 @@ function parseBody(raw: unknown): ChatRequest {
     const skills = r.skills && typeof r.skills === "object" ? r.skills as Record<string, unknown> : {};
     return {
       kind: "skills_update",
+      questionKey: typeof r.questionKey === "string" ? r.questionKey : undefined,
       skills: {
         technical: Array.isArray(skills.technical) ? skills.technical.map(String) : [],
         tools: Array.isArray(skills.tools) ? skills.tools.map(String) : [],
@@ -84,14 +95,12 @@ function parseBody(raw: unknown): ChatRequest {
     };
   }
 
-  if (r.kind === "resume_data") {
-    return { kind: "resume_data", profile: (r.profile as Record<string, unknown>) ?? {} };
-  }
-
   throw new ValidationError("Unknown kind");
 }
 
 export const POST = withAuth(async (request, session) => {
+  const traceId = crypto.randomUUID();
+  const startedAt = Date.now();
   const { success } = rateLimit(request as unknown as NextRequest, 60, 60000);
   if (!success) {
     return new Response(sseEvent("error", { message: "Too many messages." }), { status: 429, headers: SSE_HEADERS });
@@ -102,6 +111,10 @@ export const POST = withAuth(async (request, session) => {
   });
   const body = parseBody(raw);
   const stored = await getOrCreateSession(session.userId);
+
+  // Populated by the text_input branch when a router decision is applied.
+  // Lets the copywriter prefix the next assistant message with what changed.
+  let textApplySummary: string | undefined;
 
   if (body.kind === "start_over") {
     if (stored.meta.resetCount >= START_OVER_LIMIT) {
@@ -120,13 +133,25 @@ export const POST = withAuth(async (request, session) => {
       experienceConfirmed: false,
       educationConfirmed: false,
       skillsConfirmed: false,
+      projectsCertificationsReviewed: false,
+      educationNotApplicable: false,
+      optionalTonePrompted: false,
       pendingTextInput: undefined,
       enhancementTurns: 0,
       resetCount,
+      status: "draft",
+      resumeFileHash: null,
+      extractionStatus: null,
+      completedAt: null,
     };
     stored.messages = [];
     stored.responseChainId = null;
     stored.turnCount = 0;
+    stored.version = stored.version ?? 0;
+    stored.status = "draft";
+    stored.resumeFileHash = null;
+    stored.extractionStatus = null;
+    stored.completedAt = null;
     const question = planNextQuestion(stored.profile, stored.meta);
     const message = fallbackFor("resume_upload");
     if (question) {
@@ -141,55 +166,188 @@ export const POST = withAuth(async (request, session) => {
       stored.turnCount = 1;
     }
     await saveSession(session.userId, stored);
-    return streamTurn({
-      message,
-      question,
-      readiness: calculateProfileReadiness(stored.profile),
-      stage: question?.phase ?? "resume_upload",
-    });
+      return streamTurn({
+        message,
+        question,
+        readiness: calculateProfileReadiness(stored.profile),
+        stage: question?.phase ?? "resume_upload",
+        traceId,
+      });
   }
 
-  if (body.kind === "skip_onboarding") {
-    const supabase = await (await import("@/lib/supabase/server")).createClient();
-    await supabase.from("users").update({ onboarding_completed: true, updated_at: new Date().toISOString() }).eq("id", session.userId);
-    await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "dashboard_handoff", payload: { skipped: true } });
+  if (body.kind === "finish_later") {
+    stored.status = "draft";
+    stored.meta.status = "draft";
+    await saveSession(session.userId, stored);
+    await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "finish_later", payload: { score: calculateProfileReadiness(stored.profile).score } });
     return streamTurn({
-      message: fallbackFor("profile_ready"),
+      message: "Saved your onboarding draft. You can come back and finish the profile before generating tailored resumes.",
       question: null,
       readiness: calculateProfileReadiness(stored.profile),
-      stage: "dashboard_handoff",
+      stage: "profile_gap_fill",
+      traceId,
     });
   }
 
   if (body.kind === "pill" || body.kind === "pill_click") {
-    const questionKey = body.questionKey || stored.meta.lastQuestionKey || body.pill.field || body.pill.value;
-    applyPillAction(stored, questionKey, body.pill);
-    stored.messages.push({ role: "user", content: body.pill.label, ts: new Date().toISOString() });
-    await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "pill_clicked", payload: { questionKey, pill: body.pill } });
+    const currentQuestion = planNextQuestion(stored.profile, stored.meta);
+    const validation = resolveTrustedPillAction({
+      kind: body.kind,
+      questionKey: body.questionKey || stored.meta.lastQuestionKey || (body.kind === "pill_click" ? body.field || body.value : body.pill.field || body.pill.value) || "",
+      pill: body.pill,
+      action: body.kind === "pill_click" ? body.action : body.pill?.action,
+      field: body.kind === "pill_click" ? body.field : body.pill?.field,
+      value: body.kind === "pill_click" ? body.value : body.pill?.value,
+      currentQuestion,
+    });
+    if (!validation.valid) {
+      return new Response(sseEvent("error", { message: "Invalid action." }), { status: 400, headers: SSE_HEADERS });
+    }
+    const { questionKey, pill } = validation.action as { questionKey: string; pill: Pill };
+    applyPillAction(stored, questionKey, pill);
+    stored.messages.push({ role: "user", content: pill.label, ts: new Date().toISOString() });
+    await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "pill_clicked", payload: { questionKey, pill } });
   } else if (body.kind === "message" || body.kind === "text_input") {
     const guarded = applyInputGuardrails(body.text);
     if (guarded.blocked) return new Response(sseEvent("error", { message: "Invalid input." }), { headers: SSE_HEADERS });
+
+    // Capture the question the user is replying to BEFORE any mutation.
+    // The planner is pure, so this is a deterministic snapshot.
+    const currentQuestion = planNextQuestion(stored.profile, stored.meta);
+
     stored.messages.push({ role: "user", content: guarded.text, ts: new Date().toISOString() });
-    applyTextToField(stored, guarded.text);
-    await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "text_submitted", payload: { textLength: guarded.text.length } });
+
+    const decision = await routeFreeText({
+      text: guarded.text,
+      question: currentQuestion,
+      profile: stored.profile,
+      messages: stored.messages,
+      answeredKeys: stored.meta.answeredQuestionKeys,
+      skippedKeys: stored.meta.skippedQuestionKeys.map((s) => s.questionKey),
+    });
+
+    await logOnboardingEvent({
+      userId: session.userId,
+      sessionId: stored.id,
+      eventType: "text_routed",
+      payload: { intent: decision.intent, questionKey: currentQuestion?.questionKey },
+    });
+
+    // Short-circuit on non-writing intents — user gets immediate, focused feedback
+    // instead of the silent no-op the old applyTextToField produced.
+    if (decision.intent === "ambiguous" || decision.intent === "off_topic") {
+      const message =
+        decision.intent === "ambiguous"
+          ? decision.clarification
+          : `Happy to come back to that — first, let me get the current question right.`;
+      stored.messages.push({
+        role: "assistant",
+        content: message,
+        ts: new Date().toISOString(),
+        questionKey: currentQuestion?.questionKey,
+        cards: currentQuestion?.cards,
+        pills: currentQuestion?.pills,
+      });
+      stored.turnCount += 1;
+      await saveSession(session.userId, stored);
+          return streamTurn({
+            message,
+            question: currentQuestion,
+            readiness: calculateProfileReadiness(stored.profile),
+            stage: currentQuestion?.phase ?? stored.meta.currentPhase,
+            traceId,
+          });
+    }
+
+    if (decision.intent === "skip") {
+      if (currentQuestion?.skipAllowed) {
+        stored.meta.skippedQuestionKeys.push({
+          questionKey: currentQuestion.questionKey,
+          field: currentQuestion.field,
+          skippedAt: new Date().toISOString(),
+          skipScope: "this_session",
+        });
+      }
+    } else {
+      // answer_current or edit_field — validate + apply
+      const result = applyRouterDecision(stored, decision);
+      if (result.ok) {
+        textApplySummary = result.summary;
+        if (currentQuestion && decision.intent === "answer_current") {
+          if (!stored.meta.answeredQuestionKeys.includes(currentQuestion.questionKey)) {
+            stored.meta.answeredQuestionKeys.push(currentQuestion.questionKey);
+          }
+          // Mirror the confirm-pill effect for confirm-style questions
+          switch (currentQuestion.questionKey) {
+            case "identity_confirm": stored.meta.identityConfirmed = true; break;
+            case "experience_confirm": stored.meta.experienceConfirmed = true; break;
+            case "education_confirm": stored.meta.educationConfirmed = true; break;
+            case "skills_confirm": stored.meta.skillsConfirmed = true; break;
+          }
+        }
+      } else {
+        // Schema validation failed — short-circuit with a focused reply
+        const message = `I couldn't apply that to ${decision.field} (${result.reason}). Could you rephrase?`;
+        stored.messages.push({
+          role: "assistant",
+          content: message,
+          ts: new Date().toISOString(),
+          questionKey: currentQuestion?.questionKey,
+          cards: currentQuestion?.cards,
+          pills: currentQuestion?.pills,
+        });
+        stored.turnCount += 1;
+        await saveSession(session.userId, stored);
+        return streamTurn({
+          message,
+          question: currentQuestion,
+          readiness: calculateProfileReadiness(stored.profile),
+          stage: currentQuestion?.phase ?? stored.meta.currentPhase,
+          traceId,
+        });
+      }
+    }
   } else if (body.kind === "multi_select") {
-    applyMultiSelect(stored, body.field, body.values);
-    stored.messages.push({ role: "user", content: body.values.length ? body.values.join(", ") : "Continue", ts: new Date().toISOString() });
-    await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "field_confirmed", payload: { questionKey: body.questionKey, field: body.field, count: body.values.length } });
+    const currentQuestion = planNextQuestion(stored.profile, stored.meta);
+    const validation = resolveTrustedMultiSelectAction({
+      questionKey: body.questionKey,
+      field: body.field,
+      values: body.values,
+      currentQuestion,
+    });
+    if (!validation.valid) {
+      return new Response(sseEvent("error", { message: "Invalid action." }), { status: 400, headers: SSE_HEADERS });
+    }
+    const { field, values } = validation.action as { field: string; values: string[] };
+    applyMultiSelect(stored, field, values);
+    stored.messages.push({ role: "user", content: values.length ? values.join(", ") : "Continue", ts: new Date().toISOString() });
+    await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "field_confirmed", payload: { questionKey: body.questionKey, field, count: values.length } });
   } else if (body.kind === "skills_update") {
+    const currentQuestion = planNextQuestion(stored.profile, stored.meta);
+    const validation = resolveTrustedSkillsUpdateAction({ questionKey: body.questionKey, skills: body.skills, currentQuestion });
+    if (!validation.valid) {
+      return new Response(sseEvent("error", { message: "Invalid action." }), { status: 400, headers: SSE_HEADERS });
+    }
     applySkillsUpdate(stored, body.skills);
     stored.messages.push({ role: "user", content: "Updated skills", ts: new Date().toISOString() });
     await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "field_updated", payload: { field: "skills", counts: body.skills } });
-  } else if (body.kind === "resume_data") {
-    applyResumeData(stored, body.profile);
+  } else if (body.kind === "resume_uploaded") {
+    // Upload route already wrote the extracted profile into the session.
+    // Just advance the phase so the planner shows the summary question.
     stored.meta.resumeUploaded = true;
     stored.meta.resumeParsed = true;
+    stored.meta.extractionStatus = "done";
     stored.meta.currentPhase = "resume_summary";
-    await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "resume_parsed", payload: { keys: Object.keys(body.profile) } });
+    stored.profile.onboarding.resumeUploaded = true;
+    stored.profile.onboarding.resumeParsed = true;
+    await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "resume_parsed", payload: { via: "resume_uploaded_signal" } });
   } else if (body.kind === "resume_failed") {
     stored.meta.resumeUploaded = true;
     stored.meta.resumeParsed = false;
+    stored.meta.extractionStatus = "failed";
     stored.meta.currentPhase = "resume_upload";
+    stored.profile.onboarding.resumeUploaded = true;
+    stored.profile.onboarding.resumeParsed = false;
   } else if (body.kind === "greeting") {
     stored.meta.currentPhase = "resume_upload";
   }
@@ -197,23 +355,29 @@ export const POST = withAuth(async (request, session) => {
   normalizeStoredProfile(stored.profile);
 
   const readiness = calculateProfileReadiness(stored.profile);
+  updateProfileOnboardingReadiness(stored.profile, readiness);
   const question = planNextQuestion(stored.profile, stored.meta);
 
   if (!question && readiness.canEnterDashboard) {
-    const normalized = normalizeProfile(toNormalizerInput(stored.profile), session.email, session.fullName ?? "");
-    Object.assign(normalized, onboardingProfileExtras(stored.profile));
+    const completedAt = new Date().toISOString();
+    stored.status = "completed";
+    stored.completedAt = completedAt;
+    stored.meta.status = "completed";
+    stored.meta.completedAt = completedAt;
+    stored.profile.onboarding.completedAt = completedAt;
     await persistProfile({
       userId: session.userId,
       sessionEmail: session.email,
       sessionFullName: session.fullName,
-      profile: normalized,
+      profile: stored.profile,
       markOnboardingCompleted: true,
+      readiness,
     });
 
     stored.meta.currentPhase = "dashboard_handoff";
     await saveSession(session.userId, stored);
     await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "profile_ready", payload: { score: readiness.score } });
-    return streamTurn({ message: fallbackFor("profile_ready"), question: null, readiness, stage: "dashboard_handoff" });
+    return streamTurn({ message: fallbackFor("profile_ready"), question: null, readiness, stage: "dashboard_handoff", traceId });
   }
 
   if (!question) {
@@ -224,6 +388,7 @@ export const POST = withAuth(async (request, session) => {
       question: null,
       readiness,
       stage: "profile_gap_fill",
+      traceId,
     });
   }
 
@@ -231,7 +396,7 @@ export const POST = withAuth(async (request, session) => {
   stored.meta.lastQuestionKey = question.questionKey;
   await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "question_planned", payload: { phase: question.phase, questionKey: question.questionKey } });
 
-  const message = await generateAssistantMessage(question, stored.profile);
+  const message = await generateAssistantMessage(question, stored.profile, textApplySummary, stored.messages);
 
   if (shouldPushAssistant(stored.messages, message)) {
     stored.messages.push({
@@ -247,18 +412,36 @@ export const POST = withAuth(async (request, session) => {
   stored.turnCount += 1;
   await saveSession(session.userId, stored);
 
-  return streamTurn({ message, question, readiness, stage: question.phase });
+  await logOnboardingEvent({
+    userId: session.userId,
+    sessionId: stored.id,
+    eventType: "readiness_computed",
+    traceId,
+    phase: question.phase,
+    durationMs: Date.now() - startedAt,
+    payload: { score: readiness.score, blockers: readiness.blockers.length },
+  });
+
+  return streamTurn({ message, question, readiness, stage: question.phase, traceId });
 });
 
-async function generateAssistantMessage(question: OnboardingQuestion, profile: UserCareerProfile): Promise<string> {
+async function generateAssistantMessage(
+  question: OnboardingQuestion,
+  profile: UserCareerProfile,
+  applySummary?: string,
+  history: StoredMessage[] = [],
+): Promise<string> {
+  const prefix = applySummary ? `${applySummary} ` : "";
   const fixed = fixedCardPrompt(question);
-  if (fixed) return fixed;
+  if (fixed) return `${prefix}${fixed}`.trim();
 
   let message = fallbackFor(question.questionKey);
 
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const context = buildProfileContext(profile, question.phase);
+    const recent = history.slice(-6).map((m) => `${m.role === "user" ? "USER" : "AI"}: ${m.content.replace(/\s+/g, " ").trim().slice(0, 200)}`);
+    const historyBlock = recent.length ? `[RECENT TURNS]\n${recent.join("\n")}` : "";
     const response = await (openai.responses as any).create({
       model: process.env.ONBOARDING_MODEL ?? "gpt-4o-mini",
       instructions: COACH_INSTRUCTIONS,
@@ -273,12 +456,20 @@ async function generateAssistantMessage(question: OnboardingQuestion, profile: U
           "",
           context,
           "",
+          historyBlock,
+          "",
+          applySummary ? `[JUST APPLIED] ${applySummary}` : "",
+          "",
           "[OUTPUT RULES]",
           "Write exactly 1 short message. Max 2 sentences. Do not create pills or decide the next question.",
+          "Do not repeat phrases you've already used in [RECENT TURNS].",
+          applySummary
+            ? "If a [JUST APPLIED] note is present, briefly acknowledge it before asking the next question."
+            : "",
           "If cards are provided, do not summarize the card contents. Ask the user to review the cards instead.",
-        ].join("\n"),
+        ].filter(Boolean).join("\n"),
       }],
-      max_output_tokens: 120,
+      max_output_tokens: 140,
       tools: ONBOARDING_TOOLS,
     });
 
@@ -292,10 +483,19 @@ async function generateAssistantMessage(question: OnboardingQuestion, profile: U
     }
   } catch (err) {
     console.error("[onboarding/chat] LLM error:", err);
+    // Fall back: prefix the apply summary onto the static fallback so the user still sees acknowledgement
+    return `${prefix}${fallbackFor(question.questionKey)}`.trim();
   }
 
   const safe = stripOutputLeaks(message).trim();
-  return safe || fallbackFor(question.questionKey);
+  if (!safe) return `${prefix}${fallbackFor(question.questionKey)}`.trim();
+
+  // If the LLM didn't naturally include the acknowledgement, prefix it. This makes
+  // the echo deterministic so users always see their input took effect.
+  if (applySummary && !safe.toLowerCase().includes(applySummary.toLowerCase().slice(0, 12))) {
+    return `${applySummary} ${safe}`.trim();
+  }
+  return safe;
 }
 
 function onboardingProfileExtras(profile: UserCareerProfile) {
@@ -321,6 +521,8 @@ function fixedCardPrompt(question: OnboardingQuestion): string | null {
       return "Please confirm your education details.";
     case "skills_confirm":
       return "Please confirm the skills I found.";
+    case "projects_certifications_review":
+      return "Please review the projects and certifications I found.";
     case "professional_identity":
       return "I inferred a few possible professional identities from your resume. Pick the one that feels closest.";
     case "career_direction":
@@ -331,8 +533,14 @@ function fixedCardPrompt(question: OnboardingQuestion): string | null {
       return "Choose every job market you are targeting, then continue.";
     case "work_preferences":
       return "What work setup should Retuned prioritize?";
+    case "seniority_comfort":
+      return "Choose every seniority level you are comfortable targeting, then continue.";
+    case "industries_of_interest":
+      return "Choose the industries Retuned should keep in mind, then continue.";
     case "emphasis_preferences":
       return "Choose the areas future resumes should emphasize most, then continue.";
+    case "de_emphasis_preferences":
+      return "Choose what future resumes should avoid over-highlighting, then continue.";
     case "fill_skills":
       return "I could not confidently extract enough skills. Add at least 5 core skills, separated by commas.";
     default:
@@ -345,6 +553,7 @@ function streamTurn(params: {
   question: OnboardingQuestion | null;
   readiness: ProfileReadiness;
   stage: string;
+  traceId: string;
 }) {
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
@@ -360,6 +569,7 @@ function streamTurn(params: {
         cards: params.question?.cards ?? [],
         readiness: params.readiness,
         stage: params.stage,
+        traceId: params.traceId,
       });
 
       send("turn_complete", {
@@ -372,6 +582,7 @@ function streamTurn(params: {
         question: params.question,
         readiness: params.readiness,
         message: params.message,
+        traceId: params.traceId,
       });
 
       controller.close();
@@ -420,16 +631,36 @@ function applyPillAction(stored: SessionState, questionKey: string, pill: Pill) 
       profile.skills.tools.confirmed = true;
       profile.skills.business.confirmed = true;
     }
+    if (field === "projects_certifications" || questionKey === "projects_certifications_review") {
+      meta.projectsCertificationsReviewed = true;
+      profile.projects.confirmed = true;
+      profile.certifications.confirmed = true;
+    }
+    if (field === "education" && questionKey === "fill_education") {
+      meta.educationConfirmed = true;
+      meta.educationNotApplicable = true;
+      profile.onboarding.educationNotApplicable = true;
+      profile.education.confirmed = true;
+    }
     if (field === "careerIntent.interestedRoles" || questionKey === "role_interests") {
       profile.careerIntent.interestedRoles.confirmed = true;
     }
     if (field === "careerIntent.preferredMarkets" || questionKey === "market_preferences") {
       profile.careerIntent.preferredMarkets.confirmed = true;
     }
+    if (field === "careerIntent.seniorityComfort" || questionKey === "seniority_comfort") {
+      profile.careerIntent.seniorityComfort.confirmed = true;
+    }
+    if (field === "careerIntent.industriesOfInterest" || questionKey === "industries_of_interest") {
+      profile.careerIntent.industriesOfInterest.confirmed = true;
+    }
     if (field === "resumeWritingPreferences.emphasisAreas" || questionKey === "emphasis_preferences") {
       profile.resumeWritingPreferences.emphasisAreas.confirmed = true;
     }
-    meta.answeredQuestionKeys.push(questionKey);
+    if (field === "resumeWritingPreferences.deEmphasisAreas" || questionKey === "de_emphasis_preferences") {
+      profile.resumeWritingPreferences.deEmphasisAreas.confirmed = true;
+    }
+    if (!meta.answeredQuestionKeys.includes(questionKey)) meta.answeredQuestionKeys.push(questionKey);
     return;
   }
 
@@ -437,30 +668,42 @@ function applyPillAction(stored: SessionState, questionKey: string, pill: Pill) 
     switch (field) {
       case "professionalProfile.professionalIdentities":
       case "professional_identity":
-        profile.professionalProfile.professionalIdentities = { value: [pill.value], source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
+        profile.professionalProfile.professionalIdentities = attachFieldEdit(profile.professionalProfile.professionalIdentities, [pill.value], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: true });
         break;
       case "careerIntent.careerDirection":
       case "career_direction":
-        profile.careerIntent.careerDirection = { value: pill.value as any, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
+        profile.careerIntent.careerDirection = attachFieldEdit(profile.careerIntent.careerDirection, pill.value as any, { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: true });
         break;
       case "careerIntent.interestedRoles":
       case "role_interests":
-        profile.careerIntent.interestedRoles = { value: [...new Set([...profile.careerIntent.interestedRoles.value, pill.value])], source: "user", confidence: 1, confirmed: false, lastUpdatedAt: now };
+        profile.careerIntent.interestedRoles = attachFieldEdit(profile.careerIntent.interestedRoles, [...new Set([...profile.careerIntent.interestedRoles.value, pill.value])], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: false });
         break;
       case "careerIntent.preferredMarkets":
       case "market_preferences":
-        profile.careerIntent.preferredMarkets = { value: [...new Set([...profile.careerIntent.preferredMarkets.value, pill.value])], source: "user", confidence: 1, confirmed: false, lastUpdatedAt: now };
+        profile.careerIntent.preferredMarkets = attachFieldEdit(profile.careerIntent.preferredMarkets, [...new Set([...profile.careerIntent.preferredMarkets.value, pill.value])], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: false });
         break;
       case "careerIntent.workPreference":
       case "work_preferences":
-        profile.careerIntent.workPreference = { value: pill.value as any, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
+        profile.careerIntent.workPreference = attachFieldEdit(profile.careerIntent.workPreference, pill.value as any, { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: true });
+        break;
+      case "careerIntent.seniorityComfort":
+      case "seniority_comfort":
+        profile.careerIntent.seniorityComfort = attachFieldEdit(profile.careerIntent.seniorityComfort, [...new Set([...profile.careerIntent.seniorityComfort.value, pill.value])], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: false });
+        break;
+      case "careerIntent.industriesOfInterest":
+      case "industries_of_interest":
+        profile.careerIntent.industriesOfInterest = attachFieldEdit(profile.careerIntent.industriesOfInterest, [...new Set([...profile.careerIntent.industriesOfInterest.value, pill.value])], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: false });
         break;
       case "resumeWritingPreferences.emphasisAreas":
       case "emphasis_preferences":
-        profile.resumeWritingPreferences.emphasisAreas = { value: [...new Set([...profile.resumeWritingPreferences.emphasisAreas.value, pill.value])], source: "user", confidence: 1, confirmed: false, lastUpdatedAt: now };
+        profile.resumeWritingPreferences.emphasisAreas = attachFieldEdit(profile.resumeWritingPreferences.emphasisAreas, [...new Set([...profile.resumeWritingPreferences.emphasisAreas.value, pill.value])], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: false });
+        break;
+      case "resumeWritingPreferences.deEmphasisAreas":
+      case "de_emphasis_preferences":
+        profile.resumeWritingPreferences.deEmphasisAreas = attachFieldEdit(profile.resumeWritingPreferences.deEmphasisAreas, [...new Set([...profile.resumeWritingPreferences.deEmphasisAreas.value, pill.value])], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: false });
         break;
     }
-    meta.answeredQuestionKeys.push(questionKey);
+    if (!meta.answeredQuestionKeys.includes(questionKey)) meta.answeredQuestionKeys.push(questionKey);
     return;
   }
 
@@ -474,115 +717,42 @@ function applyPillAction(stored: SessionState, questionKey: string, pill: Pill) 
   }
 }
 
-function applyTextToField(stored: SessionState, text: string) {
-  const pending = stored.meta.pendingTextInput;
-  if (!pending) return;
-
-  const values = text.split(",").map((v) => v.trim()).filter(Boolean);
-  const now = new Date().toISOString();
-
-  switch (pending.field) {
-    case "professionalProfile.professionalIdentities":
-      stored.profile.professionalProfile.professionalIdentities = { value: values, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
-      break;
-    case "careerIntent.interestedRoles":
-      stored.profile.careerIntent.interestedRoles = { value: values, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
-      break;
-    case "careerIntent.preferredMarkets":
-      stored.profile.careerIntent.preferredMarkets = { value: values, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
-      break;
-    case "resumeWritingPreferences.emphasisAreas":
-      stored.profile.resumeWritingPreferences.emphasisAreas = { value: values, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
-      break;
-    case "skills":
-      stored.profile.skills.technical = { value: values, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
-      stored.meta.skillsConfirmed = true;
-      break;
-  }
-
-  stored.meta.answeredQuestionKeys.push(pending.questionKey);
-  stored.meta.pendingTextInput = undefined;
-}
-
 function applyMultiSelect(stored: SessionState, field: string, values: string[]) {
-  const now = new Date().toISOString();
   const selected = [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 
   switch (field) {
     case "careerIntent.interestedRoles":
     case "role_interests":
-      stored.profile.careerIntent.interestedRoles = { value: selected, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
+      stored.profile.careerIntent.interestedRoles = attachFieldEdit(stored.profile.careerIntent.interestedRoles, selected, { source: "user", actor: "user", reason: "multi_select", confidence: 1, confirmed: true });
       break;
     case "careerIntent.preferredMarkets":
     case "market_preferences":
-      stored.profile.careerIntent.preferredMarkets = { value: selected, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
+      stored.profile.careerIntent.preferredMarkets = attachFieldEdit(stored.profile.careerIntent.preferredMarkets, selected, { source: "user", actor: "user", reason: "multi_select", confidence: 1, confirmed: true });
+      break;
+    case "careerIntent.seniorityComfort":
+    case "seniority_comfort":
+      stored.profile.careerIntent.seniorityComfort = attachFieldEdit(stored.profile.careerIntent.seniorityComfort, selected, { source: "user", actor: "user", reason: "multi_select", confidence: 1, confirmed: true });
+      break;
+    case "careerIntent.industriesOfInterest":
+    case "industries_of_interest":
+      stored.profile.careerIntent.industriesOfInterest = attachFieldEdit(stored.profile.careerIntent.industriesOfInterest, selected, { source: "user", actor: "user", reason: "multi_select", confidence: 1, confirmed: true });
       break;
     case "resumeWritingPreferences.emphasisAreas":
     case "emphasis_preferences":
-      stored.profile.resumeWritingPreferences.emphasisAreas = { value: selected, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
+      stored.profile.resumeWritingPreferences.emphasisAreas = attachFieldEdit(stored.profile.resumeWritingPreferences.emphasisAreas, selected, { source: "user", actor: "user", reason: "multi_select", confidence: 1, confirmed: true });
+      break;
+    case "resumeWritingPreferences.deEmphasisAreas":
+    case "de_emphasis_preferences":
+      stored.profile.resumeWritingPreferences.deEmphasisAreas = attachFieldEdit(stored.profile.resumeWritingPreferences.deEmphasisAreas, selected, { source: "user", actor: "user", reason: "multi_select", confidence: 1, confirmed: true });
       break;
   }
 }
 
 function applySkillsUpdate(stored: SessionState, skills: { technical: string[]; tools: string[]; business: string[] }) {
-  const now = new Date().toISOString();
-  stored.profile.skills.technical = { value: skills.technical, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
-  stored.profile.skills.tools = { value: skills.tools, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
-  stored.profile.skills.business = { value: skills.business, source: "user", confidence: 1, confirmed: true, lastUpdatedAt: now };
+  stored.profile.skills.technical = attachFieldEdit(stored.profile.skills.technical, skills.technical, { source: "user", actor: "user", reason: "skills_update", confidence: 1, confirmed: true });
+  stored.profile.skills.tools = attachFieldEdit(stored.profile.skills.tools, skills.tools, { source: "user", actor: "user", reason: "skills_update", confidence: 1, confirmed: true });
+  stored.profile.skills.business = attachFieldEdit(stored.profile.skills.business, skills.business, { source: "user", actor: "user", reason: "skills_update", confidence: 1, confirmed: true });
   stored.meta.skillsConfirmed = true;
-}
-
-function applyResumeData(stored: SessionState, data: Record<string, unknown>) {
-  const { profile } = stored;
-  const now = new Date().toISOString();
-  const field = <T>(v: T, conf = 0.8) => ({ value: v, source: "resume" as const, confidence: conf, confirmed: false, lastUpdatedAt: now });
-
-  if (data.fullName) profile.identity.fullName = field(String(data.fullName));
-  if (data.email) profile.identity.email = field(String(data.email));
-  if (data.phone) profile.identity.phone = field(String(data.phone));
-  if (data.location) profile.identity.location = field(String(data.location));
-  if (data.linkedin) profile.identity.linkedin = field(String(data.linkedin));
-
-  if (Array.isArray(data.experience)) {
-    profile.experience = field(data.experience.map((e: any, i: number) => ({
-      id: e.id ?? `exp-${i}`,
-      title: e.title ?? "",
-      company: e.company ?? "",
-      location: e.location,
-      startDate: e.startDate,
-      endDate: e.endDate ?? "Present",
-      isCurrent: e.isCurrent,
-      responsibilities: Array.isArray(e.responsibilities) ? e.responsibilities : (e.description ? [e.description] : []),
-      achievements: Array.isArray(e.achievements) ? e.achievements : [],
-      tools: Array.isArray(e.tools) ? e.tools : [],
-      skills: Array.isArray(e.skills) ? e.skills : [],
-      domain: e.domain,
-      confidence: 0.8,
-    })));
-  }
-
-  if (Array.isArray(data.education)) {
-    profile.education = field(data.education.map((e: any, i: number) => ({
-      id: e.id ?? `edu-${i}`,
-      degree: e.degree ?? "",
-      institution: e.institution ?? "",
-      fieldOfStudy: e.fieldOfStudy,
-      graduationYear: e.graduationYear ?? e.endDate,
-      location: e.location,
-      grade: e.grade,
-    })));
-  }
-
-  if (Array.isArray(data.skillsTier1)) profile.skills.technical = field(extractSkillNames(data.skillsTier1));
-  else if (Array.isArray(data.technicalSkills)) profile.skills.technical = field(data.technicalSkills.map(String));
-  else if (Array.isArray(data.skills)) profile.skills.technical = field(data.skills.map(String));
-
-  if (Array.isArray(data.skillsTier2)) profile.skills.tools = field(extractSkillNames(data.skillsTier2));
-  else if (Array.isArray(data.tools)) profile.skills.tools = field(data.tools.map(String));
-
-  if (Array.isArray(data.skillsTier3)) profile.skills.business = field(extractSkillNames(data.skillsTier3));
-  else if (Array.isArray(data.professionalSkills)) profile.skills.business = field(data.professionalSkills.map(String));
-  if (data.currentTitle) profile.professionalProfile.currentTitles = field([String(data.currentTitle)]);
 }
 
 function extractSkillNames(values: unknown[]): string[] {

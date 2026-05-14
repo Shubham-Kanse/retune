@@ -8,12 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   ChevronRight,
-  Database,
-  Lock,
   LogOut,
-  MessageSquare,
-  Shield,
-  User,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,36 +27,11 @@ interface Sub {
 }
 
 const sections = [
-  {
-    href: "/profile",
-    label: "Career profile",
-    sub: "Your details, experience, skills, voice.",
-    icon: User,
-  },
-  {
-    href: "/settings/voice",
-    label: "Voice & style",
-    sub: "How Retuned should sound when it writes as you.",
-    icon: MessageSquare,
-  },
-  {
-    href: "/settings/honesty",
-    label: "Honesty calibration",
-    sub: "How aggressively to claim ownership of evidence.",
-    icon: Lock,
-  },
-  {
-    href: "/settings/culture",
-    label: "Culture & values",
-    sub: "Signals you want reflected in tunings.",
-    icon: Shield,
-  },
-  {
-    href: "/settings/data",
-    label: "Privacy & data",
-    sub: "Export or delete your stored data.",
-    icon: Database,
-  },
+  { href: "/profile", label: "Career profile", sub: "Details, experience, skills, voice." },
+  { href: "/settings/voice", label: "Voice & style", sub: "How Retuned sounds when writing as you." },
+  { href: "/settings/honesty", label: "Honesty calibration", sub: "Claim ownership aggressiveness." },
+  { href: "/settings/culture", label: "Culture & values", sub: "Signals reflected in tunings." },
+  { href: "/settings/data", label: "Privacy & data", sub: "Export or delete stored data." },
 ];
 
 export function SettingsClient({
@@ -107,98 +77,81 @@ export function SettingsClient({
         subtitle="Account preferences, subscription, voice and data."
       />
 
-      <section className="mb-4 overflow-hidden rounded-xl border border-border bg-card">
-        <ul className="divide-y divide-border">
-          {sections.map((s) => {
-            const Icon = s.icon;
-            return (
-              <li key={s.href}>
-                <Link
-                  href={s.href}
-                  className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-accent"
-                >
-                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors group-hover:text-foreground">
-                    <Icon className="size-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium">{s.label}</p>
-                    <p className="truncate text-xs text-muted-foreground">{s.sub}</p>
-                  </div>
-                  <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      <section className="mb-4 overflow-hidden rounded-xl border border-border bg-card">
-        <div className="border-b border-border px-5 py-4">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">
-                Subscription
-              </p>
-              <p className="mt-1 text-base font-medium capitalize">
-                {subscription.plan} plan
-                <span className="ml-2 text-xs font-normal text-muted-foreground">
-                  · {subscription.status}
-                </span>
-              </p>
+      {/* Navigation — flat list with dividers */}
+      <nav className="divide-y divide-border/50">
+        {sections.map((s) => (
+          <Link
+            key={s.href}
+            href={s.href}
+            className="group flex items-center justify-between gap-4 py-3.5 -mx-2 px-2 rounded-md transition-colors hover:bg-muted/30"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{s.label}</p>
+              <p className="text-xs text-muted-foreground">{s.sub}</p>
             </div>
-            {subscription.plan !== "max" ? (
-              <Button asChild size="sm">
-                <Link href="/settings/data#billing">Upgrade</Link>
-              </Button>
-            ) : null}
-          </div>
-          <div className="mt-4 space-y-1.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">
-                {subscription.creditsUsed} of {subscription.creditsLimit} credits used
+            <ChevronRight className="size-4 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        ))}
+      </nav>
+
+      {/* Subscription — flat section */}
+      <div className="mt-10 border-t border-border/50 pt-8">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-xs text-muted-foreground">Subscription</p>
+            <p className="mt-0.5 text-sm font-medium capitalize">
+              {subscription.plan} plan
+              <span className="ml-2 text-xs font-normal text-muted-foreground">
+                · {subscription.status}
               </span>
-              <span className="font-mono tabular-nums text-muted-foreground">{pct}%</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-foreground transition-all"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+            </p>
+          </div>
+          {subscription.plan !== "max" && (
+            <Button asChild size="sm" variant="ghost">
+              <Link href="/settings/data#billing">Upgrade</Link>
+            </Button>
+          )}
+        </div>
+        <div className="mt-4 space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              {subscription.creditsUsed} / {subscription.creditsLimit} credits
+            </span>
+            <span className="font-mono tabular-nums">{pct}%</span>
+          </div>
+          <div className="h-1 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-foreground transition-all"
+              style={{ width: `${pct}%` }}
+            />
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-accent"
-        >
-          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5 text-destructive">
-            <LogOut className="size-4" />
-          </div>
-          <span className="flex-1 text-sm font-medium text-destructive">Sign out</span>
-          <ChevronRight className="size-4 text-destructive/60" />
-        </button>
-      </section>
+      </div>
 
-      <section className="rounded-xl border border-border bg-card">
-        <div className="px-5 py-4">
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">Account</p>
-          <p className="mt-1 text-sm">
-            <span className="font-medium">{fullName}</span>
-            <span className="text-muted-foreground"> · {email}</span>
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">Member since {memberSince ?? "—"}</p>
-        </div>
-      </section>
-
-      <section
-        className={cn(
-          "mt-8 rounded-xl border p-5",
-          deleteConfirm
-            ? "border-destructive/30 bg-destructive/5"
-            : "border-border bg-card",
+      {/* Account info */}
+      <div className="mt-8 border-t border-border/50 pt-8">
+        <p className="text-xs text-muted-foreground">Account</p>
+        <p className="mt-1 text-sm">
+          <span className="font-medium">{fullName}</span>
+          <span className="text-muted-foreground"> · {email}</span>
+        </p>
+        {memberSince && (
+          <p className="mt-0.5 text-xs text-muted-foreground">Member since {memberSince}</p>
         )}
+      </div>
+
+      {/* Sign out */}
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="mt-6 flex items-center gap-2 text-sm text-destructive hover:underline underline-offset-4"
       >
+        <LogOut className="size-3.5" />
+        Sign out
+      </button>
+
+      {/* Danger zone */}
+      <div className={cn("mt-10 border-t border-border/50 pt-8", deleteConfirm && "")}>
         {!deleteConfirm ? (
           <div className="flex items-center justify-between gap-4">
             <div>
@@ -208,10 +161,10 @@ export function SettingsClient({
               </p>
             </div>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={() => setDeleteConfirm(true)}
-              className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
             >
               Delete account
             </Button>
@@ -221,7 +174,7 @@ export function SettingsClient({
             <div className="flex gap-3">
               <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
               <p className="text-sm text-destructive">
-                This permanently deletes all your data, profiles, and tunings. This cannot be undone.
+                This permanently deletes all your data. This cannot be undone.
               </p>
             </div>
             <div className="space-y-1.5">
@@ -233,7 +186,6 @@ export function SettingsClient({
                 value={deleteInput}
                 onChange={(e) => setDeleteInput(e.target.value)}
                 placeholder="DELETE"
-                className="border-destructive/30"
               />
             </div>
             <div className="flex gap-2">
@@ -258,7 +210,7 @@ export function SettingsClient({
             </div>
           </div>
         )}
-      </section>
+      </div>
     </PageShell>
   );
 }

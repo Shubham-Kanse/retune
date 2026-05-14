@@ -1,4 +1,11 @@
-import { buildEducationCards, buildExperienceCards, buildIdentityCard, buildSkillCards, buildSummaryCards } from "./cards";
+import {
+  buildEducationCards,
+  buildExperienceCards,
+  buildIdentityCard,
+  buildProjectCertificationCards,
+  buildSkillCards,
+  buildSummaryCards,
+} from "./cards";
 import type { UserCareerProfile, OnboardingMeta, OnboardingQuestion } from "./types";
 import { inferRolesFromProfile } from "./role-inference";
 
@@ -112,7 +119,6 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
       answerType: "confirm",
       pills: [
         { label: "Looks correct", value: "confirm_identity", action: "confirm_field", field: "identity", recommended: true },
-        { label: "Edit details", value: "edit_identity", action: "ask_text", field: "identity" },
       ],
       cards: [buildIdentityCard(profile)],
       skipAllowed: false,
@@ -141,8 +147,6 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
       answerType: "confirm",
       pills: [
         { label: "Looks correct", value: "confirm_experience", action: "confirm_field", field: "experience", recommended: true },
-        { label: "Edit experience", value: "edit_experience", action: "ask_text", field: "experience" },
-        { label: "Add another role", value: "add_experience", action: "ask_text", field: "experience" },
       ],
       cards: buildExperienceCards(profile),
       skipAllowed: false,
@@ -156,10 +160,13 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
         phase: "profile_gap_fill",
         field: "education",
         questionKey: "fill_education",
-        prompt: "Ask for their highest education: degree, institution, and year.",
+        prompt: "Ask for their highest education, or let them mark formal education as not applicable.",
         answerType: "text",
-        pills: [],
-        skipAllowed: false,
+        pills: [
+          { label: "Add education", value: "add_education", action: "ask_text", field: "education", recommended: true },
+          { label: "No formal education", value: "not_applicable", action: "confirm_field", field: "education" },
+        ],
+        skipAllowed: true,
       };
     }
 
@@ -171,7 +178,6 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
       answerType: "confirm",
       pills: [
         { label: "Looks correct", value: "confirm_education", action: "confirm_field", field: "education", recommended: true },
-        { label: "Edit education", value: "edit_education", action: "ask_text", field: "education" },
       ],
       cards: buildEducationCards(profile),
       skipAllowed: false,
@@ -204,7 +210,6 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
       answerType: "confirm",
       pills: [
         { label: "Keep these skills", value: "confirm_skills", action: "confirm_field", field: "skills", recommended: true },
-        { label: "Add skills", value: "add_skills", action: "ask_text", field: "skills" },
         { label: "Edit skills", value: "edit_skills", action: "ask_text", field: "skills" },
       ],
       cards: buildSkillCards(profile),
@@ -212,7 +217,34 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
     };
   }
 
-  // 7. Professional identity
+  // 7. Projects and certifications review
+  if (!meta.projectsCertificationsReviewed) {
+    const cards = buildProjectCertificationCards(profile);
+    return {
+      phase: "projects_certifications_review",
+      field: "projects_certifications",
+      questionKey: "projects_certifications_review",
+      prompt: cards.length
+        ? "Show extracted projects and certifications. Ask whether to keep them for future resume tailoring."
+        : "Ask whether they have projects or certifications worth keeping in their Retuned profile.",
+      answerType: cards.length ? "confirm" : "text",
+      pills: cards.length
+        ? [
+            { label: "Keep these", value: "confirm_projects_certs", action: "confirm_field", field: "projects_certifications", recommended: true },
+            { label: "Edit", value: "edit_projects_certs", action: "ask_text", field: "projects_certifications" },
+            { label: "None relevant", value: "none_relevant", action: "confirm_field", field: "projects_certifications" },
+          ]
+        : [
+            { label: "Add project/cert", value: "add_projects_certs", action: "ask_text", field: "projects_certifications", recommended: true },
+            { label: "None for now", value: "none_for_now", action: "confirm_field", field: "projects_certifications" },
+          ],
+      cards,
+      skipAllowed: true,
+      whyAsked: "Projects and certifications are optional, but they often become strong evidence for tailored resumes.",
+    };
+  }
+
+  // 8. Professional identity
   if (!profile.professionalProfile.professionalIdentities.confirmed) {
     const options = professionalIdentityOptions(profile);
     return {
@@ -231,7 +263,7 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
     };
   }
 
-  // 8. Career direction
+  // 9. Career direction
   if (!profile.careerIntent.careerDirection.confirmed) {
     const crossDomain = hasAiEducation(profile) && hasSoftwareExperience(profile);
     return {
@@ -260,7 +292,7 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
     };
   }
 
-  // 9. Interested roles
+  // 10. Interested roles
   if (!profile.careerIntent.interestedRoles.confirmed) {
     const inferred = roleInterestOptions(profile);
     const selected = new Set(profile.careerIntent.interestedRoles.value.map((role) => role.toLowerCase()));
@@ -280,7 +312,7 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
     };
   }
 
-  // 10. Preferred markets
+  // 11. Preferred markets
   if (!profile.careerIntent.preferredMarkets.confirmed) {
     const location = profile.identity.location.value;
     const inferredCountry = location?.split(",").pop()?.trim();
@@ -304,7 +336,7 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
     };
   }
 
-  // 11. Work preference
+  // 12. Work preference
   if (!profile.careerIntent.workPreference.confirmed) {
     return {
       phase: "work_preferences",
@@ -323,7 +355,59 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
     };
   }
 
-  // 12. Emphasis areas
+  // 13. Seniority comfort
+  if (!profile.careerIntent.seniorityComfort.confirmed) {
+    const selected = new Set(profile.careerIntent.seniorityComfort.value.map((level) => level.toLowerCase()));
+    const levels = ["Entry", "Associate", "Mid-level", "Senior IC", "Lead", "Manager", "Open"];
+    return {
+      phase: "seniority_comfort",
+      field: "careerIntent.seniorityComfort",
+      questionKey: "seniority_comfort",
+      prompt: "Ask which seniority levels they are comfortable targeting.",
+      answerType: "multi_select",
+      pills: [
+        ...levels.map((level) => ({ label: level, value: level, action: "set_field" as const, field: "careerIntent.seniorityComfort", selected: selected.has(level.toLowerCase()) })),
+        { label: "Continue", value: "confirm_seniority", action: "confirm_field" as const, field: "careerIntent.seniorityComfort", recommended: profile.careerIntent.seniorityComfort.value.length > 0 },
+      ],
+      skipAllowed: true,
+      whyAsked: "Seniority comfort controls how aggressively future resumes position scope and leadership.",
+    };
+  }
+
+  // 14. Industries of interest
+  if (!profile.careerIntent.industriesOfInterest.confirmed) {
+    const profileText = [
+      ...profile.professionalProfile.domainExperience.value,
+      ...profile.experience.value.map((entry) => entry.industry ?? entry.domain ?? ""),
+      ...profile.skills.domainSkills.value,
+    ].join(" ").toLowerCase();
+    const contextual = [
+      profileText.includes("fintech") || profileText.includes("bank") || profileText.includes("payment") ? "Fintech" : "",
+      profileText.includes("ai") || profileText.includes("machine learning") ? "AI/ML" : "",
+      profileText.includes("health") ? "Healthcare" : "",
+      "SaaS",
+      "Consulting",
+      "Open",
+    ].filter(Boolean);
+    const options = unique(contextual);
+    const selected = new Set(profile.careerIntent.industriesOfInterest.value.map((industry) => industry.toLowerCase()));
+    return {
+      phase: "industries_of_interest",
+      field: "careerIntent.industriesOfInterest",
+      questionKey: "industries_of_interest",
+      prompt: "Ask which industries Retuned should keep in mind for future resumes.",
+      answerType: "multi_select",
+      pills: [
+        ...options.map((industry, i) => ({ label: industry, value: industry, action: "set_field" as const, field: "careerIntent.industriesOfInterest", recommended: i === 0, selected: selected.has(industry.toLowerCase()) })),
+        { label: "Other", value: "other", action: "ask_text" as const, field: "careerIntent.industriesOfInterest" },
+        { label: "Continue", value: "confirm_industries", action: "confirm_field" as const, field: "careerIntent.industriesOfInterest", recommended: profile.careerIntent.industriesOfInterest.value.length > 0 },
+      ],
+      skipAllowed: true,
+      whyAsked: "Industry preference changes keywords, examples, and business framing.",
+    };
+  }
+
+  // 15. Emphasis areas
   if (!profile.resumeWritingPreferences.emphasisAreas.confirmed) {
     const allSkills = [...profile.skills.technical.value, ...profile.skills.tools.value, ...profile.skills.business.value].slice(0, 6);
     const selected = new Set(profile.resumeWritingPreferences.emphasisAreas.value.map((area) => area.toLowerCase()));
@@ -345,7 +429,26 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
     };
   }
 
-  // 13. Profile ready
+  // 16. De-emphasis areas
+  if (!profile.resumeWritingPreferences.deEmphasisAreas.confirmed) {
+    const selected = new Set(profile.resumeWritingPreferences.deEmphasisAreas.value.map((area) => area.toLowerCase()));
+    const options = ["Older roles", "Academic work", "Support tasks", "Management", "Legacy tools", "None"];
+    return {
+      phase: "de_emphasis_preferences",
+      field: "resumeWritingPreferences.deEmphasisAreas",
+      questionKey: "de_emphasis_preferences",
+      prompt: "Ask what future resumes should avoid over-highlighting.",
+      answerType: "multi_select",
+      pills: [
+        ...options.map((area) => ({ label: area, value: area, action: "set_field" as const, field: "resumeWritingPreferences.deEmphasisAreas", selected: selected.has(area.toLowerCase()) })),
+        { label: "Continue", value: "confirm_de_emphasis", action: "confirm_field" as const, field: "resumeWritingPreferences.deEmphasisAreas", recommended: profile.resumeWritingPreferences.deEmphasisAreas.value.length > 0 },
+      ],
+      skipAllowed: true,
+      whyAsked: "This stops future resumes from over-weighting stale or low-signal experience.",
+    };
+  }
+
+  // 17. Profile ready
   return null;
 }
 
