@@ -17,7 +17,7 @@ export default function OgImage() {
         alignItems: "flex-start",
         justifyContent: "flex-end",
         padding: "80px",
-        fontFamily: "sans-serif",
+        fontFamily: "Roboto, Arial, Helvetica, sans-serif",
       }}
     >
       {/* Top accent bar */}

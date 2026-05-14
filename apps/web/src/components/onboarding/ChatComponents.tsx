@@ -45,10 +45,10 @@ export function QuickReplyChips({ pills, onSelect, disabled }: QuickReplyChipsPr
             className={cn(
               "inline-flex items-center gap-1.5 px-4 py-2 rounded-full border text-[0.8125rem] font-medium transition-colors",
               pill.selected
-                ? "border-[#1a1a1a] bg-[#1a1a1a] text-white hover:bg-[#333]"
+                ? "border-primary bg-primary text-primary-foreground hover:opacity-90"
                 : pill.recommended
-                  ? "border-[#b84ed1] bg-[#f3e8ff] text-[#7e22ce] hover:bg-[#ead6ff]"
-                  : "border-transparent bg-[#1a1a1a] text-white hover:bg-[#333]",
+                  ? "border-brand/30 bg-brand/10 text-brand hover:bg-brand/15"
+                  : "border-border bg-card text-foreground hover:bg-muted",
               "disabled:opacity-40 disabled:cursor-not-allowed",
             )}
           >
@@ -67,21 +67,21 @@ export function QuickReplyChips({ pills, onSelect, disabled }: QuickReplyChipsPr
 export function ProfileDisplayCard({ card }: { card: DisplayCard }) {
   return (
     <motion.div
-      className="rounded-2xl border border-[#e8e5e0] bg-white p-4"
+      className="rounded-2xl border border-border bg-card/80 p-4 backdrop-blur-md"
       initial={{ opacity: 0, y: 8, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[0.72rem] uppercase tracking-widest text-[#aaa]">
+          <p className="text-[0.72rem] uppercase tracking-widest text-muted-foreground">
             {card.type.replace("_", " ")}
           </p>
-          <p className="mt-1 text-[0.92rem] font-medium text-[#1a1a1a]">{card.title}</p>
-          {card.subtitle && <p className="mt-0.5 text-[0.8125rem] text-[#6b6b6b]">{card.subtitle}</p>}
+          <p className="mt-1 text-[0.92rem] font-medium text-card-foreground">{card.title}</p>
+          {card.subtitle && <p className="mt-0.5 text-[0.8125rem] text-muted-foreground">{card.subtitle}</p>}
         </div>
         {card.status && (
-          <span className="rounded-full bg-[#f0ede8] px-2 py-1 text-[0.68rem] text-[#6b6b6b]">
+          <span className="rounded-full bg-muted px-2 py-1 text-[0.68rem] text-muted-foreground">
             {card.status.replace("_", " ")}
           </span>
         )}
@@ -90,7 +90,7 @@ export function ProfileDisplayCard({ card }: { card: DisplayCard }) {
       {card.metadata?.length ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {card.metadata.slice(0, 12).map((item) => (
-            <span key={item} className="rounded-full bg-[#f7f4ef] px-2.5 py-1 text-[0.75rem] text-[#555]">
+            <span key={item} className="rounded-full bg-muted px-2.5 py-1 text-[0.75rem] text-muted-foreground">
               {item}
             </span>
           ))}
@@ -112,7 +112,7 @@ export function SectionCard({ section, data }: SectionCardProps) {
     section === "experience" ? "Work History" : section === "skills" ? "Skills" : "Education";
   return (
     <motion.div
-      className="rounded-2xl border border-[#e8e5e0] bg-white overflow-hidden"
+      className="rounded-2xl border border-border bg-card/80 overflow-hidden backdrop-blur-md"
       style={{
         boxShadow:
           "rgba(14,63,126,0.04) 0px 0px 0px 1px, rgba(42,51,69,0.04) 0px 1px 1px -0.5px, rgba(42,51,70,0.04) 0px 3px 3px -1.5px",
@@ -121,8 +121,8 @@ export function SectionCard({ section, data }: SectionCardProps) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
     >
-      <div className="px-4 py-2.5 border-b border-[#f0ede8] bg-[#fafaf9]">
-        <p className="text-[0.6875rem] font-semibold uppercase tracking-widest text-[#bbb]">
+      <div className="px-4 py-2.5 border-b border-border bg-muted/45">
+        <p className="text-[0.6875rem] font-semibold uppercase tracking-widest text-muted-foreground">
           {label}
         </p>
       </div>
@@ -144,11 +144,11 @@ function ExperienceList({ items }: { items: ExperienceEntry[] }) {
     <div className="space-y-3">
       {items.map((exp, i) => (
         <div key={`${exp.company}-${exp.title}-${exp.startDate ?? i}`}>
-          <p className="text-[0.875rem] font-medium text-[#1a1a1a]">{exp.title}</p>
-          <p className="text-[0.8125rem] text-[#6b6b6b]">
+          <p className="text-[0.875rem] font-medium text-card-foreground">{exp.title}</p>
+          <p className="text-[0.8125rem] text-muted-foreground">
             {exp.company}
             {(exp.startDate || exp.endDate) && (
-              <span className="text-[#bbb]">
+              <span className="text-muted-foreground/60">
                 {" "}
                 · {exp.startDate ?? "?"} – {exp.endDate ?? "Present"}
               </span>
@@ -169,7 +169,7 @@ function SkillsList({
       {all.map((s) => (
         <span
           key={s.name}
-          className="px-2.5 py-1 rounded-full bg-[#f0ede8] text-[0.75rem] text-[#555] font-medium"
+          className="px-2.5 py-1 rounded-full bg-muted text-[0.75rem] text-muted-foreground font-medium"
         >
           {s.name}
         </span>
@@ -183,11 +183,11 @@ function EducationList({ items }: { items: EducationEntry[] }) {
     <div className="space-y-3">
       {items.map((edu, i) => (
         <div key={`${edu.institution}-${edu.degree}-${edu.endDate ?? i}`}>
-          <p className="text-[0.875rem] font-medium text-[#1a1a1a]">{edu.degree}</p>
-          <p className="text-[0.8125rem] text-[#6b6b6b]">
+          <p className="text-[0.875rem] font-medium text-card-foreground">{edu.degree}</p>
+          <p className="text-[0.8125rem] text-muted-foreground">
             {edu.institution}
             {(edu.endDate || edu.status) && (
-              <span className="text-[#bbb]"> · {edu.endDate ?? edu.status}</span>
+              <span className="text-muted-foreground/60"> · {edu.endDate ?? edu.status}</span>
             )}
           </p>
         </div>
@@ -211,8 +211,8 @@ export function UploadDropzone({ onFile, disabled }: UploadDropzoneProps) {
     <motion.div
       className={cn(
         "rounded-2xl border-2 border-dashed p-5 text-center cursor-pointer transition-all duration-200",
-        isDragging ? "border-[#b84ed1] bg-[#f3e8ff]" : "border-[#e5e2dd] bg-[#fafaf9]",
-        !disabled && "hover:border-[#b84ed1] hover:bg-[#f3e8ff]",
+        isDragging ? "border-brand bg-brand/10" : "border-border bg-card/70",
+        !disabled && "hover:border-brand/60 hover:bg-brand/10",
         disabled && "opacity-60 cursor-not-allowed",
       )}
       initial={{ opacity: 0, scale: 0.97 }}
@@ -234,14 +234,14 @@ export function UploadDropzone({ onFile, disabled }: UploadDropzoneProps) {
       onClick={() => !disabled && inputRef.current?.click()}
     >
       <div className="flex flex-col items-center gap-2">
-        <div className="w-9 h-9 rounded-xl bg-[#f3e8ff] flex items-center justify-center">
-          <Upload className="w-4 h-4 text-[#7e22ce]" />
+        <div className="w-9 h-9 rounded-xl bg-brand/10 flex items-center justify-center">
+          <Upload className="w-4 h-4 text-brand" />
         </div>
         <div>
-          <p className="text-[0.875rem] font-medium text-[#1a1a1a]">
+          <p className="text-[0.875rem] font-medium text-foreground">
             {disabled ? "Reading your resume…" : "Drop your resume here"}
           </p>
-          <p className="text-[0.75rem] text-[#aaa] mt-0.5">PDF or DOCX · max 10MB</p>
+          <p className="text-[0.75rem] text-muted-foreground mt-0.5">PDF or DOCX · max 10MB</p>
         </div>
       </div>
       <input
@@ -272,8 +272,8 @@ export function CompletionAnimation() {
       <motion.div
         className="w-20 h-20 rounded-full flex items-center justify-center"
         style={{
-          background: "radial-gradient(circle at 35% 35%, #e9d5ff, #b84ed1 55%, #7e22ce)",
-          boxShadow: "0 4px 24px rgba(126,34,206,0.4)",
+          background: "radial-gradient(circle at 35% 35%, var(--color-brand-light), var(--color-brand) 60%, var(--color-primary))",
+          boxShadow: "0 4px 24px color-mix(in srgb, var(--color-brand) 35%, transparent)",
         }}
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
@@ -287,10 +287,10 @@ export function CompletionAnimation() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.35, duration: 0.3 }}
       >
-        <p className="font-serif text-[2rem] text-[#1a1a1a] leading-tight mb-1">
+        <p className="text-[2rem] font-semibold tracking-tight text-foreground leading-tight mb-1">
           Welcome to retune
         </p>
-        <p className="text-[0.875rem] text-[#6b6b6b]">Taking you to your dashboard…</p>
+        <p className="text-[0.875rem] text-muted-foreground">Taking you to your dashboard…</p>
       </motion.div>
     </motion.div>
   );

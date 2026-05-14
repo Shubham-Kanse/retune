@@ -13,12 +13,12 @@ export function ProfileStrengthBar({ filledCount, totalRequired }: Props) {
   const label = pct === 100 ? "Complete!" : `${filledCount}/${totalRequired} fields`;
 
   return (
-    <div className="w-full px-4 py-2 border-b border-[#e5e2dd]">
+    <div className="w-full px-4 py-2 border-b border-border">
       <div className="flex items-center justify-between mb-1">
-        <span className="text-xs text-stone-400">Profile progress</span>
-        <span className="text-xs font-medium text-stone-600">{label}</span>
+        <span className="text-xs text-muted-foreground">Profile progress</span>
+        <span className="text-xs font-medium text-foreground">{label}</span>
       </div>
-      <div className="h-1.5 bg-stone-100 rounded-full overflow-hidden">
+      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
         <motion.div
           className={`h-full rounded-full ${color}`}
           initial={{ width: 0 }}

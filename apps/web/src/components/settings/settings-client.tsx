@@ -1,16 +1,19 @@
 "use client";
 
-import { UpgradeButton } from "@/components/layout/upgrade-button";
+import { PageHeader, PageShell } from "@/components/app/page-shell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 import {
   AlertTriangle,
   ChevronRight,
   Database,
-  Link2,
+  Lock,
   LogOut,
   MessageSquare,
   Shield,
   User,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -28,6 +31,39 @@ interface Sub {
   creditsRemainingUsd: number;
 }
 
+const sections = [
+  {
+    href: "/profile",
+    label: "Career profile",
+    sub: "Your details, experience, skills, voice.",
+    icon: User,
+  },
+  {
+    href: "/settings/voice",
+    label: "Voice & style",
+    sub: "How Retuned should sound when it writes as you.",
+    icon: MessageSquare,
+  },
+  {
+    href: "/settings/honesty",
+    label: "Honesty calibration",
+    sub: "How aggressively to claim ownership of evidence.",
+    icon: Lock,
+  },
+  {
+    href: "/settings/culture",
+    label: "Culture & values",
+    sub: "Signals you want reflected in tunings.",
+    icon: Shield,
+  },
+  {
+    href: "/settings/data",
+    label: "Privacy & data",
+    sub: "Export or delete your stored data.",
+    icon: Database,
+  },
+];
+
 export function SettingsClient({
   subscription,
   email,
@@ -42,13 +78,14 @@ export function SettingsClient({
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
     router.push("/login");
+    router.refresh();
   }
 
   async function handleDelete() {
     setDeleting(true);
     const res = await fetch("/api/account", { method: "DELETE" });
     if (res.ok) {
-      toast.success("Account deleted. Goodbye!");
+      toast.success("Account deleted.");
       setTimeout(() => router.push("/"), 1500);
     } else {
       toast.error("Failed to delete account. Please try again.");
@@ -57,167 +94,171 @@ export function SettingsClient({
     }
   }
 
+  const pct =
+    subscription.creditsLimit > 0
+      ? Math.round((subscription.creditsUsed / subscription.creditsLimit) * 100)
+      : 0;
+
   return (
-    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
-      {/* Header */}
-      <div className="flex items-end justify-between mb-12">
-        <div>
-          <p className="rt-label mb-3">Account</p>
-          <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
-            Settings
-          </h1>
-        </div>
-        <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors mb-2">
-          <X className="w-4 h-4" />
-        </Link>
-      </div>
+    <PageShell width="wide">
+      <PageHeader
+        eyebrow="Account"
+        title="Settings"
+        subtitle="Account preferences, subscription, voice and data."
+      />
 
-        {/* Main settings list */}
-        <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] overflow-hidden mb-6">
-          <Link
-            href="/profile"
-            className="flex items-center gap-4 px-6 py-5 hover:bg-[rgba(255,255,255,0.6)] transition-colors border-b border-[#e0ddd9] group"
-          >
-            <div className="w-9 h-9 rounded-full bg-rose-500/12 flex items-center justify-center">
-              <User className="w-4 h-4 text-rose-700" />
+      <section className="mb-4 overflow-hidden rounded-xl border border-border bg-card">
+        <ul className="divide-y divide-border">
+          {sections.map((s) => {
+            const Icon = s.icon;
+            return (
+              <li key={s.href}>
+                <Link
+                  href={s.href}
+                  className="group flex items-center gap-4 px-5 py-4 transition-colors hover:bg-accent"
+                >
+                  <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors group-hover:text-foreground">
+                    <Icon className="size-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{s.label}</p>
+                    <p className="truncate text-xs text-muted-foreground">{s.sub}</p>
+                  </div>
+                  <ChevronRight className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+
+      <section className="mb-4 overflow-hidden rounded-xl border border-border bg-card">
+        <div className="border-b border-border px-5 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+                Subscription
+              </p>
+              <p className="mt-1 text-base font-medium capitalize">
+                {subscription.plan} plan
+                <span className="ml-2 text-xs font-normal text-muted-foreground">
+                  · {subscription.status}
+                </span>
+              </p>
             </div>
-            <span className="flex-1 text-sm font-medium text-foreground">Profile settings</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-
-          <Link
-            href="/settings/voice"
-            className="flex items-center gap-4 px-6 py-5 hover:bg-[rgba(255,255,255,0.6)] transition-colors border-b border-[#e0ddd9] group"
-          >
-            <div className="w-9 h-9 rounded-full bg-violet-500/12 flex items-center justify-center">
-              <Link2 className="w-4 h-4 text-violet-700" />
+            {subscription.plan !== "max" ? (
+              <Button asChild size="sm">
+                <Link href="/settings/data#billing">Upgrade</Link>
+              </Button>
+            ) : null}
+          </div>
+          <div className="mt-4 space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                {subscription.creditsUsed} of {subscription.creditsLimit} credits used
+              </span>
+              <span className="font-mono tabular-nums text-muted-foreground">{pct}%</span>
             </div>
-            <span className="flex-1 text-sm font-medium text-foreground">Voice &amp; style</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-
-          <Link
-            href="/settings/honesty"
-            className="flex items-center gap-4 px-6 py-5 hover:bg-[rgba(255,255,255,0.6)] transition-colors border-b border-[#e0ddd9] group"
-          >
-            <div className="w-9 h-9 rounded-full bg-amber-500/12 flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 text-amber-700" />
-            </div>
-            <span className="flex-1 text-sm font-medium text-foreground">Honesty calibration</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-
-          <Link
-            href="/settings/data"
-            className="flex items-center gap-4 px-6 py-5 hover:bg-[rgba(255,255,255,0.6)] transition-colors group"
-          >
-            <div className="w-9 h-9 rounded-full bg-emerald-500/12 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-emerald-700" />
-            </div>
-            <span className="flex-1 text-sm font-medium text-foreground">Privacy &amp; data</span>
-            <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-        </div>
-
-        {/* Subscription card */}
-        <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] overflow-hidden mb-6">
-          <div className="px-6 py-5 border-b border-[#e0ddd9]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-9 h-9 rounded-full bg-sky-500/12 flex items-center justify-center">
-                  <Database className="w-4 h-4 text-sky-700" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground capitalize">
-                    {subscription.plan} Plan
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {subscription.creditsUsed} / {subscription.creditsLimit} credits used
-                  </p>
-                </div>
-              </div>
-              {subscription.plan === "free" && <UpgradeButton />}
-              {subscription.plan === "pro" && <UpgradeButton />}
+            <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-foreground transition-all"
+                style={{ width: `${pct}%` }}
+              />
             </div>
           </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="group flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-accent"
+        >
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-destructive/30 bg-destructive/5 text-destructive">
+            <LogOut className="size-4" />
+          </div>
+          <span className="flex-1 text-sm font-medium text-destructive">Sign out</span>
+          <ChevronRight className="size-4 text-destructive/60" />
+        </button>
+      </section>
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="flex items-center gap-4 px-6 py-5 hover:bg-[rgba(255,255,255,0.6)] transition-colors w-full text-left group"
-          >
-            <div className="w-9 h-9 rounded-full bg-red-500/12 flex items-center justify-center">
-              <LogOut className="w-4 h-4 text-red-700" />
+      <section className="rounded-xl border border-border bg-card">
+        <div className="px-5 py-4">
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Account</p>
+          <p className="mt-1 text-sm">
+            <span className="font-medium">{fullName}</span>
+            <span className="text-muted-foreground"> · {email}</span>
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">Member since {memberSince ?? "—"}</p>
+        </div>
+      </section>
+
+      <section
+        className={cn(
+          "mt-8 rounded-xl border p-5",
+          deleteConfirm
+            ? "border-destructive/30 bg-destructive/5"
+            : "border-border bg-card",
+        )}
+      >
+        {!deleteConfirm ? (
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">Danger zone</p>
+              <p className="text-xs text-muted-foreground">
+                Permanently delete your account and every tuning.
+              </p>
             </div>
-            <span className="flex-1 text-sm font-medium text-[#dc2626]">Log out</span>
-            <ChevronRight className="w-4 h-4 text-[#dc2626] opacity-50" />
-          </button>
-        </div>
-
-        {/* Account info */}
-        <div className="mt-8 space-y-3">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-medium">{fullName}</span> · {email}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Member since {memberSince ?? "—"}
-          </p>
-        </div>
-
-        {/* Delete account */}
-        <div className="mt-12 pt-8 border-t border-[#e0ddd9]">
-          {!deleteConfirm ? (
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setDeleteConfirm(true)}
-              className="text-xs text-[#dc2626] hover:underline"
+              className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
-              Delete my account permanently
-            </button>
-          ) : (
-            <div className="p-6 border border-[#fecaca] bg-[#fef2f2] rounded-xl space-y-4">
-              <div className="flex gap-3">
-                <AlertTriangle className="h-4 w-4 text-[#dc2626] shrink-0 mt-0.5" />
-                <p className="text-sm text-[#dc2626]">
-                  This permanently deletes all your data, profiles, and generations.
-                </p>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground block mb-2" htmlFor="delete-confirm-input">
-                  Type <strong className="text-foreground">DELETE</strong> to confirm
-                </label>
-                <input
-                  id="delete-confirm-input"
-                  type="text"
-                  value={deleteInput}
-                  onChange={(e) => setDeleteInput(e.target.value)}
-                  className="rt-input !border-[#fecaca]"
-                  placeholder="DELETE"
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  disabled={deleting || deleteInput !== "DELETE"}
-                  className="rt-btn-destructive text-xs px-4 py-2"
-                >
-                  {deleting ? "Deleting..." : "Delete account"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setDeleteConfirm(false);
-                    setDeleteInput("");
-                  }}
-                  className="text-xs text-muted-foreground hover:text-foreground px-4 py-2"
-                >
-                  Cancel
-                </button>
-              </div>
+              Delete account
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex gap-3">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-destructive" />
+              <p className="text-sm text-destructive">
+                This permanently deletes all your data, profiles, and tunings. This cannot be undone.
+              </p>
             </div>
-          )}
-        </div>
-    </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="delete-confirm-input">
+                Type <strong className="text-foreground">DELETE</strong> to confirm
+              </Label>
+              <Input
+                id="delete-confirm-input"
+                value={deleteInput}
+                onChange={(e) => setDeleteInput(e.target.value)}
+                placeholder="DELETE"
+                className="border-destructive/30"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleDelete}
+                disabled={deleting || deleteInput !== "DELETE"}
+                variant="destructive"
+                size="sm"
+              >
+                {deleting ? "Deleting…" : "Delete account"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setDeleteConfirm(false);
+                  setDeleteInput("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+      </section>
+    </PageShell>
   );
 }

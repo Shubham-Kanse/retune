@@ -1,4 +1,7 @@
 alter table onboarding_sessions
+alter column onboarding_state drop default;
+
+alter table onboarding_sessions
 alter column onboarding_state type jsonb
 using case
   when onboarding_state is null then '{}'::jsonb

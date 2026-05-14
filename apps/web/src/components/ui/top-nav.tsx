@@ -87,7 +87,7 @@ export function TopNav({ className }: { className?: string }) {
             ? "bg-[rgba(17,17,17,0.92)] border-[rgba(255,255,255,0.1)] shadow-2xl backdrop-blur-xl"
             : "bg-[rgba(17,17,17,0.7)] border-[rgba(255,255,255,0.08)] shadow-lg backdrop-blur-md",
         )}
-        style={{ fontFamily: "'EB Garamond', Georgia, serif" }}
+        style={{ fontFamily: "var(--font-roboto), Arial, Helvetica, sans-serif" }}
       >
         {/* ── Logo + brand name ─────────────────────────────────────────── */}
         <Link

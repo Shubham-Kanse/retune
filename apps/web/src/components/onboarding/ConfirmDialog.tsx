@@ -53,20 +53,20 @@ export function ConfirmDialog({ open, title, description, confirmLabel, onConfir
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-title"
-            className="bg-white rounded-2xl p-6 max-w-sm mx-4 shadow-lg border border-[#e0ddd9]"
+            className="bg-popover text-popover-foreground rounded-2xl p-6 max-w-sm mx-4 shadow-lg border border-border"
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             onClick={(e) => e.stopPropagation()}
             onKeyDown={handleKeyDown}
           >
-            <p id="confirm-title" className="text-sm font-medium text-[#1a1a1a] mb-1">{title}</p>
-            <p className="text-sm text-stone-500 mb-5">{description}</p>
+            <p id="confirm-title" className="text-sm font-medium text-foreground mb-1">{title}</p>
+            <p className="text-sm text-muted-foreground mb-5">{description}</p>
             <div className="flex gap-3 justify-end">
-              <button ref={cancelRef} onClick={onCancel} className="px-4 py-2 text-sm text-stone-600 hover:text-stone-800 transition-colors rounded-lg">
+              <button ref={cancelRef} onClick={onCancel} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg">
                 Cancel
               </button>
-              <button onClick={onConfirm} className="px-4 py-2 text-sm bg-[#1a1a1a] text-white rounded-lg hover:bg-[#333] transition-colors">
+              <button onClick={onConfirm} className="px-4 py-2 text-sm bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-colors">
                 {confirmLabel}
               </button>
             </div>

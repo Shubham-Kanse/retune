@@ -1,12 +1,27 @@
 "use client";
 
-import { ColorOrb } from "@/components/ui/color-orb";
+import { PageShell } from "@/components/app/page-shell";
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtItem,
+  ChainOfThoughtStep,
+  ChainOfThoughtTrigger,
+} from "@/components/prompt-kit/chain-of-thought";
+import { TextShimmerLoader } from "@/components/prompt-kit/loader";
+import { Message, MessageAvatar, MessageContent } from "@/components/prompt-kit/message";
+import {
+  Reasoning,
+  ReasoningContent,
+  ReasoningTrigger,
+} from "@/components/prompt-kit/reasoning";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useGenerationStream } from "@/stores/generation-stream";
-import { CheckCircle2, Circle, X } from "lucide-react";
-import { motion } from "motion/react";
+import { Check, CircleDot, Loader2, X } from "lucide-react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
 
 const SPECIALIST_TO_PHASE: Record<string, string> = {
   jd_span_extractor: "Reading the job description",
@@ -38,7 +53,7 @@ const SPECIALIST_TO_PHASE: Record<string, string> = {
 const PHASES = [
   {
     key: "reading",
-    label: "Job description read",
+    label: "Reading the job description",
     specialists: [
       "jd_span_extractor",
       "stub_jd_span_extractor",
@@ -49,8 +64,8 @@ const PHASES = [
     ],
   },
   {
-    key: "profiling",
-    label: "Profile understood",
+    key: "profile",
+    label: "Loading your career profile",
     specialists: [
       "voice_fingerprint_extractor",
       "honesty_calibrator",
@@ -58,10 +73,14 @@ const PHASES = [
       "emotional_state_modeler",
     ],
   },
-  { key: "matching", label: "Evidence matched", specialists: ["gap_mapper", "evidence_solver"] },
+  {
+    key: "matching",
+    label: "Matching evidence to the role",
+    specialists: ["gap_mapper", "evidence_solver"],
+  },
   {
     key: "writing",
-    label: "Resume written",
+    label: "Rewriting bullets and resume",
     specialists: [
       "narrative_arc_proposer",
       "critic_ensemble",
@@ -71,19 +90,25 @@ const PHASES = [
   },
   {
     key: "outputs",
-    label: "Cover letter & strategy",
+    label: "Drafting cover letter & strategy",
     specialists: ["cover_letter_composer", "application_strategy_composer"],
   },
   {
-    key: "gate",
-    label: "Quality approved",
+    key: "audit",
+    label: "Computing ATS & readiness",
     specialists: ["theory_of_mind", "outcome_predictor", "refuse_or_ship_gate"],
   },
-  { key: "docs", label: "Documents generated", specialists: ["document_renderer"] },
+  {
+    key: "docs",
+    label: "Generating documents",
+    specialists: ["document_renderer"],
+  },
 ];
 
-function humanize(specialist: string): string {
-  return SPECIALIST_TO_PHASE[specialist] ?? specialist.replace(/_/g, " ");
+function humanize(specialist: string) {
+  return (
+    SPECIALIST_TO_PHASE[specialist] ?? specialist.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())
+  );
 }
 
 export default function GenerationPage() {
@@ -91,16 +116,8 @@ export default function GenerationPage() {
   const router = useRouter();
   const generationId = params?.id ?? "";
 
-  const {
-    status,
-    errorMessage,
-    start,
-    stop,
-    traceEntries,
-    startedAt,
-    submissionConfidence,
-    currentSpecialist,
-  } = useGenerationStream();
+  const { status, errorMessage, start, stop, traceEntries, startedAt, currentSpecialist } =
+    useGenerationStream();
   const [elapsedSec, setElapsedSec] = useState(0);
 
   useEffect(() => {
@@ -126,163 +143,157 @@ export default function GenerationPage() {
 
   const isError = status === "error";
   const isComplete = status === "complete";
-  const isActive =
-    (status === "streaming" || status === "connecting" || traceEntries.length > 0) && !isComplete;
-  const confidencePct =
-    submissionConfidence != null ? Math.round(submissionConfidence * 100) : null;
-  const elapsedLabel = `${Math.floor(elapsedSec / 60)}:${String(elapsedSec % 60).padStart(2, "0")}`;
+  const isActive = (status === "streaming" || status === "connecting") && !isComplete;
+  const elapsed = `${Math.floor(elapsedSec / 60)}:${String(elapsedSec % 60).padStart(2, "0")}`;
 
   const firedSpecialists = new Set(traceEntries.map((t) => t.specialist));
-
-  // Find which phase the current specialist belongs to
   const activePhaseKey = currentSpecialist
-    ? (PHASES.find((p) => p.specialists.includes(currentSpecialist))?.key ?? null)
+    ? PHASES.find((p) => p.specialists.includes(currentSpecialist))?.key ?? null
     : null;
-
-  // A phase is done if any specialist fired AND it's not the currently active phase
-  const phasesDone = PHASES.filter(
-    (p) => p.specialists.some((s) => firedSpecialists.has(s)) && p.key !== activePhaseKey,
-  );
-
-  const currentLabel = currentSpecialist ? humanize(currentSpecialist) : null;
-  const orbTones = {
-    base: "oklch(96% 0.01 120)",
-    accent1: "oklch(60% 0.16 155)",
-    accent2: "oklch(82% 0.12 155)",
-    accent3: "oklch(55% 0.12 170)",
+  const phaseState = (key: string): "done" | "active" | "pending" => {
+    const phase = PHASES.find((p) => p.key === key)!;
+    if (key === activePhaseKey) return "active";
+    if (phase.specialists.some((s) => firedSpecialists.has(s))) return "done";
+    return "pending";
   };
 
-  // Active phase label (the high-level label, not specialist label)
-  const activePhase = activePhaseKey ? PHASES.find((p) => p.key === activePhaseKey) : null;
-
   return (
-    <div className="w-full max-w-xl px-8 py-16">
-        {/* Header */}
-        <div className="flex items-end justify-between mb-8">
-          <div>
-            <p className="rt-label mb-3">
-              {isComplete ? "Done" : isError ? "Interrupted" : "Working"}
-            </p>
-            <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
-              {isComplete ? "Shipping your package" : isError ? "Something went wrong" : "Building your package"}
-            </h1>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              stop();
-              router.push("/dashboard");
-            }}
-            className="text-muted-foreground hover:text-foreground transition-colors"
-            aria-label="Cancel"
-          >
-            <X className="w-4 h-4" />
-          </button>
+    <PageShell width="wide">
+      <div className="mb-8 flex items-end justify-between">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            {isComplete ? "Done" : isError ? "Interrupted" : "Tuning"}
+          </p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight md:text-4xl">
+            {isComplete
+              ? "Shipping your package"
+              : isError
+                ? "Something went wrong"
+                : "Tuning your application"}
+          </h1>
         </div>
+        <button
+          type="button"
+          onClick={() => {
+            stop();
+            router.push("/dashboard");
+          }}
+          className="rounded-md border border-border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          aria-label="Cancel"
+        >
+          <X className="size-4" />
+        </button>
+      </div>
 
-        {/* Error */}
-        {isError && errorMessage && (
-          <div className="mb-6 px-4 py-3 text-sm rounded-3xl border border-[#fecaca] bg-[#fef2f2] text-[#dc2626]">
-            {errorMessage}
-          </div>
-        )}
+      {isError && errorMessage ? (
+        <div className="mb-6 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {errorMessage}
+        </div>
+      ) : null}
 
-        {/* Hero loading orb */}
-        {isActive && (
-          <div className="mb-6 rounded-3xl border border-[#e0ddd9] bg-white/90 px-6 py-8 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
-            <div className="flex flex-col items-center justify-center gap-4 text-center">
-              <motion.div
-                animate={{ scale: [1, 1.05, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                <ColorOrb dimension="76px" tones={orbTones} spinDuration={8} />
-              </motion.div>
-              <div>
-                <p className="font-serif text-xl text-foreground">Retune is building your package</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {activePhase?.label ?? currentLabel ?? "Starting cognitive pipeline..."}
-                </p>
-              </div>
-              <div className="inline-flex items-center gap-1.5 text-[#7c746b]">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand" />
-                <span
-                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand"
-                  style={{ animationDelay: "120ms" }}
-                />
-                <span
-                  className="h-1.5 w-1.5 animate-pulse rounded-full bg-brand"
-                  style={{ animationDelay: "240ms" }}
-                />
-              </div>
-            </div>
-          </div>
-        )}
+      <Message className="mb-6">
+        <MessageAvatar src="" alt="Retuned" fallback="R" />
+        <div className="min-w-0 flex-1">
+          <MessageContent className="bg-card border border-border">
+            {isActive ? (
+              <TextShimmerLoader
+                text={currentSpecialist ? humanize(currentSpecialist) : "Starting the cognitive pipeline"}
+              />
+            ) : isComplete ? (
+              <span>Your application package is ready. Opening results…</span>
+            ) : (
+              <span>Tuning paused.</span>
+            )}
+          </MessageContent>
 
-        {/* Phase timeline */}
-        {(isActive || phasesDone.length > 0) && (
-          <div className="mb-6 rounded-3xl border border-[#e0ddd9] bg-white/90 px-6 py-6 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
-            <div className="flex flex-col gap-0">
-              {PHASES.map((phase, i) => {
-                const isDone = phasesDone.some((p) => p.key === phase.key);
-                const isCurrent = phase.key === activePhaseKey;
-                const isLast = i === PHASES.length - 1;
+          <div className="mt-4 rounded-xl border border-border bg-card/40 p-4">
+            <ChainOfThought>
+              {PHASES.map((phase) => {
+                const s = phaseState(phase.key);
+                const Icon =
+                  s === "done"
+                    ? Check
+                    : s === "active"
+                      ? Loader2
+                      : CircleDot;
                 return (
-                  <div key={phase.key} className="group relative flex gap-3">
-                    {/* Vertical line + icon */}
-                    <div className="relative flex flex-col items-center">
-                      <div
-                        className={cn(
-                          "w-6 h-6 rounded-full border flex items-center justify-center shrink-0",
-                          isDone && "border-brand bg-brand-light",
-                          isCurrent && "border-brand",
-                          !isDone && !isCurrent && "border-border",
-                        )}
-                      >
-                        {isDone ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-brand" />
-                        ) : isCurrent ? (
-                          <span className="w-2 h-2 rounded-full bg-brand animate-pulse" />
-                        ) : (
-                          <Circle className="w-3 h-3 text-muted-foreground/40" />
-                        )}
-                      </div>
-                      {!isLast && (
-                        <div
+                  <ChainOfThoughtStep key={phase.key} defaultOpen={s === "active"}>
+                    <ChainOfThoughtTrigger
+                      leftIcon={
+                        <Icon
                           className={cn(
-                            "w-[2px] flex-1 min-h-[20px]",
-                            isDone ? "bg-brand/30" : "bg-border",
+                            "size-4",
+                            s === "done" && "text-emerald-500",
+                            s === "active" && "animate-spin text-foreground",
+                            s === "pending" && "text-muted-foreground/40",
                           )}
                         />
-                      )}
-                    </div>
-                    {/* Label */}
-                    <div className="pb-4 pt-0.5">
-                      <p
+                      }
+                    >
+                      <span
                         className={cn(
-                          "text-sm font-medium",
-                          isDone && "text-foreground",
-                          isCurrent && "text-foreground",
-                          !isDone && !isCurrent && "text-muted-foreground/60",
+                          s === "pending" && "text-muted-foreground/60",
+                          s === "active" && "text-foreground",
+                          s === "done" && "text-foreground",
                         )}
                       >
                         {phase.label}
-                      </p>
-                      {isCurrent && currentLabel && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{currentLabel}</p>
-                      )}
-                    </div>
-                  </div>
+                      </span>
+                    </ChainOfThoughtTrigger>
+                    <ChainOfThoughtContent>
+                      {traceEntries
+                        .filter((t) => phase.specialists.includes(t.specialist))
+                        .map((t) => (
+                          <ChainOfThoughtItem key={t.seq}>
+                            <span className="font-mono text-[11px] text-muted-foreground/80">
+                              {t.displayName || humanize(t.specialist)}
+                            </span>
+                            <span className="ml-2 font-mono text-[10px] text-muted-foreground/60">
+                              {t.latencyMs}ms
+                            </span>
+                          </ChainOfThoughtItem>
+                        ))}
+                      {phaseState(phase.key) === "active" && currentSpecialist ? (
+                        <ChainOfThoughtItem>
+                          <span className="text-muted-foreground">
+                            {humanize(currentSpecialist)}…
+                          </span>
+                        </ChainOfThoughtItem>
+                      ) : null}
+                    </ChainOfThoughtContent>
+                  </ChainOfThoughtStep>
                 );
               })}
-            </div>
+            </ChainOfThought>
           </div>
-        )}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono px-1 mt-4">
-          <span>{traceEntries.length} ticks</span>
-          <span>{elapsedLabel} elapsed</span>
+          <div className="mt-4 flex items-center justify-between font-mono text-[11px] text-muted-foreground">
+            <span>{traceEntries.length} ticks</span>
+            <span>{elapsed} elapsed</span>
+          </div>
         </div>
-    </div>
+      </Message>
+
+      {isError ? (
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link href="/dashboard">Back to dashboard</Link>
+          </Button>
+          <Button onClick={() => start(generationId)}>Retry tuning</Button>
+        </div>
+      ) : null}
+
+      <Reasoning className="mt-6">
+        <ReasoningTrigger>
+          <span className="text-sm text-muted-foreground">What's happening behind the scenes?</span>
+        </ReasoningTrigger>
+        <ReasoningContent contentClassName="text-sm">
+          Each phase runs a small ensemble of specialists. Reading parses the JD into structured
+          requirement spans. Profile loads your career brain. Matching maps your evidence to the
+          requirements. Writing rewrites bullets in your voice. Audit scores ATS coverage and
+          interview readiness. Documents render the final resume, cover letter and strategy.
+        </ReasoningContent>
+      </Reasoning>
+    </PageShell>
   );
 }

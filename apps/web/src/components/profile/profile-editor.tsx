@@ -1,4 +1,10 @@
 "use client";
+
+import { PageShell } from "@/components/app/page-shell";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import {
   Briefcase,
@@ -9,11 +15,12 @@ import {
   Sparkles,
   Target,
   Trash2,
+  Upload,
   User,
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { type KeyboardEvent, useState, memo } from "react";
+import { type KeyboardEvent, useState } from "react";
 import { toast } from "sonner";
 
 interface MetricEntry {
@@ -95,20 +102,20 @@ function calculateCompleteness(form: ProfileData): number {
   return Math.min(score, 100);
 }
 
-function PointsBadge({ points }: { points: number }) {
-  return (
-    <span className="inline-flex items-center ml-1.5 text-[10px] font-semibold text-brand animate-[pulse-glow_2s_ease-in-out_infinite]">
-      +{points}
-    </span>
-  );
-}
-
 function splitIntoBullets(text: string | undefined): string[] {
   if (!text) return [];
   return text
     .split(/\n|(?<=\.)\s+(?=[A-Z])/)
     .map((s) => s.replace(/^[\s•\-*]+/, "").trim())
     .filter((s) => s.length > 5);
+}
+
+function PointsBadge({ points }: { points: number }) {
+  return (
+    <span className="ml-1.5 inline-flex items-center rounded-full border border-border bg-background px-1.5 py-0 font-mono text-[10px] font-medium text-muted-foreground">
+      +{points}
+    </span>
+  );
 }
 
 function BulletPills({
@@ -123,9 +130,9 @@ function BulletPills({
   const [input, setInput] = useState("");
 
   function add() {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-    onChange([...bullets, trimmed]);
+    const t = input.trim();
+    if (!t) return;
+    onChange([...bullets, t]);
     setInput("");
   }
 
@@ -141,32 +148,31 @@ function BulletPills({
       {bullets.map((bullet, i) => (
         <div
           key={`${i}-${bullet.slice(0, 20)}`}
-          className="flex items-start gap-2 bg-[#f0ede8] border border-border px-3 py-2 text-xs text-foreground rounded-lg leading-relaxed group"
+          className="group flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm leading-relaxed"
         >
-          <span className="text-muted-foreground mt-0.5 shrink-0">•</span>
+          <span className="mt-0.5 shrink-0 text-muted-foreground">•</span>
           <span className="flex-1">{bullet}</span>
           <button
             type="button"
             onClick={() => onChange(bullets.filter((_, idx) => idx !== i))}
-            className="text-muted-foreground hover:text-[#dc2626] transition-colors opacity-0 group-hover:opacity-100 shrink-0 mt-0.5"
+            className="mt-0.5 shrink-0 text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover:opacity-100"
             aria-label="Remove bullet"
           >
-            <X className="h-3 w-3" />
+            <X className="size-3" />
           </button>
         </div>
       ))}
       <div className="flex gap-2">
-        <input
-          type="text"
+        <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="rt-input flex-1 text-sm"
           placeholder={placeholder}
+          className="flex-1"
         />
-        <button type="button" onClick={add} className="rt-btn-ghost shrink-0 px-3 py-2">
-          <Plus className="h-3.5 w-3.5" />
-        </button>
+        <Button type="button" variant="outline" size="icon" onClick={add} className="shrink-0">
+          <Plus className="size-4" />
+        </Button>
       </div>
     </div>
   );
@@ -184,10 +190,10 @@ function SkillPills({
   const [input, setInput] = useState("");
 
   function add() {
-    const trimmed = input.trim();
-    if (!trimmed) return;
-    if (!skills.some((s) => s.name.toLowerCase() === trimmed.toLowerCase())) {
-      onChange([...skills, { name: trimmed }]);
+    const t = input.trim();
+    if (!t) return;
+    if (!skills.some((s) => s.name.toLowerCase() === t.toLowerCase())) {
+      onChange([...skills, { name: t }]);
     }
     setInput("");
   }
@@ -202,36 +208,37 @@ function SkillPills({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap gap-2">
-        {skills.map((skill, i) => (
-          <span
-            key={`${skill.name}-${i}`}
-            className="inline-flex items-center gap-1.5 bg-[#f0ede8] border border-border px-2.5 py-1 text-xs text-foreground rounded-lg"
-          >
-            {skill.name}
-            <button
-              type="button"
-              onClick={() => onChange(skills.filter((_, idx) => idx !== i))}
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              aria-label={`Remove ${skill.name}`}
+      {skills.length > 0 ? (
+        <div className="flex flex-wrap gap-1.5">
+          {skills.map((s, i) => (
+            <span
+              key={`${s.name}-${i}`}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs"
             >
-              <X className="h-2.5 w-2.5" />
-            </button>
-          </span>
-        ))}
-      </div>
+              {s.name}
+              <button
+                type="button"
+                onClick={() => onChange(skills.filter((_, idx) => idx !== i))}
+                className="text-muted-foreground transition-colors hover:text-foreground"
+                aria-label={`Remove ${s.name}`}
+              >
+                <X className="size-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
       <div className="flex gap-2">
-        <input
-          type="text"
+        <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="rt-input flex-1 text-sm"
           placeholder={placeholder}
+          className="flex-1"
         />
-        <button type="button" onClick={add} className="rt-btn-ghost shrink-0 px-3 py-2">
-          <Plus className="h-3.5 w-3.5" />
-        </button>
+        <Button type="button" variant="outline" size="icon" onClick={add} className="shrink-0">
+          <Plus className="size-4" />
+        </Button>
       </div>
     </div>
   );
@@ -242,43 +249,36 @@ function Section({
   subtitle,
   children,
   actions,
-  icon,
-  iconColor,
+  icon: Icon,
   pendingPoints,
 }: {
   title: string;
   subtitle: string;
   children: React.ReactNode;
   actions?: React.ReactNode;
-  icon?: React.ReactNode;
-  iconColor?: string;
+  icon?: React.ComponentType<{ className?: string }>;
   pendingPoints?: number;
 }) {
   return (
-    <section>
-      <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-          <div className="flex items-center gap-3">
-            {icon && (
-              <div
-                className="w-9 h-9 rounded-full flex items-center justify-center shrink-0"
-                style={iconColor ? { backgroundColor: `${iconColor}18`, color: iconColor } : { backgroundColor: "#f0ede8" }}
-              >
-                {icon}
-              </div>
-            )}
-            <div>
-              <h2 className="text-sm font-semibold text-foreground">
-                {title}
-                {pendingPoints ? <PointsBadge points={pendingPoints} /> : null}
-              </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+    <section className="overflow-hidden rounded-xl border border-border bg-card">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div className="flex items-center gap-3">
+          {Icon ? (
+            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground">
+              <Icon className="size-4" />
             </div>
+          ) : null}
+          <div>
+            <h2 className="flex items-center text-sm font-semibold tracking-tight">
+              {title}
+              {pendingPoints ? <PointsBadge points={pendingPoints} /> : null}
+            </h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
           </div>
-          {actions && <div className="flex gap-2">{actions}</div>}
         </div>
-        <div className="p-6">{children}</div>
+        {actions ? <div className="flex shrink-0 gap-2">{actions}</div> : null}
       </div>
+      <div className="p-5">{children}</div>
     </section>
   );
 }
@@ -334,132 +334,132 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
   }
 
   const completeness = calculateCompleteness(form);
+  const completenessTone =
+    completeness >= 80
+      ? "text-emerald-500"
+      : completeness >= 60
+        ? "text-amber-500"
+        : "text-destructive";
+
+  const personalFields: Array<{
+    id: keyof ProfileData;
+    label: string;
+    placeholder?: string;
+    type?: string;
+  }> = [
+    { id: "fullName", label: "Full name", placeholder: "Jane Smith" },
+    { id: "currentTitle", label: "Current title", placeholder: "Senior Engineer" },
+    { id: "email", label: "Email", type: "email" },
+    { id: "phone", label: "Phone", type: "tel" },
+    { id: "location", label: "Location", placeholder: "San Francisco, CA" },
+    { id: "linkedin", label: "LinkedIn", placeholder: "linkedin.com/in/…" },
+    { id: "visaStatus", label: "Work authorization", placeholder: "e.g. Work visa, Citizen" },
+    { id: "experienceLevel", label: "Experience level", placeholder: "entry / mid / senior" },
+  ];
 
   return (
-    <div className="w-full max-w-4xl px-10 md:px-16 py-12 pb-16">
-      {/* Header */}
-      <div className="flex items-end justify-between mb-12">
-        <div>
-          <p className="rt-label mb-3">Your details</p>
-          <h1 className="font-serif text-5xl md:text-6xl font-normal text-foreground leading-[1] tracking-tight">
-            Profile
-          </h1>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            if (isDirty && !window.confirm("You have unsaved changes. Leave anyway?")) return;
-            router.back();
-          }}
-          className="text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
-      </div>
+    <PageShell width="wide">
+      <header className="mb-8 flex flex-col gap-2">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Your details
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">Career profile</h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          The career brain Retuned tunes from. The more evidence in here, the sharper every tuning.
+        </p>
+      </header>
 
-      {/* Sticky progress bar */}
-      <div className="sticky top-4 z-40 mb-6 rounded-3xl border border-[#e0ddd9] bg-white/90 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)] px-5 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4 flex-1 min-w-0">
-          <div className="flex-1 h-1.5 bg-[#f0ede8] rounded-full overflow-hidden">
+      <div className="sticky top-2 z-30 mb-6 flex items-center justify-between gap-4 rounded-xl border border-border bg-background/85 px-4 py-3 backdrop-blur">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full bg-brand rounded-full transition-all duration-700"
+              className="h-full rounded-full bg-foreground transition-all duration-700"
               style={{ width: `${completeness}%` }}
             />
           </div>
           <span
             className={cn(
-              "text-xs font-mono tabular-nums shrink-0",
-              completeness >= 80
-                ? "text-brand"
-                : completeness >= 60
-                  ? "text-amber-600"
-                  : "text-[#dc2626]",
+              "shrink-0 font-mono text-xs tabular-nums",
+              completenessTone,
             )}
           >
             {completeness}%
           </span>
         </div>
-
-        <div className="flex items-center gap-3">
-          {isDirty && <span className="text-[10px] text-amber-600 font-medium">Unsaved</span>}
-          <label className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-            {importing ? "Importing…" : "Upload resume"}
-            <input
-              type="file"
-              accept=".pdf,.docx,.doc,.txt"
-              className="hidden"
-              onChange={handleImportResume}
-              disabled={importing}
-            />
-          </label>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="rt-btn text-xs px-4 py-1.5 min-h-0"
-          >
+        <div className="flex shrink-0 items-center gap-2">
+          {isDirty ? (
+            <span className="text-[11px] font-medium text-amber-500">Unsaved</span>
+          ) : null}
+          <Button asChild variant="outline" size="sm" disabled={importing}>
+            <label className="cursor-pointer">
+              <Upload className="mr-1.5 size-3.5" />
+              {importing ? "Importing…" : "Upload resume"}
+              <input
+                type="file"
+                accept=".pdf,.docx,.doc,.txt"
+                className="hidden"
+                onChange={handleImportResume}
+                disabled={importing}
+              />
+            </label>
+          </Button>
+          <Button onClick={handleSave} disabled={saving} size="sm">
             {saving ? "Saving…" : "Save"}
-          </button>
+          </Button>
         </div>
       </div>
 
-      {/* Sections */}
       <div className="space-y-4">
-        {/* Personal info */}
         <Section
           title="Personal info"
-          subtitle="Your basic details and contact information."
-          icon={<User className="w-4 h-4" />}
-          iconColor="#ff5555"
+          subtitle="Basic details and contact information."
+          icon={User}
         >
           <div className="grid gap-4 md:grid-cols-2">
-            {[
-              { id: "fullName", label: "Full name", placeholder: "Jane Smith" },
-              { id: "currentTitle", label: "Current title", placeholder: "Senior Engineer" },
-              { id: "email", label: "Email", type: "email" },
-              { id: "phone", label: "Phone", type: "tel" },
-              { id: "location", label: "Location", placeholder: "San Francisco, CA" },
-              { id: "linkedin", label: "LinkedIn", placeholder: "linkedin.com/in/..." },
-              { id: "visaStatus", label: "Work authorization", placeholder: "e.g. Work Visa, Citizen" },
-              { id: "experienceLevel", label: "Experience level", placeholder: "e.g. senior, mid, entry" },
-            ].map((field) => {
-              const fp = FIELD_POINTS[field.id];
+            {personalFields.map((field) => {
+              const fp = FIELD_POINTS[field.id as string];
               const showPoints = fp && !fp.check(form);
               return (
-              <div key={field.id}>
-                <label className="rt-label block mb-1.5" htmlFor={`f-${field.id}`}>
-                  {field.label}
-                  {showPoints && <PointsBadge points={fp.points} />}
-                </label>
-                <input
-                  id={`f-${field.id}`}
-                  type={field.type || "text"}
-                  value={(form as unknown as Record<string, string>)[field.id]}
-                  onChange={(e) => updateForm({ [field.id]: e.target.value })}
-                  className="rt-input w-full text-sm"
-                  placeholder={field.placeholder}
-                />
-              </div>
+                <div key={field.id} className="space-y-1.5">
+                  <Label htmlFor={`f-${field.id}`} className="flex items-center">
+                    {field.label}
+                    {showPoints ? <PointsBadge points={fp.points} /> : null}
+                  </Label>
+                  <Input
+                    id={`f-${field.id}`}
+                    type={field.type ?? "text"}
+                    value={(form as unknown as Record<string, string>)[field.id as string] ?? ""}
+                    onChange={(e) =>
+                      updateForm({ [field.id]: e.target.value } as Partial<ProfileData>)
+                    }
+                    placeholder={field.placeholder}
+                  />
+                </div>
               );
             })}
           </div>
-          {/* Relocation preferences */}
-          <div className="mt-4">
-            <label className="rt-label block mb-1.5">Relocation preferences</label>
+          <div className="mt-4 space-y-1.5">
+            <Label>Relocation preferences</Label>
             <SkillPills
-              skills={(Array.isArray(form.relocationPreferences) ? form.relocationPreferences : [form.relocationPreferences].filter(Boolean)).map((r) => ({ name: r }))}
+              skills={(Array.isArray(form.relocationPreferences)
+                ? form.relocationPreferences
+                : [form.relocationPreferences].filter(Boolean)
+              ).map((r) => ({ name: r }))}
               onChange={(s) => updateForm({ relocationPreferences: s.map((x) => x.name) })}
               placeholder="e.g. Remote, Open to relocation"
             />
           </div>
         </Section>
 
-        {/* Target roles */}
         <Section
           title="Target roles"
           subtitle="Job titles you're applying for."
-          icon={<Target className="w-4 h-4" />}
-          iconColor="#2d8a5e"
-          pendingPoints={!FIELD_POINTS.targetRoles!.check(form) ? FIELD_POINTS.targetRoles!.points : undefined}
+          icon={Target}
+          pendingPoints={
+            !FIELD_POINTS.targetRoles!.check(form)
+              ? FIELD_POINTS.targetRoles!.points
+              : undefined
+          }
         >
           <SkillPills
             skills={form.targetRoles.map((r) => ({ name: r }))}
@@ -468,125 +468,137 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
           />
         </Section>
 
-        {/* Skills */}
         <Section
           title="Skills"
-          subtitle="Core strengths and proficiencies."
-          icon={<Sparkles className="w-4 h-4" />}
-          iconColor="#00d4d4"
-          pendingPoints={!FIELD_POINTS.skillsTier1!.check(form) ? FIELD_POINTS.skillsTier1!.points : undefined}
+          subtitle="Tiered by depth — tier 1 is daily, tier 3 is exposure."
+          icon={Sparkles}
+          pendingPoints={
+            !FIELD_POINTS.skillsTier1!.check(form)
+              ? FIELD_POINTS.skillsTier1!.points
+              : undefined
+          }
         >
-          <div className="space-y-6">
-            <div>
-              <label className="rt-label block mb-3">Tier 1 — Battle-tested, daily use</label>
-              <SkillPills
-                skills={form.skillsTier1}
-                onChange={(skills) => updateForm({ skillsTier1: skills })}
-                placeholder="e.g. TypeScript, React, Node.js"
-              />
-            </div>
-            <div>
-              <label className="rt-label block mb-3">Tier 2 — Proficient, used in real work</label>
-              <SkillPills
-                skills={form.skillsTier2}
-                onChange={(skills) => updateForm({ skillsTier2: skills })}
-                placeholder="e.g. Docker, GraphQL"
-              />
-            </div>
-            <div>
-              <label className="rt-label block mb-3">Tier 3 — Exposure, can ramp quickly</label>
-              <SkillPills
-                skills={form.skillsTier3}
-                onChange={(skills) => updateForm({ skillsTier3: skills })}
-                placeholder="e.g. Rust, Terraform"
-              />
-            </div>
+          <div className="space-y-5">
+            {[
+              {
+                key: "skillsTier1" as const,
+                label: "Tier 1 · Battle-tested, daily use",
+                ph: "e.g. TypeScript, React, Node.js",
+              },
+              {
+                key: "skillsTier2" as const,
+                label: "Tier 2 · Proficient, used in real work",
+                ph: "e.g. Docker, GraphQL",
+              },
+              {
+                key: "skillsTier3" as const,
+                label: "Tier 3 · Exposure, can ramp quickly",
+                ph: "e.g. Rust, Terraform",
+              },
+            ].map((tier) => (
+              <div key={tier.key} className="space-y-2">
+                <Label>{tier.label}</Label>
+                <SkillPills
+                  skills={form[tier.key]}
+                  onChange={(skills) => updateForm({ [tier.key]: skills } as Partial<ProfileData>)}
+                  placeholder={tier.ph}
+                />
+              </div>
+            ))}
           </div>
         </Section>
 
-        {/* Certifications */}
         <Section
           title="Certifications"
           subtitle="Professional certifications and licenses."
-          icon={<Check className="w-4 h-4" />}
-          iconColor="#2d8a5e"
+          icon={Check}
         >
           <SkillPills
-            skills={(Array.isArray(form.certifications) ? form.certifications : []).map((c) => ({ name: c }))}
+            skills={(Array.isArray(form.certifications) ? form.certifications : []).map((c) => ({
+              name: c,
+            }))}
             onChange={(s) => updateForm({ certifications: s.map((x) => x.name) })}
             placeholder="e.g. AWS Solutions Architect, PMP"
           />
         </Section>
 
-        {/* Voice / tone */}
         <Section
           title="Voice notes"
-          subtitle="Describe your style — used to keep your resume sounding like you."
-          icon={<MessageSquare className="w-4 h-4" />}
-          iconColor="#5fc3ff"
-          pendingPoints={!FIELD_POINTS.voiceNotes!.check(form) ? FIELD_POINTS.voiceNotes!.points : undefined}
+          subtitle="How you sound — keeps tunings written in your voice."
+          icon={MessageSquare}
+          pendingPoints={
+            !FIELD_POINTS.voiceNotes!.check(form)
+              ? FIELD_POINTS.voiceNotes!.points
+              : undefined
+          }
         >
-          <textarea
+          <Textarea
             value={form.voiceNotes}
             onChange={(e) => updateForm({ voiceNotes: e.target.value })}
-            className="rt-textarea w-full text-sm leading-relaxed"
             rows={5}
             placeholder="e.g. I prefer direct, concise language. I avoid buzzwords. I like to lead with impact…"
           />
         </Section>
 
-        {/* Experience */}
         <Section
           title="Work experience"
-          subtitle="Your work history. More detail = better bullets."
-          icon={<Briefcase className="w-4 h-4" />}
-          iconColor="#f59e0b"
-          pendingPoints={!FIELD_POINTS.experience!.check(form) ? FIELD_POINTS.experience!.points : undefined}
+          subtitle="Your work history. More detail means sharper bullets."
+          icon={Briefcase}
+          pendingPoints={
+            !FIELD_POINTS.experience!.check(form)
+              ? FIELD_POINTS.experience!.points
+              : undefined
+          }
           actions={
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() =>
                 updateForm({
-                  experience: [...form.experience, { title: "", company: "", description: "" }],
+                  experience: [
+                    ...form.experience,
+                    { title: "", company: "", description: "" },
+                  ],
                 })
               }
-              className="flex items-center gap-1.5 text-xs text-brand hover:opacity-75 transition-opacity font-medium"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="mr-1 size-3.5" />
               Add role
-            </button>
+            </Button>
           }
         >
-          <div className="space-y-4">
-            {form.experience.length === 0 && (
+          <div className="space-y-3">
+            {form.experience.length === 0 ? (
               <button
                 type="button"
                 onClick={() =>
                   updateForm({ experience: [{ title: "", company: "", description: "" }] })
                 }
-                className="w-full py-8 border border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-brand hover:text-brand transition-colors"
+                className="w-full rounded-lg border border-dashed border-border py-8 text-sm text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
               >
                 + Add your first role
               </button>
-            )}
+            ) : null}
             {form.experience.map((exp, idx) => (
               <div
                 key={idx}
-                className="border border-border rounded-xl p-4 space-y-3 group relative"
+                className="group relative space-y-3 rounded-lg border border-border p-4"
               >
                 <button
                   type="button"
                   onClick={() =>
                     updateForm({ experience: form.experience.filter((_, i) => i !== idx) })
                   }
-                  className="absolute top-3 right-3 text-muted-foreground hover:text-[#dc2626] transition-colors opacity-0 group-hover:opacity-100"
+                  className="absolute right-3 top-3 text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover:opacity-100"
+                  aria-label="Remove role"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="size-3.5" />
                 </button>
-                <div className="grid gap-3 md:grid-cols-2 pr-6">
-                  <div>
-                    <label className="rt-label block mb-1.5">Title</label>
-                    <input
+                <div className="grid gap-3 pr-6 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Title</Label>
+                    <Input
                       value={exp.title}
                       onChange={(e) =>
                         updateForm({
@@ -595,13 +607,12 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
                           ),
                         })
                       }
-                      className="rt-input w-full text-sm"
                       placeholder="e.g. Senior Engineer"
                     />
                   </div>
-                  <div>
-                    <label className="rt-label block mb-1.5">Company</label>
-                    <input
+                  <div className="space-y-1.5">
+                    <Label>Company</Label>
+                    <Input
                       value={exp.company}
                       onChange={(e) =>
                         updateForm({
@@ -610,13 +621,12 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
                           ),
                         })
                       }
-                      className="rt-input w-full text-sm"
                       placeholder="e.g. Acme Corp"
                     />
                   </div>
-                  <div>
-                    <label className="rt-label block mb-1.5">Start date</label>
-                    <input
+                  <div className="space-y-1.5">
+                    <Label>Start date</Label>
+                    <Input
                       value={exp.startDate ?? ""}
                       onChange={(e) =>
                         updateForm({
@@ -625,13 +635,12 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
                           ),
                         })
                       }
-                      className="rt-input w-full text-sm"
                       placeholder="YYYY-MM"
                     />
                   </div>
-                  <div>
-                    <label className="rt-label block mb-1.5">End date</label>
-                    <input
+                  <div className="space-y-1.5">
+                    <Label>End date</Label>
+                    <Input
                       value={exp.endDate ?? ""}
                       onChange={(e) =>
                         updateForm({
@@ -640,23 +649,24 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
                           ),
                         })
                       }
-                      className="rt-input w-full text-sm"
                       placeholder="YYYY-MM or present"
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="rt-label block mb-1.5">What you did & impact</label>
+                <div className="space-y-1.5">
+                  <Label>What you did &amp; impact</Label>
                   <BulletPills
                     bullets={exp.bullets ?? splitIntoBullets(exp.description)}
                     onChange={(bullets) =>
                       updateForm({
                         experience: form.experience.map((ex, i) =>
-                          i === idx ? { ...ex, bullets, description: bullets.join(". ") } : ex,
+                          i === idx
+                            ? { ...ex, bullets, description: bullets.join(". ") }
+                            : ex,
                         ),
                       })
                     }
-                    placeholder="Add a bullet point, e.g. Led migration to OAuth, reducing login errors by 40%"
+                    placeholder="Add a bullet, e.g. Led migration to OAuth, reducing login errors by 40%"
                   />
                 </div>
               </div>
@@ -664,51 +674,57 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
           </div>
         </Section>
 
-        {/* Education */}
         <Section
           title="Education"
           subtitle="Degrees and qualifications."
-          icon={<GraduationCap className="w-4 h-4" />}
-          iconColor="#16a34a"
-          pendingPoints={!FIELD_POINTS.education!.check(form) ? FIELD_POINTS.education!.points : undefined}
+          icon={GraduationCap}
+          pendingPoints={
+            !FIELD_POINTS.education!.check(form)
+              ? FIELD_POINTS.education!.points
+              : undefined
+          }
           actions={
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() =>
-                updateForm({ education: [...form.education, { degree: "", institution: "" }] })
+                updateForm({
+                  education: [...form.education, { degree: "", institution: "" }],
+                })
               }
-              className="flex items-center gap-1.5 text-xs text-brand hover:opacity-75 transition-opacity font-medium"
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="mr-1 size-3.5" />
               Add
-            </button>
+            </Button>
           }
         >
           <div className="space-y-3">
-            {form.education.length === 0 && (
+            {form.education.length === 0 ? (
               <button
                 type="button"
                 onClick={() => updateForm({ education: [{ degree: "", institution: "" }] })}
-                className="w-full py-8 border border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-brand hover:text-brand transition-colors"
+                className="w-full rounded-lg border border-dashed border-border py-8 text-sm text-muted-foreground transition-colors hover:border-foreground/40 hover:text-foreground"
               >
                 + Add education
               </button>
-            )}
+            ) : null}
             {form.education.map((edu, idx) => (
-              <div key={idx} className="border border-border rounded-xl p-4 group relative">
+              <div key={idx} className="group relative rounded-lg border border-border p-4">
                 <button
                   type="button"
                   onClick={() =>
                     updateForm({ education: form.education.filter((_, i) => i !== idx) })
                   }
-                  className="absolute top-3 right-3 text-muted-foreground hover:text-[#dc2626] transition-colors opacity-0 group-hover:opacity-100"
+                  className="absolute right-3 top-3 text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover:opacity-100"
+                  aria-label="Remove education"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="size-3.5" />
                 </button>
-                <div className="grid gap-3 md:grid-cols-2 pr-6">
-                  <div>
-                    <label className="rt-label block mb-1.5">Degree</label>
-                    <input
+                <div className="grid gap-3 pr-6 md:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label>Degree</Label>
+                    <Input
                       value={edu.degree}
                       onChange={(e) =>
                         updateForm({
@@ -717,13 +733,12 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
                           ),
                         })
                       }
-                      className="rt-input w-full text-sm"
                       placeholder="e.g. BSc Computer Science"
                     />
                   </div>
-                  <div>
-                    <label className="rt-label block mb-1.5">Institution</label>
-                    <input
+                  <div className="space-y-1.5">
+                    <Label>Institution</Label>
+                    <Input
                       value={edu.institution}
                       onChange={(e) =>
                         updateForm({
@@ -732,13 +747,12 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
                           ),
                         })
                       }
-                      className="rt-input w-full text-sm"
                       placeholder="e.g. University of Edinburgh"
                     />
                   </div>
-                  <div>
-                    <label className="rt-label block mb-1.5">Start year</label>
-                    <input
+                  <div className="space-y-1.5">
+                    <Label>Start year</Label>
+                    <Input
                       value={edu.startDate ?? ""}
                       onChange={(e) =>
                         updateForm({
@@ -747,13 +761,12 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
                           ),
                         })
                       }
-                      className="rt-input w-full text-sm"
                       placeholder="YYYY"
                     />
                   </div>
-                  <div>
-                    <label className="rt-label block mb-1.5">End year</label>
-                    <input
+                  <div className="space-y-1.5">
+                    <Label>End year</Label>
+                    <Input
                       value={edu.endDate ?? ""}
                       onChange={(e) =>
                         updateForm({
@@ -762,7 +775,6 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
                           ),
                         })
                       }
-                      className="rt-input w-full text-sm"
                       placeholder="YYYY or present"
                     />
                   </div>
@@ -772,7 +784,6 @@ export function ProfileEditor({ profile }: { profile: ProfileData }) {
           </div>
         </Section>
       </div>
-
-    </div>
+    </PageShell>
   );
 }

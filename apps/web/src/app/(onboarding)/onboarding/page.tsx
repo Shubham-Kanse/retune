@@ -37,13 +37,13 @@ function IntroPhase({ onComplete }: { onComplete: () => void }) {
       </motion.div>
       <div className="text-center space-y-2">
         <AnimatePresence>
-          {step >= 1 && <motion.p key="hello" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="font-serif text-[2.25rem] text-[#1a1a1a]">Hello</motion.p>}
+          {step >= 1 && <motion.p key="hello" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-[2.25rem] font-semibold tracking-tight text-foreground">Hello</motion.p>}
         </AnimatePresence>
         <AnimatePresence>
-          {step >= 2 && <motion.p key="tag" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-[0.9375rem] text-[#6b6b6b]">I&apos;m Retuned — your career profile builder.</motion.p>}
+          {step >= 2 && <motion.p key="tag" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-[0.9375rem] text-muted-foreground">I&apos;m Retuned — your career profile builder.</motion.p>}
         </AnimatePresence>
         <AnimatePresence>
-          {step >= 3 && <motion.p key="act" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-[0.9375rem] text-[#6b6b6b]">Upload your resume and I&apos;ll build your profile from it.</motion.p>}
+          {step >= 3 && <motion.p key="act" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="text-[0.9375rem] text-muted-foreground">Upload your resume and I&apos;ll build your profile from it.</motion.p>}
         </AnimatePresence>
       </div>
     </div>
@@ -59,7 +59,7 @@ function MessageBubble({ msg, isLast, isStreaming }: { msg: UIMessage; isLast: b
     return (
       <motion.div className="flex max-w-[80%] gap-2 items-end mr-auto" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
         <ColorOrb dimension="32px" spinDuration={20} />
-        <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white border border-[#e8e5e0]">
+        <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-card border border-border">
           <ShiningText text={msg.content} />
         </div>
       </motion.div>
@@ -68,10 +68,10 @@ function MessageBubble({ msg, isLast, isStreaming }: { msg: UIMessage; isLast: b
 
   return (
     <motion.div className={cn("flex max-w-[80%] gap-2 items-end", isUser ? "ml-auto flex-row-reverse" : "mr-auto")} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", isUser && "bg-white border border-[#e8e5e0]")}>
-        {isUser ? <User className="w-4 h-4 text-stone-800" /> : <ColorOrb dimension="32px" spinDuration={isStreaming && isLast ? 20 : 0} />}
+      <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", isUser && "bg-card border border-border")}>
+        {isUser ? <User className="w-4 h-4 text-foreground" /> : <ColorOrb dimension="32px" spinDuration={isStreaming && isLast ? 20 : 0} />}
       </div>
-      <div className={cn("px-4 py-3 rounded-2xl text-sm text-stone-800 bg-white border border-[#e8e5e0]", isUser ? "rounded-br-md" : "rounded-bl-md")}>
+      <div className={cn("px-4 py-3 rounded-2xl text-sm text-foreground bg-card border border-border", isUser ? "rounded-br-md" : "rounded-bl-md")}>
         <p className="whitespace-pre-wrap break-words">{msg.content}</p>
       </div>
     </motion.div>
@@ -82,7 +82,7 @@ function ThinkingBubble() {
   return (
     <motion.div className="flex max-w-[80%] gap-2 items-end mr-auto" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
       <ColorOrb dimension="32px" spinDuration={20} />
-      <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-white border border-[#e8e5e0]">
+      <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-card border border-border">
         <ShiningText text="Thinking..." />
       </div>
     </motion.div>
@@ -92,7 +92,7 @@ function ThinkingBubble() {
 function CompletionOverlay() {
   return (
     <motion.div
-      className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#fbfaf8]/85 backdrop-blur-sm"
+      className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/85 backdrop-blur-sm"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.25 }}
@@ -100,8 +100,8 @@ function CompletionOverlay() {
       <motion.div initial={{ scale: 0.85, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 24 }}>
         <ColorOrb dimension="88px" spinDuration={16} />
       </motion.div>
-      <p className="mt-7 font-serif text-3xl text-[#1a1a1a]">Thank you</p>
-      <p className="mt-2 text-sm text-stone-500">Your Retuned profile is complete. Opening your dashboard...</p>
+      <p className="mt-7 text-3xl font-semibold tracking-tight text-foreground">Thank you</p>
+      <p className="mt-2 text-sm text-muted-foreground">Your Retuned profile is complete. Opening your dashboard...</p>
     </motion.div>
   );
 }
@@ -147,8 +147,8 @@ function SkillEditor({
   const [business, setBusiness] = useState(initial.business.join(", "));
 
   return (
-    <motion.div className="ml-10 rounded-2xl border border-[#e0ddd9] bg-white p-4" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
-      <p className="text-sm font-medium text-[#1a1a1a]">Edit extracted skills</p>
+    <motion.div className="ml-10 rounded-2xl border border-border bg-card/80 p-4 backdrop-blur-md" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
+      <p className="text-sm font-medium text-foreground">Edit extracted skills</p>
       <div className="mt-3 space-y-3">
         {[
           ["Tier 1 skills", technical, setTechnical],
@@ -156,12 +156,12 @@ function SkillEditor({
           ["Tier 3 strengths", business, setBusiness],
         ].map(([label, value, setter]) => (
           <label key={String(label)} className="block">
-            <span className="text-xs text-stone-500">{String(label)}</span>
+            <span className="text-xs text-muted-foreground">{String(label)}</span>
             <textarea
               value={String(value)}
               onChange={(event) => (setter as (next: string) => void)(event.target.value)}
               rows={2}
-              className="mt-1 w-full resize-none rounded-xl border border-[#e8e5e0] bg-[#fbfaf8] px-3 py-2 text-sm text-stone-800 outline-none focus:border-[#1a1a1a]"
+              className="mt-1 w-full resize-none rounded-xl border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring"
               placeholder="Java, Spring Boot, REST APIs"
             />
           </label>
@@ -171,11 +171,11 @@ function SkillEditor({
         <button
           type="button"
           onClick={() => onSave({ technical: splitSkills(technical), tools: splitSkills(tools), business: splitSkills(business) })}
-          className="rounded-full bg-[#1a1a1a] px-4 py-2 text-[0.8125rem] font-medium text-white hover:bg-[#333]"
+          className="rounded-full bg-primary px-4 py-2 text-[0.8125rem] font-medium text-primary-foreground hover:opacity-90"
         >
           Save skills
         </button>
-        <button type="button" onClick={onCancel} className="rounded-full border border-[#e0ddd9] bg-white px-4 py-2 text-[0.8125rem] font-medium text-[#1a1a1a] hover:bg-[#f5f3f0]">
+        <button type="button" onClick={onCancel} className="rounded-full border border-border bg-background px-4 py-2 text-[0.8125rem] font-medium text-foreground hover:bg-muted">
           Cancel
         </button>
       </div>
@@ -201,10 +201,10 @@ function PillList({ pills, onSelect, disabled }: { pills: Pill[]; onSelect: (p: 
             className={cn(
               "inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-[0.8125rem] font-medium transition-colors",
               pill.selected
-                ? "border border-[#1a1a1a] bg-[#1a1a1a] text-white"
+                ? "border border-primary bg-primary text-primary-foreground"
                 : pill.recommended
-                  ? "bg-[#1a1a1a] text-white hover:bg-[#333]"
-                  : "border border-[#e0ddd9] bg-white text-[#1a1a1a] hover:bg-[#f5f3f0]",
+                  ? "bg-brand/10 text-brand hover:bg-brand/15"
+                  : "border border-border bg-card text-foreground hover:bg-muted",
               "disabled:opacity-40 disabled:cursor-not-allowed",
             )}>
             {pill.selected && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
@@ -316,32 +316,32 @@ function ChatView() {
             </div>
           ))}
           {showThinking && <ThinkingBubble />}
-          {errorMessage && <div className="ml-10 text-xs text-red-600">{errorMessage}</div>}
+          {errorMessage && <div className="ml-10 text-xs text-destructive">{errorMessage}</div>}
         </div>
       </div>
 
       {/* Composer */}
       {!isComplete && (
         <div className="flex-shrink-0 px-3 md:px-4 pb-3 pt-2">
-          <div className="max-w-[680px] mx-auto flex flex-col gap-3 p-4 bg-white rounded-2xl border border-[#e0ddd9]">
+          <div className="max-w-[680px] mx-auto flex flex-col gap-3 p-4 bg-card/90 rounded-3xl border border-border shadow-sm backdrop-blur-md">
             <div className="flex gap-2 items-center">
               <textarea ref={textareaRef} value={inputValue}
                 onChange={(e) => { setInputValue(e.target.value); if (textareaRef.current) { textareaRef.current.style.height = "auto"; textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`; } }}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                 placeholder="Type a message..." disabled={isStreaming} rows={1}
-                className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-stone-800 placeholder:text-stone-400 focus:outline-none disabled:opacity-50 max-h-[200px]" />
+                className="flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 max-h-[200px]" />
               <button type="button" onClick={handleSend} disabled={!inputValue.trim() || isStreaming} aria-label="Send"
-                className={cn("h-9 w-9 shrink-0 rounded-full flex items-center justify-center bg-[#1a1a1a]", !inputValue.trim() || isStreaming ? "opacity-40" : "hover:scale-105 hover:bg-[#333]")}>
-                <ArrowUp className="w-4 h-4 text-white" />
+                className={cn("h-9 w-9 shrink-0 rounded-full flex items-center justify-center bg-primary text-primary-foreground", !inputValue.trim() || isStreaming ? "opacity-40" : "hover:scale-105 hover:opacity-90")}>
+                <ArrowUp className="w-4 h-4" />
               </button>
             </div>
             <div className="flex items-center gap-2">
               <input ref={fileInputRef} type="file" accept=".pdf,.docx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); }} />
               <button type="button" onClick={() => { if (fileInputRef.current) { fileInputRef.current.value = ""; fileInputRef.current.click(); } }} disabled={isStreaming || extractionStatus === "pending"} aria-label="Attach resume"
-                className="h-9 w-9 shrink-0 bg-zinc-100 hover:bg-zinc-200 text-stone-700 rounded-full flex items-center justify-center disabled:opacity-50">
+                className="h-9 w-9 shrink-0 bg-muted hover:bg-secondary text-foreground rounded-full flex items-center justify-center disabled:opacity-50">
                 <Paperclip className="w-4 h-4" />
               </button>
-              <span className="text-xs text-stone-400">PDF or DOCX</span>
+              <span className="text-xs text-muted-foreground">PDF or DOCX</span>
             </div>
           </div>
         </div>

@@ -1,8 +1,9 @@
 "use client";
 
-import { ChevronRight, FileText, Home, LogOut, Settings, Sparkles, User } from "lucide-react";
+import { ChevronRight, FileText, Home, LogOut, Moon, Settings, Sparkles, Sun, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
 
 const NAV_ITEMS = [
@@ -76,12 +77,12 @@ function AvatarPicker({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-10 h-10 rounded-full bg-[#f0ede8] flex items-center justify-center text-xl select-none hover:bg-[#e5e2dd] transition-colors cursor-pointer"
+        className="w-10 h-10 rounded-full border border-border bg-muted flex items-center justify-center text-xl select-none hover:bg-secondary transition-colors cursor-pointer"
       >
         {current}
       </button>
       {open && (
-        <div className="absolute top-12 left-0 z-50 bg-white border border-[#e5e2dd] rounded-xl shadow-lg p-2 flex gap-1 flex-wrap w-[200px] animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute top-12 left-0 z-50 bg-popover border border-border rounded-xl shadow-lg p-2 flex gap-1 flex-wrap w-[200px] animate-in fade-in zoom-in-95 duration-150">
           {AVATARS.map((emoji) => (
             <button
               key={emoji}
@@ -90,7 +91,7 @@ function AvatarPicker({
                 onSelect(emoji);
                 setOpen(false);
               }}
-              className={`w-8 h-8 rounded-lg flex items-center justify-center text-base hover:bg-[#f0ede8] transition-colors ${
+              className={`w-8 h-8 rounded-lg flex items-center justify-center text-base hover:bg-muted transition-colors ${
                 current === emoji ? "bg-brand-light ring-1 ring-brand" : ""
               }`}
             >
@@ -111,6 +112,7 @@ export function AuthSidebar({
   userEmail: string;
 }) {
   const pathname = usePathname();
+  const { resolvedTheme, setTheme } = useTheme();
   const firstName = (userName?.split(" ")[0] ?? userEmail.split("@")[0]) || "there";
 
   const defaultAvatar = AVATARS[firstName.charCodeAt(0) % AVATARS.length] ?? "🧑‍💻";
@@ -127,20 +129,13 @@ export function AuthSidebar({
   }
 
   return (
-    <aside className="w-[240px] shrink-0 flex flex-col h-full sticky top-0 z-10"
-      style={{
-        background: "rgba(250,248,245,0.7)",
-        backdropFilter: "blur(16px)",
-        WebkitBackdropFilter: "blur(16px)",
-        borderRight: "1px solid rgba(0,0,0,0.06)",
-      }}
-    >
-      {/* User header */}
+    <aside className="w-[252px] shrink-0 flex flex-col h-full sticky top-0 z-10 border-r border-border bg-background/70 backdrop-blur-xl">
       <div className="px-5 pt-6 pb-4">
         <div className="flex items-center gap-3">
           <AvatarPicker current={avatar} onSelect={handleAvatarSelect} />
           <div>
-            <p className="font-serif text-lg tracking-tight text-[#1a1a1a]">Hey {firstName}</p>
+            <p className="text-sm font-medium tracking-tight text-foreground">Hey {firstName}</p>
+            <p className="text-xs text-muted-foreground">Application workspace</p>
           </div>
         </div>
       </div>
@@ -161,13 +156,7 @@ export function AuthSidebar({
                   ? "text-foreground font-medium"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              style={active ? {
-                background: "rgba(255,255,255,0.7)",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                border: "1px solid rgba(0,0,0,0.07)",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-              } : undefined}
+              style={undefined}
             >
               <item.icon
                 className={`w-4 h-4 ${active ? item.iconClass : "text-muted-foreground group-hover:text-foreground"}`}
@@ -179,8 +168,18 @@ export function AuthSidebar({
         })}
       </nav>
 
-      {/* Bottom brand bar */}
-      <div className="px-3 pb-10 relative">
+      <div className="px-3 pb-3">
+        <button
+          type="button"
+          onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+          <span>Theme</span>
+        </button>
+      </div>
+
+      <div className="px-3 pb-6 relative">
         <BottomMenu />
       </div>
     </aside>
@@ -209,11 +208,11 @@ function BottomMenu() {
   return (
     <div ref={ref}>
       {open && (
-        <div className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-[#e0ddd9] bg-background shadow-lg overflow-hidden">
+        <div className="absolute bottom-full left-3 right-3 mb-2 rounded-xl border border-border bg-popover shadow-lg overflow-hidden">
           <button
             type="button"
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 text-sm text-[#dc2626] hover:bg-[#fef2f2] transition-colors"
+            className="flex items-center gap-3 w-full px-4 py-3 text-sm text-destructive hover:bg-muted transition-colors"
           >
             <LogOut className="w-4 h-4" />
             Sign out
@@ -223,16 +222,11 @@ function BottomMenu() {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-3 w-full px-3 py-3 rounded-xl border border-[rgba(0,0,0,0.07)] transition-colors hover:bg-[rgba(255,255,255,0.8)]"
-        style={{
-          background: "rgba(255,255,255,0.6)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-        }}
+        className="flex items-center gap-3 w-full px-3 py-3 rounded-xl border border-border bg-card/70 transition-colors hover:bg-muted"
       >
         <div className="flex-1 min-w-0 text-left">
-          <p className="font-serif text-lg tracking-tight text-foreground">Retuned</p>
+          <p className="text-sm font-semibold tracking-tight text-foreground">Retuned</p>
+          <p className="text-xs text-muted-foreground">Account</p>
         </div>
         <ChevronRight className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${open ? "rotate-90" : "-rotate-90"}`} />
       </button>

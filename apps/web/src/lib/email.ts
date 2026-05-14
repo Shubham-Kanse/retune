@@ -42,7 +42,7 @@ export async function sendVerificationEmail(
     to,
     subject: "Verify your Retuned email",
     html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
+      <div style="font-family:Roboto, Arial, Helvetica, sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
         <h2 style="font-size:20px;font-weight:600;margin-bottom:16px">Verify your email</h2>
         <p style="margin-bottom:24px;color:#555">
           Hi ${name}, welcome to Retuned! Click the link below to verify your email address.
@@ -65,7 +65,7 @@ export async function sendPasswordResetEmail(to: string, token: string): Promise
     to,
     subject: "Reset your Retuned password",
     html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
+      <div style="font-family:Roboto, Arial, Helvetica, sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
         <h2 style="font-size:20px;font-weight:600;margin-bottom:16px">Reset your password</h2>
         <p style="margin-bottom:24px;color:#555">
           We received a request to reset your Retuned password. Click the link below to set a new password.
@@ -92,7 +92,7 @@ export async function sendGenerationCompleteEmail(
     to,
     subject: `Your resume is ready — ${companyName}`,
     html: `
-      <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
+      <div style="font-family:Roboto, Arial, Helvetica, sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
         <h2 style="font-size:20px;font-weight:600;margin-bottom:16px">Your resume is ready</h2>
         <p style="margin-bottom:24px;color:#555">
           Your tailored application package for <strong>${companyName}</strong> is complete —

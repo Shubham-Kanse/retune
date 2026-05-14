@@ -5,9 +5,9 @@ export const metadata = {
 
 export default function TermsPage() {
   return (
-    <main id="main-content" tabIndex={-1} className="min-h-screen bg-background text-foreground">
+    <main id="main-content" tabIndex={-1} className="bg-background text-foreground">
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <h1 className="mb-8 text-4xl font-bold">Terms of Service</h1>
+        <h1 className="mb-8 text-4xl font-semibold tracking-tight">Terms of Service</h1>
 
         <p className="mb-6 text-sm text-muted-foreground">
           Last updated:{" "}
@@ -18,7 +18,7 @@ export default function TermsPage() {
           })}
         </p>
 
-        <div className="prose prose-invert space-y-6 text-sm leading-relaxed">
+        <div className="prose prose-sm dark:prose-invert max-w-none space-y-6 leading-relaxed">
           <section>
             <h2 className="text-xl font-semibold">1. Agreement to Terms</h2>
             <p>
