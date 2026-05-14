@@ -47,6 +47,14 @@ export async function getProfileByUserId(userId: string): Promise<Record<string,
 export async function persistProfile(opts: PersistProfileOptions): Promise<{ completenessScore: number }> {
   const profileMarkdown = opts.profileMarkdownOverride || buildProfileMarkdown(opts.profile);
   const completenessScore = dbModule.computeCompletenessScore({ ...opts.profile, profileMarkdown });
+  const extra = opts.profile as ProfileNormalized & {
+    professionalIdentities?: string[];
+    careerDirection?: string;
+    preferredMarkets?: string[];
+    workPreference?: string;
+    emphasisAreas?: string[];
+    onboardingProfile?: unknown;
+  };
 
   const supabase = await createClient();
 
@@ -59,10 +67,13 @@ export async function persistProfile(opts: PersistProfileOptions): Promise<{ com
     email: opts.profile.email || opts.sessionEmail,
     phone: opts.profile.phone ?? null,
     linkedin: opts.profile.linkedin ?? null,
+    linkedin_url: opts.profile.linkedin ?? null,
     location: opts.profile.location ?? "",
+    city: splitLocation(opts.profile.location).city,
+    country: splitLocation(opts.profile.location).country,
     visa_status: opts.profile.visaStatus ?? null,
     relocation_preferences: stringifyJson(opts.profile.relocationPreferences),
-    target_roles: Array.isArray(opts.profile.targetRoles) ? opts.profile.targetRoles : [],
+    target_roles: stringifyJson(opts.profile.targetRoles),
     experience_level: opts.profile.experienceLevel ?? null,
     current_title: opts.profile.currentTitle ?? null,
     experience: stringifyJson(opts.profile.experience),
@@ -72,15 +83,27 @@ export async function persistProfile(opts: PersistProfileOptions): Promise<{ com
     skills_tier1: stringifyJson(opts.profile.skillsTier1),
     skills_tier2: stringifyJson(opts.profile.skillsTier2),
     skills_tier3: stringifyJson(opts.profile.skillsTier3),
+    technical_skills: opts.profile.skillsTier1.map((skill) => skill.name).filter(Boolean),
+    professional_skills: [...opts.profile.skillsTier2, ...opts.profile.skillsTier3].map((skill) => skill.name).filter(Boolean),
     voice_notes: opts.profile.voiceNotes ?? null,
+    professional_summary: opts.profile.summary ?? opts.profile.voiceNotes ?? null,
+    professional_identities: extra.professionalIdentities ?? [],
+    career_direction: extra.careerDirection ?? null,
+    preferred_markets: extra.preferredMarkets ?? [],
+    work_preference: extra.workPreference ?? null,
+    emphasis_areas: extra.emphasisAreas ?? [],
+    onboarding_profile: extra.onboardingProfile ?? {},
     profile_markdown: profileMarkdown,
     completeness_score: completenessScore,
     updated_at: new Date().toISOString(),
   };
 
-  await supabase
+  const { error } = await supabase
     .from("profiles")
     .upsert(row, { onConflict: "user_id" });
+  if (error) {
+    throw new Error(`[profile] Failed to persist profile: ${error.message}`);
+  }
 
   if (opts.markOnboardingCompleted) {
     await supabase
@@ -94,4 +117,11 @@ export async function persistProfile(opts: PersistProfileOptions): Promise<{ com
   }
 
   return { completenessScore };
+}
+
+function splitLocation(location: string): { city: string | null; country: string | null } {
+  const parts = location.split(",").map((part) => part.trim()).filter(Boolean);
+  if (parts.length === 0) return { city: null, country: null };
+  if (parts.length === 1) return { city: parts[0] ?? null, country: null };
+  return { city: parts.slice(0, -1).join(", "), country: parts.at(-1) ?? null };
 }

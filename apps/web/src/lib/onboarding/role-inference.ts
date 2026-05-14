@@ -39,11 +39,17 @@ const ROLE_RULES: Record<string, { titles: string[]; skills: string[]; roles: st
 };
 
 export function inferRolesFromProfile(profile: UserCareerProfile): string[] {
-  const titles = profile.experience.value.map(e => e.title.toLowerCase());
+  const titles = [
+    ...profile.professionalProfile.currentTitles.value,
+    ...profile.experience.value.map(e => e.title),
+    ...profile.education.value.flatMap((e) => [e.degree, e.fieldOfStudy ?? ""]),
+  ].map(s => s.toLowerCase());
   const skills = [
     ...profile.skills.technical.value,
     ...profile.skills.tools.value,
     ...profile.skills.business.value,
+    ...profile.experience.value.flatMap((e) => [...e.tools, ...e.skills, ...e.responsibilities]),
+    ...profile.education.value.flatMap((e) => [e.degree, e.fieldOfStudy ?? ""]),
   ].map(s => s.toLowerCase());
 
   const scores: Array<{ group: string; score: number; roles: string[] }> = [];

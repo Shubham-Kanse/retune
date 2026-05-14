@@ -1,6 +1,7 @@
 "use client";
 
 import type { EducationEntry, ExperienceEntry, SkillEntry } from "@/lib/profile-domain/contracts";
+import type { DisplayCard, Pill } from "@/lib/onboarding/types";
 import { cn } from "@/lib/utils";
 import { Check, Upload } from "lucide-react";
 import { motion } from "motion/react";
@@ -9,13 +10,13 @@ import { useRef, useState } from "react";
 // ─── QuickReplyChips ──────────────────────────────────────────────────────────
 
 interface QuickReplyChipsProps {
-  chips: string[];
-  onSelect: (value: string) => void;
+  pills: Pill[];
+  onSelect: (pill: Pill) => void;
   disabled?: boolean;
 }
 
-export function QuickReplyChips({ chips, onSelect, disabled }: QuickReplyChipsProps) {
-  if (!chips.length) return null;
+export function QuickReplyChips({ pills, onSelect, disabled }: QuickReplyChipsProps) {
+  if (!pills.length) return null;
   return (
     <motion.div
       className="flex flex-wrap gap-2"
@@ -23,27 +24,78 @@ export function QuickReplyChips({ chips, onSelect, disabled }: QuickReplyChipsPr
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.12, duration: 0.2 }}
     >
-      {chips.map((chip, i) => (
-        <motion.button
-          key={chip}
-          type="button"
-          disabled={disabled}
-          onClick={() => onSelect(chip)}
-          initial={{ opacity: 0, scale: 0.88 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.1 + i * 0.05, duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-          whileHover={disabled ? {} : { scale: 1.04, y: -1 }}
-          whileTap={disabled ? {} : { scale: 0.96 }}
-          className={cn(
-            "px-4 py-2 rounded-full border text-[0.8125rem] font-medium transition-colors",
-            "border-transparent bg-[#1a1a1a] text-white",
-            "hover:bg-[#333]",
-            "disabled:opacity-40 disabled:cursor-not-allowed",
-          )}
-        >
-          {chip}
-        </motion.button>
-      ))}
+      {pills.map((pill, i) => {
+        const disabledUntilSelected =
+          pill.action === "confirm_field" &&
+          pill.label === "Continue" &&
+          !pills.some((candidate) => candidate.field === pill.field && candidate.action === "set_field" && candidate.selected);
+        const isDisabled = disabled || disabledUntilSelected;
+
+        return (
+          <motion.button
+            key={`${pill.field}-${pill.value}-${i}`}
+            type="button"
+            disabled={isDisabled}
+            onClick={() => onSelect(pill)}
+            initial={{ opacity: 0, scale: 0.88 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.1 + i * 0.05, duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+            whileHover={isDisabled ? {} : { scale: 1.04, y: -1 }}
+            whileTap={isDisabled ? {} : { scale: 0.96 }}
+            className={cn(
+              "inline-flex items-center gap-1.5 px-4 py-2 rounded-full border text-[0.8125rem] font-medium transition-colors",
+              pill.selected
+                ? "border-[#1a1a1a] bg-[#1a1a1a] text-white hover:bg-[#333]"
+                : pill.recommended
+                  ? "border-[#b84ed1] bg-[#f3e8ff] text-[#7e22ce] hover:bg-[#ead6ff]"
+                  : "border-transparent bg-[#1a1a1a] text-white hover:bg-[#333]",
+              "disabled:opacity-40 disabled:cursor-not-allowed",
+            )}
+          >
+            {pill.selected && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+            {pill.label}
+            {pill.recommended && !pill.selected && <span className="ml-1 text-[0.65rem]">Recommended</span>}
+          </motion.button>
+        );
+      })}
+    </motion.div>
+  );
+}
+
+// ─── ProfileDisplayCard ──────────────────────────────────────────────────────
+
+export function ProfileDisplayCard({ card }: { card: DisplayCard }) {
+  return (
+    <motion.div
+      className="rounded-2xl border border-[#e8e5e0] bg-white p-4"
+      initial={{ opacity: 0, y: 8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[0.72rem] uppercase tracking-widest text-[#aaa]">
+            {card.type.replace("_", " ")}
+          </p>
+          <p className="mt-1 text-[0.92rem] font-medium text-[#1a1a1a]">{card.title}</p>
+          {card.subtitle && <p className="mt-0.5 text-[0.8125rem] text-[#6b6b6b]">{card.subtitle}</p>}
+        </div>
+        {card.status && (
+          <span className="rounded-full bg-[#f0ede8] px-2 py-1 text-[0.68rem] text-[#6b6b6b]">
+            {card.status.replace("_", " ")}
+          </span>
+        )}
+      </div>
+
+      {card.metadata?.length ? (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {card.metadata.slice(0, 12).map((item) => (
+            <span key={item} className="rounded-full bg-[#f7f4ef] px-2.5 py-1 text-[0.75rem] text-[#555]">
+              {item}
+            </span>
+          ))}
+        </div>
+      ) : null}
     </motion.div>
   );
 }

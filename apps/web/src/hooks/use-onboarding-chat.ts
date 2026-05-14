@@ -2,25 +2,12 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { UPLOAD_CHIP_LABEL } from "@/lib/onboarding/chat-ui";
+import type { DisplayCard, OnboardingQuestion, Pill, ProfileReadiness } from "@/lib/onboarding/types";
+
+export type { DisplayCard, Pill, ProfileReadiness } from "@/lib/onboarding/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-export interface Pill {
-  label: string;
-  value: string;
-  action: string;
-  recommended?: boolean;
-}
-
-export interface DisplayCard {
-  type: string;
-  id?: string;
-  title: string;
-  subtitle?: string;
-  metadata?: string[];
-  confidence?: number;
-  status?: string;
-}
 
 export interface UIMessage {
   id: string;
@@ -28,23 +15,18 @@ export interface UIMessage {
   content: string;
   pills?: Pill[];
   cards?: DisplayCard[];
+  questionKey?: string;
   isProcessing?: boolean;
-}
-
-export interface ProfileReadiness {
-  canEnterDashboard: boolean;
-  score: number;
-  blockers: string[];
-  warnings: string[];
 }
 
 interface TurnCompletePayload {
   phase: string;
+  stage?: string;
   pills?: Pill[];
   cards?: DisplayCard[];
   readiness?: ProfileReadiness;
   message?: string;
-  question?: { questionKey: string; answerType: string; field: string; whyAsked?: string };
+  question?: OnboardingQuestion | null;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -55,7 +37,23 @@ export function useOnboardingChat() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [phase, setPhase] = useState<string>("orb_intro");
-  const [readiness, setReadiness] = useState<ProfileReadiness>({ canEnterDashboard: false, score: 0, blockers: [], warnings: [] });
+  const [readiness, setReadiness] = useState<ProfileReadiness>({
+    canEnterDashboard: false,
+    score: 0,
+    blockers: [],
+    warnings: [],
+    suggestions: [],
+    completedCategories: {
+      identity: 0,
+      experience: 0,
+      education: 0,
+      skills: 0,
+      professionalProfile: 0,
+      careerIntent: 0,
+      resumeWritingSignals: 0,
+    },
+  });
+  const [currentQuestion, setCurrentQuestion] = useState<OnboardingQuestion | null>(null);
   const [currentPills, setCurrentPills] = useState<Pill[]>([]);
   const [currentCards, setCurrentCards] = useState<DisplayCard[]>([]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -97,14 +95,22 @@ export function useOnboardingChat() {
         if (eventType === "token") {
           try {
             const token = JSON.parse(raw) as string;
-            assistantText = token; // In new arch, full message comes as one token
+            assistantText += token;
+          } catch {}
+        } else if (eventType === "ui_payload") {
+          try {
+            const payload = JSON.parse(raw) as { question?: OnboardingQuestion | null; readiness?: ProfileReadiness; stage?: string };
+            setCurrentQuestion(payload.question ?? null);
+            if (payload.readiness) setReadiness(payload.readiness);
+            if (payload.stage) setPhase(payload.stage);
           } catch {}
         } else if (eventType === "turn_complete") {
           try {
             const payload = JSON.parse(raw) as TurnCompletePayload;
-            setPhase(payload.phase);
-            setCurrentPills(payload.pills ?? []);
-            setCurrentCards(payload.cards ?? []);
+            setPhase(payload.stage ?? payload.phase);
+            setCurrentQuestion(payload.question ?? null);
+            setCurrentPills(payload.question?.pills ?? payload.pills ?? []);
+            setCurrentCards(payload.question?.cards ?? payload.cards ?? []);
             if (payload.readiness) setReadiness(payload.readiness);
 
             // Push assistant message (if we have text)
@@ -114,8 +120,9 @@ export function useOnboardingChat() {
                 id: `ai-${Date.now()}`,
                 role: "assistant",
                 content: msgText,
-                pills: payload.pills,
-                cards: payload.cards,
+                pills: payload.question?.pills ?? payload.pills,
+                cards: payload.question?.cards ?? payload.cards,
+                questionKey: payload.question?.questionKey,
               }]);
             }
 
@@ -173,11 +180,13 @@ export function useOnboardingChat() {
               content: m.content,
               pills: i === data.messages.length - 1 ? m.pills : undefined,
               cards: i === data.messages.length - 1 ? m.cards : undefined,
+              questionKey: m.questionKey,
             }));
           setMessages(hydrated);
           setPhase(data.phase);
           if (data.readiness) setReadiness(data.readiness);
           if (data.nextQuestion?.pills) setCurrentPills(data.nextQuestion.pills);
+          if (data.nextQuestion) setCurrentQuestion(data.nextQuestion);
           greetingFiredRef.current = true;
           return;
         }
@@ -215,13 +224,45 @@ export function useOnboardingChat() {
       router.push("/dashboard");
       return;
     }
-    if (pill.action === "navigate" && pill.value === "upload") {
+    if (pill.label === UPLOAD_CHIP_LABEL || pill.value === "upload_resume" || pill.value === "upload") {
       // Trigger file upload — handled by the page
       return;
     }
 
-    void sendTurn({ kind: "pill_click", questionKey: questionKey ?? "", pill: { value: pill.value, action: pill.action } });
-  }, [sendTurn, router]);
+    void sendTurn({ kind: "pill", questionKey: questionKey ?? currentQuestion?.questionKey, pill });
+  }, [currentQuestion, sendTurn, router]);
+
+  const stageMultiSelect = useCallback((questionKey: string | undefined, pill: Pill) => {
+    const toggle = (candidate: Pill) =>
+      candidate.value === pill.value && candidate.field === pill.field
+        ? { ...candidate, selected: !candidate.selected }
+        : candidate;
+
+    setMessages(prev => {
+      const next = [...prev];
+      const idx = [...next].reverse().findIndex((m) => m.role === "assistant" && m.questionKey === questionKey);
+      const messageIndex = idx === -1 ? next.length - 1 : next.length - 1 - idx;
+      const msg = next[messageIndex];
+      if (!msg?.pills) return prev;
+
+      next[messageIndex] = {
+        ...msg,
+        pills: msg.pills.map(toggle),
+      };
+      return next;
+    });
+    setCurrentPills((prev) => prev.map(toggle));
+  }, []);
+
+  const submitMultiSelect = useCallback((questionKey: string | undefined, field: string, values: string[]) => {
+    setMessages(prev => [...prev, { id: `user-${Date.now()}`, role: "user", content: values.length ? values.join(", ") : "Continue" }]);
+    void sendTurn({ kind: "multi_select", questionKey: questionKey ?? currentQuestion?.questionKey ?? field, field, values });
+  }, [currentQuestion, sendTurn]);
+
+  const submitSkills = useCallback((skills: { technical: string[]; tools: string[]; business: string[] }) => {
+    setMessages(prev => [...prev, { id: `user-${Date.now()}`, role: "user", content: "Updated skills" }]);
+    void sendTurn({ kind: "skills_update", skills });
+  }, [sendTurn]);
 
   // ── Public: upload file ─────────────────────────────────────────────────
   const uploadFile = useCallback(async (file: File) => {
@@ -240,7 +281,8 @@ export function useOnboardingChat() {
 
       if (!res.ok || !data.result) {
         setExtractionStatus("failed");
-        setMessages(prev => [...prev, { id: `err-${Date.now()}`, role: "assistant", content: "Couldn't read that file. Try a different format?", pills: [{ label: "Try again", value: "upload", action: "navigate" }, { label: "Continue manually", value: "manual", action: "skip" }] }]);
+        setMessages(prev => [...prev, { id: `err-${Date.now()}`, role: "assistant", content: "Couldn't read that file. Try a different format?", pills: [{ label: "Try again", value: "upload_resume", action: "navigate", field: "resume" }] }]);
+        void sendTurn({ kind: "resume_failed" });
         return;
       }
 
@@ -257,9 +299,25 @@ export function useOnboardingChat() {
   const startOver = useCallback(() => {
     setMessages([]);
     setPhase("orb_intro");
-    setReadiness({ canEnterDashboard: false, score: 0, blockers: [], warnings: [] });
+    setReadiness({
+      canEnterDashboard: false,
+      score: 0,
+      blockers: [],
+      warnings: [],
+      suggestions: [],
+      completedCategories: {
+        identity: 0,
+        experience: 0,
+        education: 0,
+        skills: 0,
+        professionalProfile: 0,
+        careerIntent: 0,
+        resumeWritingSignals: 0,
+      },
+    });
     setCurrentPills([]);
     setCurrentCards([]);
+    setExtractionStatus("none");
     setIsComplete(false);
     void sendTurn({ kind: "start_over" });
   }, [sendTurn]);
@@ -270,12 +328,16 @@ export function useOnboardingChat() {
     isComplete,
     phase,
     readiness,
+    currentQuestion,
     currentPills,
     currentCards,
     errorMessage,
     extractionStatus,
     sendMessage,
     clickPill,
+    stageMultiSelect,
+    submitMultiSelect,
+    submitSkills,
     uploadFile,
     startOver,
   };

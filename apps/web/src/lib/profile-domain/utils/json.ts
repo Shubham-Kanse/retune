@@ -1,5 +1,6 @@
-export function parseJsonSafe<T>(raw: string | null | undefined, fallback: T): T {
+export function parseJsonSafe<T>(raw: unknown, fallback: T): T {
   if (!raw) return fallback;
+  if (typeof raw !== "string") return raw as T;
   try {
     return JSON.parse(raw) as T;
   } catch {
