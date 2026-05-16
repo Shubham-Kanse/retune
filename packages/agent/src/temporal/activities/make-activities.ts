@@ -34,10 +34,15 @@ export function make_activities(deps: SubstrateDeps): ActivityFns {
         jd_id: input.jd_id,
       });
 
-      // §2.2: use shared helper so Temporal path seeds identical goals to API runtime.
+      // §2.2 + 003 §6.1 + 004 §11.4: pass full payload (jd_text/profile_text/etc.)
+      // so Temporal seeds the same goals as the in-memory path.
       seed_initial_goals(goal_stack, {
         jd_title: input.jd_title,
         company: input.company,
+        jd_text: input.jd_text,
+        profile_text: input.profile_text,
+        career_profile: input.career_profile,
+        career_understanding: input.career_understanding,
       });
 
       const result = await orchestrator.run({

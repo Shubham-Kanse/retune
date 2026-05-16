@@ -10,7 +10,11 @@ import {
   readAndValidateResumeFile,
   ResumeFileValidationError,
 } from "@/lib/profile-domain/utils/resume-file";
+import { extractDocumentText } from "@/lib/profile-domain/extractors/document-text-extractor";
+import { detectAbuse } from "@/lib/profile-domain/extractors/abuse-heuristics";
+import { classifyResumeContent } from "@/lib/profile-domain/extractors/content-classifier";
 import { logOnboardingEvent } from "@/lib/onboarding/events";
+import { scrubPii } from "@/lib/onboarding/pii";
 import { getOrCreateSession, saveSession } from "@/lib/onboarding/session-store";
 import { calculateProfileReadiness } from "@/lib/onboarding/readiness";
 import { planNextQuestion } from "@/lib/onboarding/planner";
@@ -65,6 +69,44 @@ export const POST = withAuth(async (request, session) => {
     const traceId = crypto.randomUUID();
     const startedAt = Date.now();
 
+    // ── P0.4: Abuse detection (DoS protection) ──────────────────────────
+    let rawText = "";
+    try {
+      rawText = await extractDocumentText({ filename: file.name, mediaType, buffer });
+    } catch {
+      // Text extraction failure is non-fatal here; the extractor will use file mode
+    }
+
+    if (rawText.length > 0) {
+      const abuse = detectAbuse({ buffer, rawText });
+      if (abuse.rejected) {
+        await logOnboardingEvent({
+          userId: session.userId,
+          eventType: "security.abuse_detected",
+          traceId,
+          payload: scrubPii({ filename: file.name, reason: abuse.reason, flags: abuse.flags }),
+        });
+        return NextResponse.json({ error: abuse.reason }, { status: 422 });
+      }
+
+      // ── P0.1: Content classification gate ───────────────────────────────
+      const classification = classifyResumeContent({ rawText, filename: file.name });
+      if (!classification.isResume && classification.rejectReason) {
+        await logOnboardingEvent({
+          userId: session.userId,
+          eventType: "security.classification_rejected",
+          traceId,
+          payload: scrubPii({
+            filename: file.name,
+            detectedType: classification.detectedType,
+            confidence: classification.confidence,
+            safetyFlags: classification.safetyFlags,
+          }),
+        });
+        return NextResponse.json({ error: classification.rejectReason }, { status: 422 });
+      }
+    }
+
     await logOnboardingEvent({
       userId: session.userId,
       eventType: "resume_upload_started",
@@ -79,6 +121,12 @@ export const POST = withAuth(async (request, session) => {
     const existingIngestion = await findIngestionByHash(session.userId, contentHash);
     if (existingIngestion?.status === "ready" && existingIngestion.extractedProfileJson) {
       extracted = JSON.parse(existingIngestion.extractedProfileJson) as Record<string, unknown>;
+      // Apply any existing profile fields as merge hints to the cached extraction
+      // (e.g., user already provided identity info via chat before re-uploading)
+      const existingProfile = stored.profile as unknown as Record<string, unknown>;
+      if (existingProfile) {
+        applyMergeHintToCached(extracted, existingProfile);
+      }
       ingestionId = existingIngestion.id;
       reusedExtraction = true;
     } else {
@@ -273,6 +321,20 @@ function applyExtractedProfile(
       .split(/\r?\n|•|◦|·|\u2022|\u2023|\u25E6|^\s*[-*]\s+/gm)
       .map((s) => s.trim())
       .filter(Boolean);
+  const QUANTIFIED_RE = /(\d+[%x×]|\$[\d,.]+|\d+\s*(users|customers|clients|engineers|people|team|members|months|years|days|hours|projects|products|launches|releases|endpoints|services|requests|transactions|records|lines|commits|PRs|tickets|sprints|features|bugs|incidents|deployments|servers|nodes|clusters|regions|accounts|partners|vendors|contracts|deals|leads|conversions|revenue|savings|reduction|improvement|increase|decrease|growth)|\b(led|managed|mentored|coached|supervised)\s+(a\s+)?team\s+of\s+\d+|\d+\s*[kKmMbB]\b)/i;
+  const splitBulletsToCategories = (text: string): { responsibilities: string[]; achievements: string[] } => {
+    const bullets = splitBullets(text);
+    const responsibilities: string[] = [];
+    const achievements: string[] = [];
+    for (const bullet of bullets) {
+      if (QUANTIFIED_RE.test(bullet)) {
+        achievements.push(bullet);
+      } else {
+        responsibilities.push(bullet);
+      }
+    }
+    return { responsibilities, achievements };
+  };
 
   // ── Identity ────────────────────────────────────────────────────────────
   if (data.fullName) profile.identity.fullName = field(profile.identity.fullName, asStr(data.fullName), 0.9, data.fullName);
@@ -303,9 +365,18 @@ function applyExtractedProfile(
   // ── Experience ──────────────────────────────────────────────────────────
   if (Array.isArray(data.experience)) {
     profile.experience = field(profile.experience, data.experience.map((e: any, i: number) => {
-      const responsibilities = Array.isArray(e.responsibilities) && e.responsibilities.length > 0
-        ? e.responsibilities.map(asStr)
-        : splitBullets(asStr(e.description));
+      let responsibilities: string[];
+      let achievements: string[];
+      if (Array.isArray(e.responsibilities) && e.responsibilities.length > 0) {
+        const combined = [...e.responsibilities.map(asStr), ...(Array.isArray(e.achievements) ? e.achievements.map(asStr) : [])];
+        const categorized = splitBulletsToCategories(combined.join("\n"));
+        responsibilities = categorized.responsibilities;
+        achievements = categorized.achievements;
+      } else {
+        const categorized = splitBulletsToCategories(asStr(e.description));
+        responsibilities = categorized.responsibilities;
+        achievements = [...categorized.achievements, ...(Array.isArray(e.achievements) ? e.achievements.map(asStr) : [])];
+      }
       return {
         id: e.id ?? `exp-${i}`,
         title: asStr(e.title),
@@ -315,7 +386,7 @@ function applyExtractedProfile(
         endDate: e.endDate ? asStr(e.endDate) : "Present",
         isCurrent: Boolean(e.isCurrent),
         responsibilities,
-        achievements: Array.isArray(e.achievements) ? e.achievements.map(asStr) : [],
+        achievements,
         metrics: Array.isArray(e.metrics) ? e.metrics : [],
         tools: Array.isArray(e.tools) ? e.tools.map(asStr) : [],
         skills: Array.isArray(e.skills) ? e.skills.map(asStr) : [],
@@ -418,4 +489,22 @@ function extractSkillNames(values: unknown[]): string[] {
     })
     .map((value) => value.trim())
     .filter(Boolean);
+}
+
+/**
+ * When reusing a cached extraction, apply any user-confirmed fields from the
+ * existing session profile as overrides. This ensures that if the user already
+ * corrected their name/email/etc via chat, the cached extraction doesn't
+ * overwrite those corrections.
+ */
+function applyMergeHintToCached(extracted: Record<string, unknown>, existingProfile: Record<string, unknown>) {
+  const identity = existingProfile.identity as Record<string, { value?: unknown; confirmed?: boolean }> | undefined;
+  if (!identity) return;
+  // Only override extracted fields with user-confirmed values
+  for (const key of ["fullName", "email", "phone", "location", "linkedin", "github", "portfolio", "website"] as const) {
+    const field = identity[key];
+    if (field?.confirmed && field.value) {
+      (extracted as Record<string, unknown>)[key] = field.value;
+    }
+  }
 }

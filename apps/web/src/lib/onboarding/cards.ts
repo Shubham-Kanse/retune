@@ -37,15 +37,18 @@ export function buildEducationCards(profile: UserCareerProfile): DisplayCard[] {
 
 export function buildSkillCards(profile: UserCareerProfile): DisplayCard[] {
   const groups = [
-    { title: "Tier 1 skills", subtitle: "Primary positioning", skills: profile.skills.technical.value },
-    { title: "Tier 2 skills", subtitle: "Supporting tools", skills: profile.skills.tools.value },
-    { title: "Tier 3 skills", subtitle: "Additional strengths", skills: profile.skills.business.value },
+    { title: "Technical skills", subtitle: "Primary positioning", skills: profile.skills.technical.value },
+    { title: "Tools & platforms", subtitle: "Supporting tools", skills: profile.skills.tools.value },
+    { title: "Business skills", subtitle: "Business strengths", skills: profile.skills.business.value },
+    { title: "Methodologies", subtitle: "Processes & frameworks", skills: profile.skills.methodologies.value },
+    { title: "Soft skills", subtitle: "Interpersonal strengths", skills: profile.skills.softSkills.value },
+    { title: "Domain skills", subtitle: "Industry-specific", skills: profile.skills.domainSkills.value },
   ];
 
   return groups
     .map(({ title, subtitle, skills }) => ({
       type: "skill_group" as const,
-      id: title.includes("Tier 1") ? "technical" : title.includes("Tier 2") ? "tools" : "business",
+      id: title.toLowerCase().replace(/\s+/g, "_"),
       title,
       subtitle: `${subtitle} · ${skills.length} found`,
       metadata: [...new Set(skills)].slice(0, 20),
@@ -78,6 +81,23 @@ export function buildProjectCertificationCards(profile: UserCareerProfile): Disp
   }));
 
   return [...projects, ...certifications];
+}
+
+export function buildExtrasCards(profile: UserCareerProfile): DisplayCard[] {
+  const cards: DisplayCard[] = [];
+  if (profile.languages.value.length > 0) {
+    cards.push({ type: "language", id: "languages", title: "Languages", metadata: profile.languages.value, status: profile.languages.confirmed ? "confirmed" : "extracted" });
+  }
+  if (profile.awards.value.length > 0) {
+    cards.push({ type: "award", id: "awards", title: "Awards", metadata: profile.awards.value, status: profile.awards.confirmed ? "confirmed" : "extracted" });
+  }
+  if (profile.publications.value.length > 0) {
+    cards.push({ type: "publication", id: "publications", title: "Publications", metadata: profile.publications.value, status: profile.publications.confirmed ? "confirmed" : "extracted" });
+  }
+  if (profile.volunteering.value.length > 0) {
+    cards.push({ type: "volunteering", id: "volunteering", title: "Volunteering", metadata: profile.volunteering.value, status: profile.volunteering.confirmed ? "confirmed" : "extracted" });
+  }
+  return cards;
 }
 
 export function buildSummaryCards(profile: UserCareerProfile): DisplayCard[] {

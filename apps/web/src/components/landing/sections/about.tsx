@@ -34,7 +34,7 @@ export function About() {
               Retune uses advanced language models to deeply understand your professional background, then crafts perfectly tailored application materials for every opportunity.
             </p>
             <p className="mt-5 text-muted-foreground text-lg leading-relaxed">
-              No more generic resumes. No more hours spent rewriting. Just paste a job description and let our AI specialists handle the rest — from keyword optimization to narrative framing.
+              No more generic resumes. No more hours spent rewriting. Just paste a job description and let our AI specialists handle the rest - from keyword optimization to narrative framing.
             </p>
           </div>
 

@@ -17,9 +17,9 @@ interface RefusalPayload {
 
 const RECOMMENDED_NEXT: Record<string, string> = {
   hidden_disqualifier_blocker: "Resolve the disqualifier the JD requires before re-applying.",
-  fabrication: "Add concrete evidence to your profile — real numbers, real project names, real tools.",
+  fabrication: "Add concrete evidence to your profile - real numbers, real project names, real tools.",
   voice_drift: "Refresh your voice fingerprint with 5–10 sentences of your most natural writing.",
-  fairness_concern: "Edit the language flagged below — it would carry bias in the package as written.",
+  fairness_concern: "Edit the language flagged below - it would carry bias in the package as written.",
   ats_coverage_below_floor: "Strengthen your skills section with the JD's tier-1 keywords expressed in your own words.",
   cost_runaway: "The cost ceiling fired. Try a tighter JD or contact support to raise the per-run budget.",
   outcome_below_floor: "Predicted callback fell below 20%. Either pick a closer-fit role or add evidence the JD's filters require.",

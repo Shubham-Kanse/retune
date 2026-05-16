@@ -66,14 +66,14 @@ export default function BrainPage() {
       <PageHeader
         eyebrow="Cognitive"
         title="Brain"
-        subtitle="What Retuned learned across your tunings — regions exercised, signals captured, costs."
+        subtitle="What Retuned learned across your tunings - regions exercised, signals captured, costs."
       />
 
       {/* Stats — flat, no card wrappers */}
       <div className="mb-10 grid grid-cols-3 gap-6">
         {[
           { label: "Tunings", value: String(generations.length) },
-          { label: "Avg readiness", value: generations.length > 0 ? `${avg}/100` : "—" },
+          { label: "Avg readiness", value: generations.length > 0 ? `${avg}/100` : "-" },
           { label: "Total spend", value: `$${totalCost.toFixed(3)}` },
         ].map((s) => (
           <div key={s.label}>

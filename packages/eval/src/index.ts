@@ -14,6 +14,7 @@ export {
   score_coach_panel,
   evaluate_launch_criteria,
   aggregate_eval_results,
+  score_sota_artifacts,
 } from "./metrics";
 export type {
   LabeledSpan,
@@ -26,4 +27,6 @@ export type {
   LaunchGateResult,
   CriterionResult,
   EvalSummary,
+  SotaArtifactScore,
+  ScoreInput,
 } from "./metrics";

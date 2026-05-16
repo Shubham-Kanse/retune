@@ -71,7 +71,7 @@ export function BlackboardResumeRenderer({ blackboard }: Props) {
       {hypotheses.chosen_narrative_arc && (
         <div className="mt-8 border-t pt-4 text-xs text-muted-foreground">
           <p>
-            Narrative: {hypotheses.chosen_narrative_arc.archetype} —{" "}
+            Narrative: {hypotheses.chosen_narrative_arc.archetype} -{" "}
             {hypotheses.chosen_narrative_arc.thesis}
           </p>
         </div>

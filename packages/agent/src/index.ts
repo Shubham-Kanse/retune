@@ -6,6 +6,9 @@ export * from "./pipeline/schemas";
 export { authenticateVoice } from "./pipeline/enforcement/voice-authenticator";
 export * from "./sota-exports";
 
+// 003 SOTA generation module (additive, off the legacy pipeline).
+export * from "./generation-sota";
+
 // Temporal node/worker specific exports
 export {
   build_fresh_substrate,

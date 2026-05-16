@@ -87,6 +87,10 @@
     0% { opacity: 0; }
     100% { opacity: 1; }
   }
+  @keyframes retune-orb-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
 }
 
 :root {
@@ -335,4 +339,59 @@
 }
 html[data-magicui-theme-vt="active"]::view-transition-new(root) {
   clip-path: var(--magicui-theme-vt-clip-from);
+}
+
+/* ── Retune ColorOrb ─────────────────────────────────────────────────────── */
+@property --orb-angle {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+
+.color-orb {
+  display: grid;
+  grid-template-areas: "stack";
+  overflow: hidden;
+  border-radius: 50%;
+  position: relative;
+  transform: scale(1.1);
+}
+
+.color-orb::before,
+.color-orb::after {
+  content: "";
+  display: block;
+  grid-area: stack;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  transform: translateZ(0);
+}
+
+.color-orb::before {
+  background:
+    conic-gradient(from calc(var(--orb-angle) * 2) at 25% 70%, var(--orb-accent3), transparent 20% 80%, var(--orb-accent3)),
+    conic-gradient(from calc(var(--orb-angle) * 2) at 45% 75%, var(--orb-accent2), transparent 30% 60%, var(--orb-accent2)),
+    conic-gradient(from calc(var(--orb-angle) * -3) at 80% 20%, var(--orb-accent1), transparent 40% 60%, var(--orb-accent1)),
+    conic-gradient(from calc(var(--orb-angle) * 2) at 15% 5%, var(--orb-accent2), transparent 10% 90%, var(--orb-accent2)),
+    conic-gradient(from calc(var(--orb-angle) * 1) at 20% 80%, var(--orb-accent1), transparent 10% 90%, var(--orb-accent1)),
+    conic-gradient(from calc(var(--orb-angle) * -2) at 85% 10%, var(--orb-accent3), transparent 20% 80%, var(--orb-accent3));
+  filter: blur(var(--orb-blur)) contrast(var(--orb-contrast));
+  animation: orb-spin var(--orb-spin-duration, 20s) linear infinite;
+}
+
+.color-orb::after {
+  background-image: radial-gradient(circle at center, var(--orb-base) var(--orb-dot), transparent var(--orb-dot));
+  background-size: calc(var(--orb-dot) * 2) calc(var(--orb-dot) * 2);
+  backdrop-filter: blur(calc(var(--orb-blur) * 2)) contrast(calc(var(--orb-contrast) * 2));
+  mix-blend-mode: overlay;
+  mask-image: radial-gradient(black var(--orb-mask, 25%), transparent 75%);
+}
+
+@keyframes orb-spin {
+  to { --orb-angle: 360deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .color-orb::before { animation: none; }
 }

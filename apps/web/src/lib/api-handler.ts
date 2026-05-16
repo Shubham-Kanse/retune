@@ -8,7 +8,7 @@ import { getApiSession } from "./session";
 function checkOrigin(request: Request): void {
   if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") return;
   const origin = request.headers.get("origin");
-  if (!origin) return; // no Origin header — same-origin server request, allow
+  if (!origin) return; // no Origin header - same-origin server request, allow
   const host = request.headers.get("host") ?? "";
   try {
     if (new URL(origin).host !== host) throw new ForbiddenError("Cross-origin request rejected");

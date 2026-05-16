@@ -14,7 +14,7 @@ export function buildProfileMarkdown(profile: ProfileNormalized): string {
     profile.experience.length
       ? `## Experience\n${profile.experience
           .map((e) => {
-            const line1 = `### ${e.title || "Role"} — ${e.company || "Company"}`;
+            const line1 = `### ${e.title || "Role"} - ${e.company || "Company"}`;
             const line2 = [e.startDate, e.endDate].filter(Boolean).join(" – ");
             return [line1, line2, e.description || ""].filter(Boolean).join("\n");
           })
@@ -22,7 +22,7 @@ export function buildProfileMarkdown(profile: ProfileNormalized): string {
       : "",
     profile.education.length
       ? `## Education\n${profile.education
-          .map((e) => `${e.degree || ""}${e.degree && e.institution ? " — " : ""}${e.institution || ""}`)
+          .map((e) => `${e.degree || ""}${e.degree && e.institution ? " - " : ""}${e.institution || ""}`)
           .filter(Boolean)
           .join("\n")}`
       : "",

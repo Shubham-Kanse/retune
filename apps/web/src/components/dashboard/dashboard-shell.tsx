@@ -2,8 +2,6 @@
 
 import { JdPrompt } from "@/components/generate/jd-prompt";
 import { PageShell } from "@/components/app/page-shell";
-import { Button } from "@/components/ui/button";
-import { ArrowRight, FileText } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -27,7 +25,7 @@ function greet() {
 }
 
 function timeAgo(iso: string | null) {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const d = Date.now() - new Date(iso).getTime();
   const m = Math.floor(d / 60000);
   if (m < 1) return "just now";
@@ -83,61 +81,55 @@ export function DashboardClient({
 
   return (
     <PageShell width="wide">
-      <div className="mb-10 text-center">
-        <p className="text-sm text-muted-foreground">{greet()}{firstName ? `, ${firstName}` : ""}.</p>
-        <h1 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">
-          What are we applying to today?
+      {/* Greeting + prompt */}
+      <div className="mb-8">
+        <p className="text-[11px] uppercase tracking-widest text-muted-foreground/50">
+          {greet()}{firstName ? `, ${firstName}` : ""}
+        </p>
+        <h1 className="mt-1.5 text-xl font-medium tracking-tight text-foreground">
+          What are we applying to?
         </h1>
       </div>
 
       <JdPrompt onStart={handleStart} />
 
-      {/* Stats row — flat, no card wrappers */}
-      <div className="mt-14 grid grid-cols-3 gap-6">
+      {/* Stats */}
+      <div className="mt-12 flex gap-10 border-t border-border/40 pt-8">
         {[
           { label: "Profile", value: `${profileScore}%`, href: "/profile" },
-          { label: "Tunings", value: String(totalGenerations || "—"), href: "/applications" },
-          { label: "Shipped", value: String(shippedCount || "—"), href: "/applications" },
+          { label: "Tunings", value: String(totalGenerations || "0"), href: "/applications" },
+          { label: "Shipped", value: String(shippedCount || "0"), href: "/applications" },
         ].map((s) => (
           <Link key={s.label} href={s.href} className="group">
-            <p className="text-xs text-muted-foreground">{s.label}</p>
-            <p className="mt-0.5 text-2xl font-semibold tracking-tight group-hover:text-foreground/80 transition-colors">
+            <p className="text-[11px] uppercase tracking-widest text-muted-foreground/50">{s.label}</p>
+            <p className="mt-1 text-2xl font-medium tracking-tight tabular-nums transition-colors group-hover:text-muted-foreground">
               {s.value}
             </p>
           </Link>
         ))}
       </div>
 
-      {/* Recent tunings — flat list with dividers, no card wrapper */}
+      {/* Recent tunings */}
       <div className="mt-10">
-        <div className="mb-3 flex items-end justify-between">
-          <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            Recent tunings
-          </h2>
-          <Link
-            href="/applications"
-            className="text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            View all
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground/50">Recent</p>
+          <Link href="/applications" className="text-[11px] text-muted-foreground/50 transition-colors hover:text-muted-foreground">
+            All →
           </Link>
         </div>
 
         {loading ? (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-12 animate-pulse rounded-md bg-muted/40" />
+              <div key={i} className="h-10 animate-pulse rounded bg-muted/30" />
             ))}
           </div>
         ) : recent.length === 0 ? (
-          <div className="py-12 text-center">
-            <FileText className="mx-auto size-5 text-muted-foreground/60" />
-            <p className="mt-3 text-sm text-muted-foreground">No tunings yet</p>
-            <p className="mt-1 text-xs text-muted-foreground/70">
-              Paste a JD above to run your first tuning.
-            </p>
+          <div className="py-10 text-center">
+            <p className="text-sm text-muted-foreground/50">No tunings yet</p>
           </div>
         ) : (
-          <div className="divide-y divide-border/50">
+          <div className="divide-y divide-border/30">
             {recent.map((r) => {
               const href =
                 r.verdict === "ship" || r.verdict === "completed"
@@ -147,20 +139,21 @@ export function DashboardClient({
                 <Link
                   key={r.id}
                   href={href}
-                  className="flex items-center gap-4 py-3 transition-colors hover:bg-muted/30 -mx-2 px-2 rounded-md"
+                  className="group flex items-center gap-4 py-2.5 -mx-2 px-2 rounded transition-colors hover:bg-muted/20"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{r.role || "Untitled role"}</p>
-                    <p className="truncate text-xs text-muted-foreground">
+                    <p className="truncate text-sm text-foreground/80 group-hover:text-foreground transition-colors">
+                      {r.role || "Untitled role"}
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground/50">
                       {r.company || "Unknown"} · {timeAgo(r.createdAt)}
                     </p>
                   </div>
                   {r.interviewReadyScore != null && (
-                    <span className="hidden font-mono text-xs tabular-nums text-muted-foreground sm:inline">
+                    <span className="hidden font-mono text-xs tabular-nums text-muted-foreground/40 sm:inline">
                       {Math.round(r.interviewReadyScore)}
                     </span>
                   )}
-                  <ArrowRight className="size-3.5 text-muted-foreground/50" />
                 </Link>
               );
             })}
@@ -169,13 +162,13 @@ export function DashboardClient({
       </div>
 
       {profileScore < 60 && (
-        <div className="mt-8 flex items-center justify-between border-t border-border/50 pt-6">
-          <p className="text-sm text-muted-foreground">
-            Profile is <span className="font-medium text-foreground">{profileScore}%</span> complete. Tunings improve above 60%.
+        <div className="mt-10 flex items-center justify-between border-t border-border/30 pt-6">
+          <p className="text-xs text-muted-foreground/60">
+            Profile {profileScore}% complete - tunings improve above 60%.
           </p>
-          <Button asChild size="sm" variant="ghost">
-            <Link href="/profile">Improve →</Link>
-          </Button>
+          <Link href="/profile" className="text-xs text-muted-foreground/60 transition-colors hover:text-foreground">
+            Improve →
+          </Link>
         </div>
       )}
     </PageShell>

@@ -1,11 +1,13 @@
+import { createHash } from "node:crypto";
 import { apiUrl } from "@/lib/api-config";
 import { withAuth } from "@/lib/api-handler";
+import { isCareerUnderstandingV1 } from "@/lib/career-understanding";
 import { verifyPreflightToken } from "@/lib/drift-preflight-token";
+import { isCareerProfileV1 } from "@/lib/onboarding/career-profile.schema";
 import { ensureGenerationPreflightsTable } from "@/lib/preflight-table";
 import { db } from "@retune/db";
-import { applications, generationPreflights } from "@retune/db/schema";
+import { applications, generationPreflights, profiles } from "@retune/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
-import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
 // Proxy POST /api/generate → backend cognitive API, then record in Postgres
@@ -17,6 +19,7 @@ export const POST = withAuth(async (request, session) => {
     market?: string;
     preflight_token?: string;
     jd_hash?: string;
+    idempotency_key?: string;
   };
 
   const suppliedHash =
@@ -25,8 +28,7 @@ export const POST = withAuth(async (request, session) => {
   if (!body.preflight_token || !suppliedHash) {
     return NextResponse.json(
       {
-        error:
-          "preflight_required: run drift preflight and resolve questions before generation.",
+        error: "preflight_required: run drift preflight and resolve questions before generation.",
       },
       { status: 428 },
     );
@@ -74,10 +76,54 @@ export const POST = withAuth(async (request, session) => {
     );
   }
 
+  // 004 §11.2 — load career_profile + career_understanding server-side so the
+  // cognitive API gets the authoritative profile, not whatever the client says.
+  const profileRows = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.userId, session.userId))
+    .limit(1);
+  const profileRow = profileRows[0] as
+    | {
+        profileMarkdown?: string | null;
+        careerProfile?: unknown;
+        careerUnderstanding?: unknown;
+      }
+    | undefined;
+  const careerProfile = isCareerProfileV1(profileRow?.careerProfile)
+    ? profileRow?.careerProfile
+    : null;
+  const careerUnderstanding = isCareerUnderstandingV1(profileRow?.careerUnderstanding)
+    ? profileRow?.careerUnderstanding
+    : null;
+  const profileMarkdown = profileRow?.profileMarkdown ?? "";
+
   const res = await fetch(apiUrl("/generate"), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers: {
+      "Content-Type": "application/json",
+      // 003 §10 + §12 — propagate the authenticated user id and the
+      // shared internal API key (when configured) so the cognitive API
+      // does not have to re-implement Supabase session validation.
+      "x-retune-user-id": session.userId,
+      ...(process.env.RETUNE_INTERNAL_API_KEY
+        ? { "x-retune-internal-key": process.env.RETUNE_INTERNAL_API_KEY }
+        : {}),
+    },
+    body: JSON.stringify({
+      ...body,
+      // Carry the durable preflight envelope id forward so the cognitive
+      // API can record a generation_requests row with the link.
+      preflight_id: row.id,
+      jd_hash: suppliedHash,
+      // Stable idempotency key — a duplicate POST with the same key
+      // returns the existing generation_id rather than starting a new one.
+      idempotency_key: body.idempotency_key ?? `${session.userId}:${suppliedHash}`,
+      // Server-loaded profile (overrides anything the client sent).
+      profile_text: profileMarkdown,
+      career_profile: careerProfile ?? undefined,
+      career_understanding: careerUnderstanding ?? undefined,
+    }),
   });
 
   const data = (await res.json().catch(() => null)) as { generation_id?: string } | null;

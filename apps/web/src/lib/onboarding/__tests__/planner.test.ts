@@ -101,7 +101,7 @@ describe("planNextQuestion", () => {
     meta.educationConfirmed = true;
     const q = planNextQuestion(profile, meta);
     expect(q!.phase).toBe("skills_confirm");
-    expect(q!.cards?.map((card) => card.title)).toContain("Tier 1 skills");
+    expect(q!.cards?.map((card) => card.title)).toContain("Technical skills");
   });
 
   it("basics confirmed + no extracted skills → asks user to add skills with pills", () => {
@@ -148,6 +148,9 @@ describe("planNextQuestion", () => {
     profile.resumeWritingPreferences.emphasisAreas.value = ["Backend engineering"];
     profile.resumeWritingPreferences.deEmphasisAreas.confirmed = true;
     profile.resumeWritingPreferences.deEmphasisAreas.value = ["Legacy tools"];
+    profile.careerIntent.roleDealbreakers.confirmed = true;
+    profile.resumeWritingPreferences.toneSignals.confirmed = true;
+    profile.resumeWritingPreferences.styleConstraints.confirmed = true;
     const q = planNextQuestion(profile, meta);
     expect(q).toBeNull();
   });
@@ -198,6 +201,8 @@ describe("planNextQuestion", () => {
     profile.careerIntent.industriesOfInterest.value = ["SaaS"];
     profile.resumeWritingPreferences.emphasisAreas.confirmed = true;
     profile.resumeWritingPreferences.emphasisAreas.value = ["Backend engineering"];
+    expect(planNextQuestion(profile, meta)!.phase).toBe("role_dealbreakers");
+    profile.careerIntent.roleDealbreakers.confirmed = true;
     expect(planNextQuestion(profile, meta)!.phase).toBe("de_emphasis_preferences");
   });
 
@@ -231,8 +236,12 @@ describe("planNextQuestion", () => {
     profile.professionalProfile.professionalIdentities.value = ["Software Engineer"];
 
     const q = planNextQuestion(profile, meta);
-    expect(q!.phase).toBe("career_direction");
-    expect(q!.pills.map((p) => p.label)).toEqual(
+    // experience_metrics comes first since experience has no achievements
+    expect(q!.phase).toBe("experience_metrics");
+    meta.experienceMetricsPrompted = true;
+    const q2 = planNextQuestion(profile, meta);
+    expect(q2!.phase).toBe("career_direction");
+    expect(q2!.pills.map((p) => p.label)).toEqual(
       expect.arrayContaining(["Target AI/ML roles", "Hybrid AI + SWE roles", "Stay in SWE"]),
     );
   });

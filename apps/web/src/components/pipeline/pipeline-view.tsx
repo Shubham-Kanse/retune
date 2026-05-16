@@ -168,13 +168,13 @@ const ERROR_COPY: Record<
   rate_limited: {
     headline: "Anthropic API is rate-limited",
     detail: "Too many requests at once. This resolves automatically.",
-    action: "Click Retry — the request will back off and retry.",
+    action: "Click Retry - the request will back off and retry.",
     retryable: true,
   },
   context_too_long: {
     headline: "Job description is too long",
     detail: "The profile + JD exceeded the model's context window.",
-    action: "Paste a shorter section of the JD — the first 3–4 sections are enough.",
+    action: "Paste a shorter section of the JD - the first 3–4 sections are enough.",
     retryable: false,
   },
   api_connection: {
@@ -240,7 +240,7 @@ const ERROR_COPY: Record<
   validation_failed: {
     headline: "Resume didn't pass quality check",
     detail: "The generated resume scored below the 85/100 quality threshold.",
-    action: "Click Retry — a second pass often produces a higher-quality result.",
+    action: "Click Retry - a second pass often produces a higher-quality result.",
     retryable: true,
   },
   unknown: {

@@ -8,8 +8,7 @@ import {
   ChainOfThoughtStep,
   ChainOfThoughtTrigger,
 } from "@/components/prompt-kit/chain-of-thought";
-import { TextShimmerLoader } from "@/components/prompt-kit/loader";
-import { Message, MessageAvatar, MessageContent } from "@/components/prompt-kit/message";
+import { TextShimmer } from "@/components/prompt-kit/text-shimmer";
 import {
   Reasoning,
   ReasoningContent,
@@ -161,24 +160,24 @@ export default function GenerationPage() {
     <PageShell width="wide">
       <div className="mb-8 flex items-end justify-between">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/50">
             {isComplete ? "Done" : isError ? "Interrupted" : "Tuning"}
           </p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight md:text-4xl">
+          <h1 className="mt-1.5 text-xl font-medium tracking-tight text-foreground">
             {isComplete
-              ? "Shipping your package"
+              ? "Your package is ready"
               : isError
                 ? "Something went wrong"
-                : "Tuning your application"}
+                : "Working on your application"}
           </h1>
         </div>
         <button
           type="button"
           onClick={() => {
             stop();
-            router.push("/dashboard");
+            router.push("/generate/new");
           }}
-          className="rounded-md border border-border p-2 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          className="rounded-md p-2 text-muted-foreground/40 transition-colors hover:text-foreground"
           aria-label="Cancel"
         >
           <X className="size-4" />
@@ -191,88 +190,70 @@ export default function GenerationPage() {
         </div>
       ) : null}
 
-      <Message className="mb-6">
-        <MessageAvatar src="" alt="Retuned" fallback="R" />
-        <div className="min-w-0 flex-1">
-          <MessageContent className="bg-card border border-border">
-            {isActive ? (
-              <TextShimmerLoader
-                text={currentSpecialist ? humanize(currentSpecialist) : "Starting the cognitive pipeline"}
-              />
-            ) : isComplete ? (
-              <span>Your application package is ready. Opening results…</span>
-            ) : (
-              <span>Tuning paused.</span>
-            )}
-          </MessageContent>
-
-          <div className="mt-4 border-t border-border/50 pt-4">
-            <ChainOfThought>
-              {PHASES.map((phase) => {
-                const s = phaseState(phase.key);
-                const Icon =
-                  s === "done"
-                    ? Check
-                    : s === "active"
-                      ? Loader2
-                      : CircleDot;
-                return (
-                  <ChainOfThoughtStep key={phase.key} defaultOpen={s === "active"}>
-                    <ChainOfThoughtTrigger
-                      leftIcon={
-                        <Icon
-                          className={cn(
+      <div className="mb-6">
+        <ChainOfThought>
+          <ChainOfThoughtStep defaultOpen>
+            <ChainOfThoughtTrigger>
+              {!isComplete && !isError
+                ? <TextShimmer>Tuning your application</TextShimmer>
+                : isComplete ? "Tuning complete" : "Tuning interrupted"}
+            </ChainOfThoughtTrigger>
+            <ChainOfThoughtContent>
+              <ChainOfThought>
+                {PHASES.map((phase) => {
+                  const s = phaseState(phase.key);
+                  const Icon = s === "done" ? Check : s === "active" ? Loader2 : CircleDot;
+                  return (
+                    <ChainOfThoughtStep key={phase.key} defaultOpen={s === "active"}>
+                      <ChainOfThoughtTrigger
+                        leftIcon={
+                          <Icon className={cn(
                             "size-4",
                             s === "done" && "text-emerald-500",
                             s === "active" && "animate-spin text-foreground",
                             s === "pending" && "text-muted-foreground/40",
-                          )}
-                        />
-                      }
-                    >
-                      <span
-                        className={cn(
+                          )} />
+                        }
+                      >
+                        <span className={cn(
                           s === "pending" && "text-muted-foreground/60",
                           s === "active" && "text-foreground",
                           s === "done" && "text-foreground",
-                        )}
-                      >
-                        {phase.label}
-                      </span>
-                    </ChainOfThoughtTrigger>
-                    <ChainOfThoughtContent>
-                      {traceEntries
-                        .filter((t) => phase.specialists.includes(t.specialist))
-                        .map((t) => (
-                          <ChainOfThoughtItem key={t.seq}>
-                            <span className="font-mono text-[11px] text-muted-foreground/80">
-                              {t.displayName || humanize(t.specialist)}
-                            </span>
-                            <span className="ml-2 font-mono text-[10px] text-muted-foreground/60">
-                              {t.latencyMs}ms
-                            </span>
+                        )}>
+                          {s === "active" ? <TextShimmer>{phase.label}</TextShimmer> : phase.label}
+                        </span>
+                      </ChainOfThoughtTrigger>
+                      <ChainOfThoughtContent>
+                        {traceEntries
+                          .filter((t) => phase.specialists.includes(t.specialist))
+                          .map((t) => (
+                            <ChainOfThoughtItem key={t.seq}>
+                              <span className="font-mono text-[11px] text-muted-foreground/80">
+                                {t.displayName || humanize(t.specialist)}
+                              </span>
+                              <span className="ml-2 font-mono text-[10px] text-muted-foreground/60">
+                                {t.latencyMs}ms
+                              </span>
+                            </ChainOfThoughtItem>
+                          ))}
+                        {s === "active" && currentSpecialist ? (
+                          <ChainOfThoughtItem>
+                            <span className="text-muted-foreground">{humanize(currentSpecialist)}…</span>
                           </ChainOfThoughtItem>
-                        ))}
-                      {phaseState(phase.key) === "active" && currentSpecialist ? (
-                        <ChainOfThoughtItem>
-                          <span className="text-muted-foreground">
-                            {humanize(currentSpecialist)}…
-                          </span>
-                        </ChainOfThoughtItem>
-                      ) : null}
-                    </ChainOfThoughtContent>
-                  </ChainOfThoughtStep>
-                );
-              })}
-            </ChainOfThought>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between font-mono text-[11px] text-muted-foreground">
-            <span>{traceEntries.length} ticks</span>
-            <span>{elapsed} elapsed</span>
-          </div>
-        </div>
-      </Message>
+                        ) : null}
+                      </ChainOfThoughtContent>
+                    </ChainOfThoughtStep>
+                  );
+                })}
+              </ChainOfThought>
+              <div className="mt-3 flex items-center justify-between font-mono text-[11px] text-muted-foreground/50">
+                <span>{traceEntries.length} ticks</span>
+                <span>{elapsed} elapsed</span>
+              </div>
+            </ChainOfThoughtContent>
+          </ChainOfThoughtStep>
+        </ChainOfThought>
+      </div>
 
       {isError ? (
         <div className="flex gap-2">

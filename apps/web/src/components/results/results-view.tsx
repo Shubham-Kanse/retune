@@ -37,7 +37,7 @@ function VerdictCard({
     <div className={`rounded-2xl p-6 ${isShip ? "bg-[#c8e6c9]" : "bg-[#fde8e8]"}`}>
       <p className="text-[10px] font-bold uppercase tracking-widest text-[#6b6b5b] mb-1">Verdict</p>
       <p className="text-2xl font-bold text-[#1a1a1a] mb-3">
-        {isShip ? "SHIPPED" : (verdict?.toUpperCase() ?? "—")}
+        {isShip ? "SHIPPED" : (verdict?.toUpperCase() ?? "-")}
       </p>
       <div className="flex gap-4 text-sm">
         <div>
@@ -152,7 +152,7 @@ function GdprPacketViewer({
         Verdict: <span className="font-medium text-[#1a1a1a] capitalize">{verdict}</span>
       </p>
       <p className="text-xs text-[#6b6b5b]">
-        Generation: <span className="font-mono">{String(packet.generation_id ?? "—")}</span>
+        Generation: <span className="font-mono">{String(packet.generation_id ?? "-")}</span>
       </p>
     </div>
   );
@@ -553,7 +553,7 @@ function AnalysisSidebar({
                 />
               </svg>
               <span className="absolute text-sm font-semibold tabular-nums text-foreground">
-                {animatedAtsScore != null ? animatedAtsScore : "—"}
+                {animatedAtsScore != null ? animatedAtsScore : "-"}
               </span>
             </div>
             <Tooltip content="Percentage of required JD keywords found in your resume. Target: 85%+. Below 70% risks automatic rejection.">
@@ -741,7 +741,7 @@ function AnalysisSidebar({
                 </p>
                 <p className="text-[10px] text-muted-foreground/70 mb-3 leading-relaxed">
                   These required skills appear in the JD but have weak backing in your profile. The
-                  resume includes them — a recruiter may probe further.
+                  resume includes them - a recruiter may probe further.
                 </p>
                 <div className="space-y-1.5">
                   {t1Gaps.slice(0, 4).map((gap) => (
@@ -791,7 +791,7 @@ function AnalysisSidebar({
             {stats.quantifiedPct > 0 && (
               <p className="text-xs leading-relaxed text-muted-foreground">
                 <span className="text-foreground font-medium">{stats.quantifiedPct}%</span> of
-                bullet points include quantified metrics — numbers, percentages, or scale indicators
+                bullet points include quantified metrics - numbers, percentages, or scale indicators
                 that demonstrate measurable impact.
               </p>
             )}
@@ -1408,7 +1408,7 @@ export function ResultsView({ application }: { application: Application }) {
                   <h3 className="rt-label mb-3">How I Thought About This</h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
                     {narrativeText ??
-                      "Analysis complete — this application was assembled using the full pipeline."}
+                      "Analysis complete - this application was assembled using the full pipeline."}
                   </p>
                 </section>
               );

@@ -4,7 +4,7 @@ import React from "react";
 
 const testimonials = [
   {
-    text: "Got my dream job at Google after using Retuned. The ATS optimization alone was worth it — 3 rejections turned into 2 interviews.",
+    text: "Got my dream job at Google after using Retuned. The ATS optimization alone was worth it - 3 rejections turned into 2 interviews.",
     name: "Marcus T.",
     role: "Staff Engineer, Google",
     avatar: "MT",
@@ -34,13 +34,13 @@ const testimonials = [
     avatar: "DC",
   },
   {
-    text: "The strategy doc it generates is incredible — referral queries, outreach templates, interview prep all tailored to the exact role.",
+    text: "The strategy doc it generates is incredible - referral queries, outreach templates, interview prep all tailored to the exact role.",
     name: "Aisha R.",
     role: "Product Designer, Linear",
     avatar: "AR",
   },
   {
-    text: "Applied to Shopify on a whim using a Retuned package. Got the offer. The predicted callback was 78% — they were right.",
+    text: "Applied to Shopify on a whim using a Retuned package. Got the offer. The predicted callback was 78% - they were right.",
     name: "Tom H.",
     role: "Senior SWE, Shopify",
     avatar: "TH",

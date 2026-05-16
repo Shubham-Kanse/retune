@@ -25,7 +25,8 @@ import { SSE_HEADERS, sseEvent } from "@/lib/onboarding/sse";
 import { ONBOARDING_TOOLS } from "@/lib/onboarding/tools";
 import { resolveTrustedPillAction, resolveTrustedMultiSelectAction, resolveTrustedSkillsUpdateAction } from "@/lib/onboarding/action-validation";
 import { attachFieldEdit, updateProfileOnboardingReadiness } from "@/lib/onboarding/career-profile.schema";
-import { persistProfile } from "@/lib/profile-domain/repositories/profile-repository";
+import { persistProfile, wipeUserOnboardingData } from "@/lib/profile-domain/repositories/profile-repository";
+import { triggerInitialUnderstandingGeneration } from "@/lib/career-understanding/auto-generate";
 import type { OnboardingQuestion, Pill, ProfileReadiness, SessionState, StoredMessage, UserCareerProfile } from "@/lib/onboarding/types";
 
 const START_OVER_LIMIT = 25;
@@ -41,7 +42,9 @@ type ChatRequest =
   | { kind: "resume_uploaded" }
   | { kind: "resume_failed" }
   | { kind: "start_over" }
-  | { kind: "finish_later" };
+  | { kind: "go_back" }
+  | { kind: "finish_later" }
+  | { kind: "finish_now" };
 
 function parseBody(raw: unknown): ChatRequest {
   if (!raw || typeof raw !== "object") throw new ValidationError("Invalid body");
@@ -51,7 +54,9 @@ function parseBody(raw: unknown): ChatRequest {
   if (r.kind === "resume_failed") return { kind: "resume_failed" };
   if (r.kind === "resume_uploaded") return { kind: "resume_uploaded" };
   if (r.kind === "start_over") return { kind: "start_over" };
+  if (r.kind === "go_back") return { kind: "go_back" };
   if (r.kind === "finish_later") return { kind: "finish_later" };
+  if (r.kind === "finish_now") return { kind: "finish_now" };
 
   if (r.kind === "message" || r.kind === "text_input") {
     const text = typeof r.text === "string" ? r.text.trim() : "";
@@ -120,6 +125,11 @@ export const POST = withAuth(async (request, session) => {
     if (stored.meta.resetCount >= START_OVER_LIMIT) {
       return new Response(sseEvent("error", { message: `Already restarted ${START_OVER_LIMIT} times.` }), { headers: SSE_HEADERS });
     }
+    // SOTA reset: wipe onboarding-derived DB rows (profile, resume cache,
+    // onboarding_completed flag) BEFORE resetting the in-memory session.
+    // Without this, completed users would have stale profile data left in
+    // the DB after starting over but before re-completing.
+    await wipeUserOnboardingData(session.userId);
     const resetCount = stored.meta.resetCount + 1;
     stored.profile = createEmptyProfile(session.userId);
     stored.meta = {
@@ -134,10 +144,13 @@ export const POST = withAuth(async (request, session) => {
       educationConfirmed: false,
       skillsConfirmed: false,
       projectsCertificationsReviewed: false,
+      extrasConfirmed: false,
+      experienceMetricsPrompted: false,
       educationNotApplicable: false,
       optionalTonePrompted: false,
       pendingTextInput: undefined,
       enhancementTurns: 0,
+      stepHistory: [],
       resetCount,
       status: "draft",
       resumeFileHash: null,
@@ -175,6 +188,46 @@ export const POST = withAuth(async (request, session) => {
       });
   }
 
+  if (body.kind === "finish_now") {
+    const readiness = calculateProfileReadiness(stored.profile);
+    if (!readiness.canEnterDashboard) {
+      // Don't finish if not ready — fall through to normal flow.
+      return streamTurn({
+        message: readiness.blockers[0] ?? "A little more profile detail is needed before the dashboard.",
+        question: null,
+        readiness,
+        stage: "profile_gap_fill",
+        traceId,
+      });
+    }
+    const completedAt = new Date().toISOString();
+    stored.status = "completed";
+    stored.completedAt = completedAt;
+    stored.meta.status = "completed";
+    stored.meta.completedAt = completedAt;
+    stored.profile.onboarding.completedAt = completedAt;
+    await persistProfile({
+      userId: session.userId,
+      sessionEmail: session.email,
+      sessionFullName: session.fullName,
+      profile: stored.profile,
+      markOnboardingCompleted: true,
+      readiness,
+    });
+    // Auto-generate the initial career understanding in the background so
+    // the user lands on the dashboard / profile page with it already ready
+    // (or nearly ready). Fire-and-forget — failures don't block handoff.
+    triggerInitialUnderstandingGeneration({
+      userId: session.userId,
+      profile: stored.profile,
+      readiness,
+    });
+    stored.meta.currentPhase = "dashboard_handoff";
+    await saveSession(session.userId, stored);
+    await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "profile_ready", payload: { score: readiness.score, via: "finish_now" } });
+    return streamTurn({ message: fallbackFor("profile_ready"), question: null, readiness, stage: "dashboard_handoff", traceId });
+  }
+
   if (body.kind === "finish_later") {
     stored.status = "draft";
     stored.meta.status = "draft";
@@ -185,6 +238,37 @@ export const POST = withAuth(async (request, session) => {
       question: null,
       readiness: calculateProfileReadiness(stored.profile),
       stage: "profile_gap_fill",
+      traceId,
+    });
+  }
+
+  if (body.kind === "go_back") {
+    const history = stored.meta.stepHistory ?? [];
+    if (history.length > 1) {
+      // Pop current step, go to previous
+      history.pop();
+      const prevKey = history[history.length - 1]!;
+      // Unconfirm the previous step so the planner re-asks it
+      unconfirmStep(stored, prevKey);
+      stored.meta.stepHistory = history;
+      const question = planNextQuestion(stored.profile, stored.meta);
+      await saveSession(session.userId, stored);
+      const message = question ? fallbackFor(question.questionKey) : "Let's continue.";
+      return streamTurn({
+        message,
+        question,
+        readiness: calculateProfileReadiness(stored.profile),
+        stage: question?.phase ?? stored.meta.currentPhase,
+        traceId,
+      });
+    }
+    // Nothing to go back to
+    const question = planNextQuestion(stored.profile, stored.meta);
+    return streamTurn({
+      message: "You're at the beginning — nothing to go back to.",
+      question,
+      readiness: calculateProfileReadiness(stored.profile),
+      stage: question?.phase ?? stored.meta.currentPhase,
       traceId,
     });
   }
@@ -217,7 +301,50 @@ export const POST = withAuth(async (request, session) => {
 
     stored.messages.push({ role: "user", content: guarded.text, ts: new Date().toISOString() });
 
-    const decision = await routeFreeText({
+    // ── Deterministic pre-router for common short confirmation/skip phrases ──
+    // The AI router gets confused by short generic answers like "Continue",
+    // "Correct", "Skip", "Yes", "Looks good". When the current question has
+    // a confirm pill and the user types one of these, route it to that pill
+    // directly — no AI roundtrip, no ambiguity, no data corruption.
+    let preRouted = false;
+    if (currentQuestion) {
+      const normalized = guarded.text.trim().toLowerCase();
+      const CONFIRM_PHRASES = new Set([
+        "continue", "ok", "okay", "yes", "yep", "yeah", "y", "sure",
+        "correct", "right", "looks good", "looks correct", "looks mostly correct",
+        "fine", "good", "great", "next", "go", "proceed", "confirm", "confirmed",
+        "all good", "all correct", "thats right", "that's right", "its right", "it's right",
+      ]);
+      const SKIP_PHRASES = new Set([
+        "skip", "pass", "no", "n", "nope", "skip it", "no thanks", "later",
+        "skip metrics", "skip this", "i don't know", "idk", "dont know", "don't know",
+      ]);
+      const isConfirm = CONFIRM_PHRASES.has(normalized);
+      const isSkip = SKIP_PHRASES.has(normalized);
+      if (isConfirm || isSkip) {
+        const targetAction: Pill["action"] = isConfirm ? "confirm_field" : "skip";
+        const matchedPill =
+          currentQuestion.pills.find((p) => p.action === targetAction && p.recommended) ??
+          currentQuestion.pills.find((p) => p.action === targetAction);
+        if (matchedPill) {
+          applyPillAction(stored, currentQuestion.questionKey, matchedPill);
+          if (isSkip) {
+            stored.meta.skippedQuestionKeys.push({
+              questionKey: currentQuestion.questionKey,
+              field: currentQuestion.field,
+              skippedAt: new Date().toISOString(),
+              skipScope: "this_session",
+            });
+          }
+          preRouted = true;
+          textApplySummary = isSkip ? "Skipped." : "Confirmed.";
+        }
+      }
+    }
+
+    const decision = preRouted
+      ? null
+      : await routeFreeText({
       text: guarded.text,
       question: currentQuestion,
       profile: stored.profile,
@@ -226,66 +353,106 @@ export const POST = withAuth(async (request, session) => {
       skippedKeys: stored.meta.skippedQuestionKeys.map((s) => s.questionKey),
     });
 
-    await logOnboardingEvent({
-      userId: session.userId,
-      sessionId: stored.id,
-      eventType: "text_routed",
-      payload: { intent: decision.intent, questionKey: currentQuestion?.questionKey },
-    });
-
-    // Short-circuit on non-writing intents — user gets immediate, focused feedback
-    // instead of the silent no-op the old applyTextToField produced.
-    if (decision.intent === "ambiguous" || decision.intent === "off_topic") {
-      const message =
-        decision.intent === "ambiguous"
-          ? decision.clarification
-          : `Happy to come back to that — first, let me get the current question right.`;
-      stored.messages.push({
-        role: "assistant",
-        content: message,
-        ts: new Date().toISOString(),
-        questionKey: currentQuestion?.questionKey,
-        cards: currentQuestion?.cards,
-        pills: currentQuestion?.pills,
+    if (decision) {
+      await logOnboardingEvent({
+        userId: session.userId,
+        sessionId: stored.id,
+        eventType: "text_routed",
+        payload: { intent: decision.intent, questionKey: currentQuestion?.questionKey },
       });
-      stored.turnCount += 1;
-      await saveSession(session.userId, stored);
-          return streamTurn({
-            message,
-            question: currentQuestion,
-            readiness: calculateProfileReadiness(stored.profile),
-            stage: currentQuestion?.phase ?? stored.meta.currentPhase,
-            traceId,
-          });
-    }
 
-    if (decision.intent === "skip") {
-      if (currentQuestion?.skipAllowed) {
-        stored.meta.skippedQuestionKeys.push({
-          questionKey: currentQuestion.questionKey,
-          field: currentQuestion.field,
-          skippedAt: new Date().toISOString(),
-          skipScope: "this_session",
+      // Short-circuit on non-writing intents — user gets immediate, focused feedback
+      // instead of the silent no-op the old applyTextToField produced.
+      if (decision.intent === "ambiguous" || decision.intent === "off_topic") {
+        const message =
+          decision.intent === "ambiguous"
+            ? decision.clarification
+            : `Happy to come back to that - first, let me get the current question right.`;
+        stored.messages.push({
+          role: "assistant",
+          content: message,
+          ts: new Date().toISOString(),
+          questionKey: currentQuestion?.questionKey,
+          cards: currentQuestion?.cards,
+          pills: currentQuestion?.pills,
+        });
+        stored.turnCount += 1;
+        await saveSession(session.userId, stored);
+        return streamTurn({
+          message,
+          question: currentQuestion,
+          readiness: calculateProfileReadiness(stored.profile),
+          stage: currentQuestion?.phase ?? stored.meta.currentPhase,
+          traceId,
         });
       }
-    } else {
-      // answer_current or edit_field — validate + apply
-      const result = applyRouterDecision(stored, decision);
-      if (result.ok) {
-        textApplySummary = result.summary;
-        if (currentQuestion && decision.intent === "answer_current") {
-          if (!stored.meta.answeredQuestionKeys.includes(currentQuestion.questionKey)) {
-            stored.meta.answeredQuestionKeys.push(currentQuestion.questionKey);
-          }
-          // Mirror the confirm-pill effect for confirm-style questions
-          switch (currentQuestion.questionKey) {
-            case "identity_confirm": stored.meta.identityConfirmed = true; break;
-            case "experience_confirm": stored.meta.experienceConfirmed = true; break;
-            case "education_confirm": stored.meta.educationConfirmed = true; break;
-            case "skills_confirm": stored.meta.skillsConfirmed = true; break;
-          }
+
+      if (decision.intent === "skip") {
+        if (currentQuestion?.skipAllowed) {
+          stored.meta.skippedQuestionKeys.push({
+            questionKey: currentQuestion.questionKey,
+            field: currentQuestion.field,
+            skippedAt: new Date().toISOString(),
+            skipScope: "this_session",
+          });
         }
       } else {
+        // answer_current or edit_field — validate + apply
+        const result = applyRouterDecision(stored, decision);
+        if (result.ok) {
+          textApplySummary = result.summary;
+          if (currentQuestion && decision.intent === "answer_current") {
+            if (!stored.meta.answeredQuestionKeys.includes(currentQuestion.questionKey)) {
+              stored.meta.answeredQuestionKeys.push(currentQuestion.questionKey);
+            }
+            // Mirror the confirm-pill effect for confirm-style questions
+            switch (currentQuestion.questionKey) {
+              case "identity_confirm": stored.meta.identityConfirmed = true; break;
+              case "experience_confirm": stored.meta.experienceConfirmed = true; break;
+              case "education_confirm": stored.meta.educationConfirmed = true; break;
+              case "skills_confirm": stored.meta.skillsConfirmed = true; break;
+              case "experience_metrics": stored.meta.experienceMetricsPrompted = true; break;
+              case "extras_confirm": stored.meta.extrasConfirmed = true; break;
+            }
+          }
+        } else if (currentQuestion?.questionKey === "experience_metrics") {
+          // For experience_metrics, treat free text as achievements for the top
+          // roles — but only if the text looks like a real achievement (not a
+          // single short generic word like "yes" or "ok"). Generic confirmations
+          // are already handled by the deterministic pre-router above.
+          const topRoles = stored.profile.experience.value.slice(0, 2);
+          const looksLikeAchievement = guarded.text.trim().length >= 12 && /\s/.test(guarded.text.trim());
+          if (topRoles.length > 0 && looksLikeAchievement) {
+            const bullets = guarded.text.split(/[;\n]/).map((s: string) => s.trim()).filter((s) => s.length >= 6);
+            if (bullets.length > 0) {
+              topRoles[0]!.achievements = [...(topRoles[0]!.achievements ?? []), ...bullets];
+              stored.profile.experience = attachFieldEdit(stored.profile.experience, stored.profile.experience.value, { source: "user", actor: "router", reason: "experience_metrics", confidence: 1, confirmed: true });
+              textApplySummary = `Added ${bullets.length} achievement${bullets.length === 1 ? "" : "s"} to ${topRoles[0]!.title} at ${topRoles[0]!.company}.`;
+              stored.meta.experienceMetricsPrompted = true;
+            }
+          } else {
+            // Text doesn't look like a real achievement and didn't match a
+            // confirm/skip phrase. Re-ask with a hint.
+            const message = `I wasn't sure how to apply that. You can describe an impact (e.g. "reduced X by 30%") or click "Skip metrics" to move on.`;
+            stored.messages.push({
+              role: "assistant",
+              content: message,
+              ts: new Date().toISOString(),
+              questionKey: currentQuestion.questionKey,
+              cards: currentQuestion.cards,
+              pills: currentQuestion.pills,
+            });
+            stored.turnCount += 1;
+            await saveSession(session.userId, stored);
+            return streamTurn({
+              message,
+              question: currentQuestion,
+              readiness: calculateProfileReadiness(stored.profile),
+              stage: currentQuestion.phase,
+              traceId,
+            });
+          }
+        } else {
         // Schema validation failed — short-circuit with a focused reply
         const message = `I couldn't apply that to ${decision.field} (${result.reason}). Could you rephrase?`;
         stored.messages.push({
@@ -306,6 +473,7 @@ export const POST = withAuth(async (request, session) => {
           traceId,
         });
       }
+    }
     }
   } else if (body.kind === "multi_select") {
     const currentQuestion = planNextQuestion(stored.profile, stored.meta);
@@ -356,7 +524,18 @@ export const POST = withAuth(async (request, session) => {
 
   const readiness = calculateProfileReadiness(stored.profile);
   updateProfileOnboardingReadiness(stored.profile, readiness);
-  const question = planNextQuestion(stored.profile, stored.meta);
+  const baseQuestion = planNextQuestion(stored.profile, stored.meta);
+  // If profile is ready AND the next step is optional, append a "Finish onboarding"
+  // pill so the user can exit without filling every optional step.
+  const question = baseQuestion && readiness.canEnterDashboard && baseQuestion.skipAllowed
+    ? {
+        ...baseQuestion,
+        pills: [
+          ...baseQuestion.pills,
+          { label: "Finish onboarding", value: "finish_now", action: "navigate" as const, field: "_finish_now", recommended: true },
+        ],
+      }
+    : baseQuestion;
 
   if (!question && readiness.canEnterDashboard) {
     const completedAt = new Date().toISOString();
@@ -371,6 +550,12 @@ export const POST = withAuth(async (request, session) => {
       sessionFullName: session.fullName,
       profile: stored.profile,
       markOnboardingCompleted: true,
+      readiness,
+    });
+    // Auto-generate the initial career understanding in the background.
+    triggerInitialUnderstandingGeneration({
+      userId: session.userId,
+      profile: stored.profile,
       readiness,
     });
 
@@ -394,6 +579,10 @@ export const POST = withAuth(async (request, session) => {
 
   stored.meta.currentPhase = question.phase;
   stored.meta.lastQuestionKey = question.questionKey;
+  if (!stored.meta.stepHistory) stored.meta.stepHistory = [];
+  if (stored.meta.stepHistory[stored.meta.stepHistory.length - 1] !== question.questionKey) {
+    stored.meta.stepHistory.push(question.questionKey);
+  }
   await logOnboardingEvent({ userId: session.userId, sessionId: stored.id, eventType: "question_planned", payload: { phase: question.phase, questionKey: question.questionKey } });
 
   const message = await generateAssistantMessage(question, stored.profile, textApplySummary, stored.messages);
@@ -541,6 +730,16 @@ function fixedCardPrompt(question: OnboardingQuestion): string | null {
       return "Choose the areas future resumes should emphasize most, then continue.";
     case "de_emphasis_preferences":
       return "Choose what future resumes should avoid over-highlighting, then continue.";
+    case "role_dealbreakers":
+      return "Any roles, companies, or conditions you'd never accept? Select any that apply, or continue.";
+    case "tone_preferences":
+      return "What tone should future resumes use? Select all that apply, then continue.";
+    case "style_constraints":
+      return "Anything to avoid in resume writing style? Select any that apply, or continue.";
+    case "extras_confirm":
+      return "I found some additional details. Please review them.";
+    case "experience_metrics":
+      return null; // Let the LLM generate a personalized prompt for this one
     case "fill_skills":
       return "I could not confidently extract enough skills. Add at least 5 core skills, separated by commas.";
     default:
@@ -636,6 +835,16 @@ function applyPillAction(stored: SessionState, questionKey: string, pill: Pill) 
       profile.projects.confirmed = true;
       profile.certifications.confirmed = true;
     }
+    if (field === "extras" || questionKey === "extras_confirm") {
+      meta.extrasConfirmed = true;
+      profile.languages.confirmed = true;
+      profile.awards.confirmed = true;
+      profile.publications.confirmed = true;
+      profile.volunteering.confirmed = true;
+    }
+    if (field === "experience" && questionKey === "experience_metrics") {
+      meta.experienceMetricsPrompted = true;
+    }
     if (field === "education" && questionKey === "fill_education") {
       meta.educationConfirmed = true;
       meta.educationNotApplicable = true;
@@ -659,6 +868,15 @@ function applyPillAction(stored: SessionState, questionKey: string, pill: Pill) 
     }
     if (field === "resumeWritingPreferences.deEmphasisAreas" || questionKey === "de_emphasis_preferences") {
       profile.resumeWritingPreferences.deEmphasisAreas.confirmed = true;
+    }
+    if (field === "careerIntent.roleDealbreakers" || questionKey === "role_dealbreakers") {
+      profile.careerIntent.roleDealbreakers.confirmed = true;
+    }
+    if (field === "resumeWritingPreferences.toneSignals" || questionKey === "tone_preferences") {
+      profile.resumeWritingPreferences.toneSignals.confirmed = true;
+    }
+    if (field === "resumeWritingPreferences.styleConstraints" || questionKey === "style_constraints") {
+      profile.resumeWritingPreferences.styleConstraints.confirmed = true;
     }
     if (!meta.answeredQuestionKeys.includes(questionKey)) meta.answeredQuestionKeys.push(questionKey);
     return;
@@ -702,6 +920,18 @@ function applyPillAction(stored: SessionState, questionKey: string, pill: Pill) 
       case "de_emphasis_preferences":
         profile.resumeWritingPreferences.deEmphasisAreas = attachFieldEdit(profile.resumeWritingPreferences.deEmphasisAreas, [...new Set([...profile.resumeWritingPreferences.deEmphasisAreas.value, pill.value])], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: false });
         break;
+      case "careerIntent.roleDealbreakers":
+      case "role_dealbreakers":
+        profile.careerIntent.roleDealbreakers = attachFieldEdit(profile.careerIntent.roleDealbreakers, [...new Set([...profile.careerIntent.roleDealbreakers.value, pill.value])], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: false });
+        break;
+      case "resumeWritingPreferences.toneSignals":
+      case "tone_preferences":
+        profile.resumeWritingPreferences.toneSignals = attachFieldEdit(profile.resumeWritingPreferences.toneSignals, [...new Set([...profile.resumeWritingPreferences.toneSignals.value, pill.value])], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: false });
+        break;
+      case "resumeWritingPreferences.styleConstraints":
+      case "style_constraints":
+        profile.resumeWritingPreferences.styleConstraints = attachFieldEdit(profile.resumeWritingPreferences.styleConstraints, [...new Set([...profile.resumeWritingPreferences.styleConstraints.value, pill.value])], { source: "user", actor: "user", reason: questionKey, confidence: 1, confirmed: false });
+        break;
     }
     if (!meta.answeredQuestionKeys.includes(questionKey)) meta.answeredQuestionKeys.push(questionKey);
     return;
@@ -744,6 +974,18 @@ function applyMultiSelect(stored: SessionState, field: string, values: string[])
     case "resumeWritingPreferences.deEmphasisAreas":
     case "de_emphasis_preferences":
       stored.profile.resumeWritingPreferences.deEmphasisAreas = attachFieldEdit(stored.profile.resumeWritingPreferences.deEmphasisAreas, selected, { source: "user", actor: "user", reason: "multi_select", confidence: 1, confirmed: true });
+      break;
+    case "careerIntent.roleDealbreakers":
+    case "role_dealbreakers":
+      stored.profile.careerIntent.roleDealbreakers = attachFieldEdit(stored.profile.careerIntent.roleDealbreakers, selected, { source: "user", actor: "user", reason: "multi_select", confidence: 1, confirmed: true });
+      break;
+    case "resumeWritingPreferences.toneSignals":
+    case "tone_preferences":
+      stored.profile.resumeWritingPreferences.toneSignals = attachFieldEdit(stored.profile.resumeWritingPreferences.toneSignals, selected, { source: "user", actor: "user", reason: "multi_select", confidence: 1, confirmed: true });
+      break;
+    case "resumeWritingPreferences.styleConstraints":
+    case "style_constraints":
+      stored.profile.resumeWritingPreferences.styleConstraints = attachFieldEdit(stored.profile.resumeWritingPreferences.styleConstraints, selected, { source: "user", actor: "user", reason: "multi_select", confidence: 1, confirmed: true });
       break;
   }
 }
@@ -791,4 +1033,31 @@ function toNormalizerInput(profile: UserCareerProfile): Record<string, unknown> 
     skillsTier3: [...profile.skills.business.value, ...profile.skills.softSkills.value].map((name) => ({ name })),
     summary: profile.resumeWritingPreferences.emphasisAreas.value.join(", "),
   };
+}
+
+function unconfirmStep(stored: SessionState, questionKey: string) {
+  const { profile, meta } = stored;
+  // Remove from answered keys so planner re-asks
+  meta.answeredQuestionKeys = meta.answeredQuestionKeys.filter((k) => k !== questionKey);
+  switch (questionKey) {
+    case "identity_confirm": meta.identityConfirmed = false; break;
+    case "experience_confirm": meta.experienceConfirmed = false; profile.experience.confirmed = false; break;
+    case "experience_metrics": meta.experienceMetricsPrompted = false; break;
+    case "education_confirm": meta.educationConfirmed = false; profile.education.confirmed = false; break;
+    case "skills_confirm": meta.skillsConfirmed = false; profile.skills.technical.confirmed = false; profile.skills.tools.confirmed = false; profile.skills.business.confirmed = false; break;
+    case "projects_certifications_review": meta.projectsCertificationsReviewed = false; break;
+    case "extras_confirm": meta.extrasConfirmed = false; break;
+    case "professional_identity": profile.professionalProfile.professionalIdentities.confirmed = false; break;
+    case "career_direction": profile.careerIntent.careerDirection.confirmed = false; break;
+    case "role_interests": profile.careerIntent.interestedRoles.confirmed = false; break;
+    case "role_dealbreakers": profile.careerIntent.roleDealbreakers.confirmed = false; break;
+    case "market_preferences": profile.careerIntent.preferredMarkets.confirmed = false; break;
+    case "work_preferences": profile.careerIntent.workPreference.confirmed = false; break;
+    case "seniority_comfort": profile.careerIntent.seniorityComfort.confirmed = false; break;
+    case "industries_of_interest": profile.careerIntent.industriesOfInterest.confirmed = false; break;
+    case "emphasis_preferences": profile.resumeWritingPreferences.emphasisAreas.confirmed = false; break;
+    case "de_emphasis_preferences": profile.resumeWritingPreferences.deEmphasisAreas.confirmed = false; break;
+    case "tone_preferences": profile.resumeWritingPreferences.toneSignals.confirmed = false; break;
+    case "style_constraints": profile.resumeWritingPreferences.styleConstraints.confirmed = false; break;
+  }
 }

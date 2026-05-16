@@ -4,9 +4,10 @@ import { BloomTransition } from "@/components/onboarding/BloomTransition";
 import { ConfirmDialog } from "@/components/onboarding/ConfirmDialog";
 import { ProfileDisplayCard } from "@/components/onboarding/ChatComponents";
 import { OnboardingHeader } from "@/components/onboarding/OnboardingHeader";
-import { BrainIcon, type BrainIconHandle } from "@/components/ui/brain-icon";
+import { ColorOrb } from "@/components/retune-lens/color-orb";
 import { ShiningText } from "@/components/ui/shining-text";
 import { type UIMessage, type Pill, type DisplayCard, useOnboardingChat } from "@/hooks/use-onboarding-chat";
+import { isMultiSelectQuestion } from "@/lib/onboarding/multi-select";
 import { cn } from "@/lib/utils";
 import { ArrowUp, Check, CornerDownLeft } from "lucide-react";
 import { motion } from "motion/react";
@@ -14,15 +15,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TRANSITION_INTRO_COMPLETE_MS, TRANSITION_INTRO_STEP_MS } from "@/lib/onboarding/transition";
 
-// ─── Animated Brain helper ────────────────────────────────────────────────────
+// ─── Animated Orb helper ──────────────────────────────────────────────────────
 
-function AnimatedBrain({ size = 24, animate = true, className }: { size?: number; animate?: boolean; className?: string }) {
-  const ref = useRef<BrainIconHandle>(null);
-  useEffect(() => {
-    if (animate) ref.current?.startAnimation();
-    else ref.current?.stopAnimation();
-  }, [animate]);
-  return <BrainIcon ref={ref} size={size} className={className} />;
+function AnimatedBrain({ size = 24, className }: { size?: number; animate?: boolean; className?: string }) {
+  return <ColorOrb size={size} className={className} />;
 }
 
 // ─── Intro ────────────────────────────────────────────────────────────────────
@@ -72,7 +68,7 @@ function IntroPhase({ onComplete }: { onComplete: () => void }) {
           transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           className="text-[0.9375rem] text-muted-foreground"
         >
-          I&apos;m Retuned — your career profile builder.
+          I&apos;m Retuned - your career profile builder.
         </motion.p>
         <motion.p
           initial={false}
@@ -282,7 +278,7 @@ function PillList({ pills, onSelect, disabled }: { pills: Pill[]; onSelect: (p: 
 
 function ChatView() {
   const router = useRouter();
-  const { messages, isStreaming, isComplete, phase, readiness, errorMessage, extractionStatus, sendMessage, clickPill, stageMultiSelect, submitMultiSelect, submitSkills, uploadFile, startOver } = useOnboardingChat();
+  const { messages, isStreaming, isComplete, isResetting, phase, readiness, errorMessage, extractionStatus, sendMessage, clickPill, stageMultiSelect, submitMultiSelect, submitSkills, uploadFile, startOver, finishNow } = useOnboardingChat();
 
   const [inputValue, setInputValue] = useState("");
   const [skillEditor, setSkillEditor] = useState<SkillBuckets | null>(null);
@@ -292,27 +288,67 @@ function ChatView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto-follow the conversation: keep the user pinned to the newest
-  // content whenever they were already near the bottom. Uses a
-  // ResizeObserver on the inner scroll content so post-stream mounts
-  // (skill cards, pill rows, error rows) also pin into view, not just
-  // streamed text tokens.
+  // Auto-follow the conversation. Two pin modes:
+  //   • Interactive pin: latest assistant msg has pills/cards. We pin its
+  //     TOP to the container top so the question and content stay visible
+  //     above the composer/pills, even as the message grows (cards mount,
+  //     extra rows render, etc.).
+  //   • Bottom pin: no interactive content; we keep scrollTop near bottom
+  //     so streamed tokens stay in view.
+  // The pin only releases on direct user input (wheel, touch, key). We do
+  // NOT listen to "scroll" events because programmatic smooth-scrolls fire
+  // them too, which would self-defeat the auto-scroll.
   const pinnedRef = useRef(true);
+  const pinnedInteractiveIdRef = useRef<string | null>(null);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
 
-    const updatePinned = () => {
-      const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
-      pinnedRef.current = dist < 240;
-    };
-
     const stickToBottom = () => {
       if (!pinnedRef.current) return;
+      const interactiveNodes = el.querySelectorAll<HTMLElement>(
+        '[data-role="assistant"][data-has-interactive="true"]',
+      );
+      const latestInteractive = interactiveNodes[interactiveNodes.length - 1];
+      if (latestInteractive) {
+        const messageId = latestInteractive.getAttribute("data-message-id");
+        pinnedInteractiveIdRef.current = messageId;
+        // requestAnimationFrame ensures the layout is finalized before we measure.
+        requestAnimationFrame(() => {
+          const containerRect = el.getBoundingClientRect();
+          const messageRect = latestInteractive.getBoundingClientRect();
+          const offset = messageRect.top - containerRect.top - 16;
+          el.scrollTo({ top: el.scrollTop + offset, behavior: "smooth" });
+        });
+        return;
+      }
+      pinnedInteractiveIdRef.current = null;
       el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     };
 
-    el.addEventListener("scroll", updatePinned, { passive: true });
+    // Direct-input listeners release the pin. These only fire on real user
+    // gestures, not on programmatic scrolls.
+    const releasePin = () => {
+      pinnedRef.current = false;
+      pinnedInteractiveIdRef.current = null;
+    };
+    el.addEventListener("wheel", releasePin, { passive: true });
+    el.addEventListener("touchstart", releasePin, { passive: true });
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Arrow keys, page up/down, home/end, space — anything that scrolls.
+      if (
+        e.key === "ArrowUp" ||
+        e.key === "ArrowDown" ||
+        e.key === "PageUp" ||
+        e.key === "PageDown" ||
+        e.key === "Home" ||
+        e.key === "End" ||
+        e.key === " "
+      ) {
+        releasePin();
+      }
+    };
+    el.addEventListener("keydown", onKeyDown);
 
     const inner = el.firstElementChild as HTMLElement | null;
     const observer = new ResizeObserver(() => {
@@ -321,12 +357,22 @@ function ChatView() {
     if (inner) observer.observe(inner);
     observer.observe(el);
 
+    const mutationObserver = new MutationObserver(() => {
+      if (pinnedRef.current) stickToBottom();
+    });
+    if (inner) {
+      mutationObserver.observe(inner, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-has-interactive"] });
+    }
+
     // Initial snap on mount so a refreshed page lands at the latest msg.
     stickToBottom();
 
     return () => {
-      el.removeEventListener("scroll", updatePinned);
+      el.removeEventListener("wheel", releasePin);
+      el.removeEventListener("touchstart", releasePin);
+      el.removeEventListener("keydown", onKeyDown);
       observer.disconnect();
+      mutationObserver.disconnect();
     };
   }, []);
 
@@ -338,15 +384,19 @@ function ChatView() {
       if (textareaRef.current) textareaRef.current.style.height = "auto";
     }
     sendMessage(text);
-    // Force-pin: user just sent, they want to follow the reply.
+    // Force-pin: user just sent, they want to follow the reply. Reset
+    // the interactive-pin tracker so the next assistant message can
+    // re-pin its top fresh, even if we'd previously locked onto a
+    // different interactive message.
     pinnedRef.current = true;
-    requestAnimationFrame(() => {
-      const el = scrollRef.current;
-      if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-    });
+    pinnedInteractiveIdRef.current = null;
   };
 
   const handlePillClick = (pill: Pill) => {
+    if (pill.action === "navigate" && pill.value === "finish_now") {
+      finishNow();
+      return;
+    }
     if (pill.action === "navigate" && (pill.value === "upload" || pill.value === "upload_resume")) {
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -355,7 +405,11 @@ function ChatView() {
       return;
     }
     const lastAssistant = messages.filter(m => m.role === "assistant").pop();
-    const isMultiSelect = lastAssistant?.pills?.some((candidate) => candidate.action === "confirm_field" && candidate.field === pill.field && candidate.label === "Continue");
+    // Single-choice confirm pills (resume_summary, experience_metrics) have a
+    // confirm_field pill but no set_field options. Multi-select questions have
+    // both. The shared helper enforces that invariant — see
+    // `lib/onboarding/multi-select.ts` and its tests for the regression history.
+    const isMultiSelect = isMultiSelectQuestion(lastAssistant?.pills, pill.field);
     if (isMultiSelect && pill.action === "set_field") {
       stageMultiSelect(lastAssistant?.questionKey, pill);
       return;
@@ -396,6 +450,12 @@ function ChatView() {
     <div className="relative flex h-full w-full flex-col">
       <OnboardingHeader stage={phase} isStreaming={isStreaming} onStartOver={() => setShowStartOverConfirm(true)} onSkip={() => setShowFinishLaterConfirm(true)} />
 
+      <motion.div
+        animate={{ opacity: isResetting ? 0 : 1 }}
+        transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
+        className="flex h-full min-h-0 flex-1 flex-col"
+      >
+
       <div className="flex-shrink-0 border-b border-border/50 bg-background/40 backdrop-blur-sm">
         <div className="mx-auto flex max-w-[680px] items-center justify-between gap-4 px-4 py-2 text-[0.72rem] md:px-6">
           <span className="tabular-nums font-medium text-foreground">{Math.round(readiness.score ?? 0)}%</span>
@@ -412,7 +472,13 @@ function ChatView() {
       <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="mx-auto w-full max-w-[680px] space-y-4 pt-6 pb-4">
           {visibleMessages.map((msg, i) => (
-            <div key={msg.id} className="space-y-3">
+            <div
+              key={msg.id}
+              data-message-id={msg.id}
+              data-role={msg.role}
+              data-has-interactive={Boolean((msg.pills && msg.pills.length > 0) || (msg.cards && msg.cards.length > 0))}
+              className="space-y-3"
+            >
               <MessageBubble msg={msg} isLast={i === lastIdx} isStreaming={isStreaming} />
               {msg.cards && i === visibleMessages.length - 1 && <CardList cards={msg.cards} />}
               {i === visibleMessages.length - 1 && skillEditor && (
@@ -527,6 +593,7 @@ function ChatView() {
 
         </div>
       </div>
+      </motion.div>
 
       <ConfirmDialog open={showStartOverConfirm} title="Start over?" description="This will clear your profile and start fresh." confirmLabel="Start over" onConfirm={() => { setShowStartOverConfirm(false); startOver(); }} onCancel={() => setShowStartOverConfirm(false)} />
       <ConfirmDialog open={showFinishLaterConfirm} title="Finish later?" description="Your draft will be saved. Retuned will not mark onboarding complete until the career profile is ready." confirmLabel="Finish later" onConfirm={handleFinishLater} onCancel={() => setShowFinishLaterConfirm(false)} />

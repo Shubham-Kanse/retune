@@ -83,6 +83,12 @@ export function applyRouterDecision(
     case "resumeWritingPreferences.toneSignals":
       return writeStringArray(profile, ["resumeWritingPreferences", "toneSignals"], value, now, "tone signals");
 
+    case "resumeWritingPreferences.styleConstraints":
+      return writeStringArray(profile, ["resumeWritingPreferences", "styleConstraints"], value, now, "style constraints");
+
+    case "careerIntent.roleDealbreakers":
+      return writeStringArray(profile, ["careerIntent", "roleDealbreakers"], value, now, "role dealbreakers");
+
     case "skills":
       return writeSkills(profile, value, now);
     case "experience":

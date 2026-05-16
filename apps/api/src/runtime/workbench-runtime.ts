@@ -12,6 +12,7 @@
 import { randomUUID } from "node:crypto";
 import {
   ActiveQuestionHandler,
+  ApplicationPackageRenderer,
   ApplicationStrategyComposer,
   AtsPatchLoop,
   AttentionScheduler,
@@ -19,6 +20,9 @@ import {
   BlackboardStore,
   BoilerplateStripper,
   BudgetController,
+  CandidateMemoryHydrator,
+  ClaimLedgerLocker,
+  CompanyContextResearcher,
   CompanySchemaRetriever,
   ConflictStagingQueue,
   CoverLetterComposer,
@@ -27,6 +31,7 @@ import {
   CulturalCalibrator,
   DiscourseClassifier,
   DocumentRenderer,
+  DraftTournamentRunner,
   EmotionalStateModeler,
   EvidenceSolver,
   type ExtractedSpansSink,
@@ -38,6 +43,7 @@ import {
   HonestyCalibrator,
   HttpTransport,
   JdSpanExtractor,
+  JobModelBuilder,
   MLClient,
   MoodFingerprintSpecialist,
   MotivationModulator,
@@ -47,6 +53,7 @@ import {
   Orchestrator,
   OutcomePredictor,
   type PostgresPersistence,
+  ProofGapInterviewer,
   RefuseOrShipGate,
   SequentialBulletComposer,
   type Specialist,
@@ -64,6 +71,7 @@ import {
 } from "@retune/agent";
 import type { Blackboard } from "@retune/types";
 import { dualWriteJobDescription } from "../lib/optimized-dual-write";
+import { validateExternalUrl } from "../lib/ssrf-guard";
 import type { TraceBus } from "../lib/trace-bus";
 import { acquire_durability } from "./persistence-factory";
 
@@ -75,6 +83,10 @@ export interface GenerateInput {
   jd_text?: string;
   /** Free-form profile/resume body. When provided, spans are extracted from it. */
   profile_text?: string;
+  /** 004 §11 — full CareerProfileV1 JSON. */
+  career_profile?: unknown;
+  /** 004 §11 — derived CareerUnderstandingV1 JSON. */
+  career_understanding?: unknown;
 }
 
 /**
@@ -220,6 +232,8 @@ export async function run_generation(input: {
   payload: GenerateInput & { jd_url?: string };
   bus: TraceBus;
   external_signal?: AbortSignal;
+  /** Authenticated user id from the API layer (003 §2.4 + §10). */
+  user_id?: string;
 }): Promise<void> {
   const { generation_id, bus, external_signal } = input;
   let { payload } = input;
@@ -238,36 +252,55 @@ export async function run_generation(input: {
     market: payload.market,
   });
 
-  // If a URL was provided but no text, fetch the JD now server-side via Jina
+  // If a URL was provided but no text, fetch the JD now server-side via Jina.
+  // SSRF guard (003 §12 + OWASP A10): we reject private/loopback/metadata
+  // URLs locally before forwarding to Jina even though Jina performs its
+  // own validation. Defence in depth.
   if (payload.jd_url && !payload.jd_text) {
-    log("info", generation_id, `fetching JD from URL: ${payload.jd_url}`);
-    try {
-      const jinaRes = await fetch(`https://r.jina.ai/${encodeURIComponent(payload.jd_url)}`, {
-        headers: { Accept: "text/markdown", "X-No-Cache": "true" },
-        signal: AbortSignal.timeout(15_000),
-      });
-      if (jinaRes.ok) {
-        const md = await jinaRes.text();
-        if (md.length >= 50) {
-          payload = { ...payload, jd_text: md.slice(0, 50_000) };
-          log("info", generation_id, `JD fetched successfully`, { chars: payload.jd_text!.length });
+    const validation = validateExternalUrl(payload.jd_url);
+    if (!validation.ok || !validation.sanitised) {
+      log("warn", generation_id, "JD URL rejected by SSRF guard", { reason: validation.reason });
+      // Continue without JD text — the cycle still runs based on jd_title/company.
+    } else {
+      const safe_url = validation.sanitised.toString();
+      log("info", generation_id, `fetching JD from URL: ${safe_url}`);
+      try {
+        const jinaRes = await fetch(`https://r.jina.ai/${encodeURIComponent(safe_url)}`, {
+          headers: { Accept: "text/markdown", "X-No-Cache": "true" },
+          signal: AbortSignal.timeout(15_000),
+        });
+        if (jinaRes.ok) {
+          const md = await jinaRes.text();
+          if (md.length >= 50) {
+            payload = { ...payload, jd_text: md.slice(0, 50_000) };
+            log("info", generation_id, "JD fetched successfully", {
+              chars: payload.jd_text?.length,
+            });
+          } else {
+            log("warn", generation_id, "JD fetch returned too little content, proceeding without");
+          }
         } else {
-          log("warn", generation_id, "JD fetch returned too little content, proceeding without");
+          log(
+            "warn",
+            generation_id,
+            `JD fetch failed status=${jinaRes.status}, proceeding without`,
+          );
         }
-      } else {
-        log("warn", generation_id, `JD fetch failed status=${jinaRes.status}, proceeding without`);
+      } catch (err) {
+        log("warn", generation_id, "JD fetch threw, proceeding without", {
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
-    } catch (err) {
-      log("warn", generation_id, "JD fetch threw, proceeding without", {
-        error: err instanceof Error ? err.message : String(err),
-      });
     }
   }
 
   const durability = await acquire_durability();
 
-  const user_id = durability?.default_user_id ?? randomUUID();
-  const jd_id = randomUUID();
+  // 003 §10 — propagate the authenticated user id from the API layer.
+  // Falls back to the durability default user only when the API runs
+  // in dev/anonymous mode (no internal API key configured).
+  const user_id = input.user_id ?? durability?.default_user_id ?? randomUUID();
+  let jd_id = randomUUID();
 
   const trigger_bus = new TriggerBus();
   const blackboard = new BlackboardStore(
@@ -280,6 +313,20 @@ export async function run_generation(input: {
   const specialists: Specialist[] = [
     new TitleSchemaRetriever(resolver),
     new CompanySchemaRetriever(resolver),
+    // 003 §6.2 — SOTA candidate memory + claim ledger.
+    new CandidateMemoryHydrator(),
+    new ClaimLedgerLocker(),
+    // 003 §6.3 — SOTA job + company models.
+    new JobModelBuilder(),
+    new CompanyContextResearcher(),
+    // 003 §6.4 — Active proof interview.
+    new ProofGapInterviewer(),
+    // 003 §6.6 — Draft tournament.
+    new DraftTournamentRunner(),
+    // 003 §6.8 — Application package renderer (SOTA replacement for the
+    // legacy DocumentRenderer readiness signal). Registered FIRST among
+    // render_documents handlers so the scheduler picks it on ties.
+    new ApplicationPackageRenderer(),
   ];
   // ActiveQuestionHandler only makes sense with durability — otherwise
   // there's nowhere to persist the question, so the goal would be
@@ -499,15 +546,19 @@ export async function run_generation(input: {
   // FK is satisfied. Skipped in off mode.
   if (durability) {
     const { jds } = await import("@retune/db/pg");
-    const jdRaw = `${payload.jd_text ?? ""}\n${payload.jd_title ?? ""}\n${payload.company ?? ""}`.trim();
-    await durability.db.insert(jds).values({
-      id: jd_id,
-      source: "api",
-      content_hash: generation_id.slice(0, 16),
-      raw_text: jdRaw,
-    });
+    const jdRaw =
+      `${payload.jd_text ?? ""}\n${payload.jd_title ?? ""}\n${payload.company ?? ""}`.trim();
+    await durability.db
+      .insert(jds)
+      .values({
+        id: jd_id,
+        source: "api",
+        content_hash: generation_id.slice(0, 16),
+        raw_text: jdRaw,
+      })
+      .onConflictDoNothing();
     try {
-      await dualWriteJobDescription({
+      const resolvedJdId = await dualWriteJobDescription({
         db: durability.db,
         jdId: jd_id,
         userId: user_id,
@@ -516,6 +567,10 @@ export async function run_generation(input: {
         company: payload.company ?? null,
         market: payload.market ?? "US",
       });
+      // If the conflict resolved to an existing row, use that id for the FK
+      if (resolvedJdId && resolvedJdId !== jd_id) {
+        jd_id = resolvedJdId as typeof jd_id;
+      }
     } catch (err) {
       log("warn", generation_id, "optimized job_descriptions dual-write failed", {
         error: err instanceof Error ? err.message : String(err),

@@ -24,7 +24,7 @@ export function GlowBackground({ variant = "app", className }: GlowBackgroundPro
           variant === "chat" && "-right-32 top-20 h-[280px] w-[280px] bg-emerald-300/15 dark:bg-emerald-400/10",
         )}
       />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgb(24_24_27/0.08)_1px,transparent_0)] bg-[size:28px_28px] opacity-[0.18] dark:bg-[radial-gradient(circle_at_1px_1px,rgb(255_255_255/0.18)_1px,transparent_0)] dark:opacity-[0.08]" />
+
     </div>
   );
 }

@@ -203,7 +203,7 @@ function uploadReq(file: File, extraHeaders: Record<string, string> = {}) {
 
 // ─── Auth spoofing tests ──────────────────────────────────────────────────────
 
-describe("Auth spoofing — chat route", () => {
+describe("Auth spoofing - chat route", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -233,7 +233,7 @@ describe("Auth spoofing — chat route", () => {
   });
 });
 
-describe("Auth spoofing — upload route", () => {
+describe("Auth spoofing - upload route", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -258,7 +258,7 @@ describe("Auth spoofing — upload route", () => {
 
 // ─── resume_data kind must be rejected ───────────────────────────────────────
 
-describe("chat route — resume_data kind removed", () => {
+describe("chat route - resume_data kind removed", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -272,7 +272,7 @@ describe("chat route — resume_data kind removed", () => {
   });
 });
 
-describe("chat route — finish_later is not completion", () => {
+describe("chat route - finish_later is not completion", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -297,7 +297,7 @@ describe("chat route — finish_later is not completion", () => {
 
 // ─── Forged pill tests ────────────────────────────────────────────────────────
 
-describe("chat route — forged pill rejection", () => {
+describe("chat route - forged pill rejection", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
@@ -331,7 +331,7 @@ describe("chat route — forged pill rejection", () => {
 // The route delegates to readAndValidateResumeFile; we test that directly
 // since NextRequest.formData() doesn't work reliably in vitest jsdom.
 
-describe("readAndValidateResumeFile — file validation", () => {
+describe("readAndValidateResumeFile - file validation", () => {
   it("throws for unsupported file extension", async () => {
     const { readAndValidateResumeFile } = await import("@/lib/profile-domain/utils/resume-file");
     const file = new File(["content"], "resume.txt", { type: "text/plain" });

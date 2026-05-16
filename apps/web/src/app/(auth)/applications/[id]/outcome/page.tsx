@@ -57,7 +57,7 @@ export default function OutcomeLoggingPage() {
         </Link>
 
         <h1 className="font-serif text-2xl font-normal text-[#1a1a1a] mb-1">Log Outcome</h1>
-        <p className="text-sm text-[#6b6b6b] mb-6">Tell us what happened — this improves predictions for future applications.</p>
+        <p className="text-sm text-[#6b6b6b] mb-6">Tell us what happened - this improves predictions for future applications.</p>
 
         <div className="space-y-2 mb-6">
           {OUTCOMES.map((o) => (

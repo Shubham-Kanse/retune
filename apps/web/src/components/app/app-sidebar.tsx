@@ -18,7 +18,6 @@ import { cn } from "@/lib/utils";
 import {
   Brain,
   FileText,
-  LayoutDashboard,
   LogOut,
   Settings,
   Sparkles,
@@ -35,7 +34,6 @@ type RecentTuning = {
 };
 
 const workspaceItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/generate/new", label: "New tuning", icon: Sparkles, accent: true },
   { href: "/applications", label: "Applications", icon: FileText },
   { href: "/profile", label: "Career profile", icon: User },
@@ -64,24 +62,29 @@ export function AppSidebar({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/brain/generations")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: unknown) => {
-        if (cancelled) return;
-        if (!Array.isArray(data)) return;
-        setRecent(
-          (data as Array<{ id: string; role?: string; company?: string }>)
-            .slice(0, 8)
-            .map((d) => ({
-              id: d.id,
-              role: d.role || "Untitled role",
-              company: d.company || "Unknown",
-            })),
-        );
-      })
-      .catch(() => {});
+    function load() {
+      fetch("/api/brain/generations")
+        .then((r) => (r.ok ? r.json() : []))
+        .then((data: unknown) => {
+          if (cancelled) return;
+          if (!Array.isArray(data)) return;
+          setRecent(
+            (data as Array<{ id: string; role?: string; company?: string }>)
+              .slice(0, 8)
+              .map((d) => ({
+                id: d.id,
+                role: d.role || "Untitled role",
+                company: d.company || "Unknown",
+              })),
+          );
+        })
+        .catch(() => {});
+    }
+    load();
+    window.addEventListener("retune:generations-changed", load);
     return () => {
       cancelled = true;
+      window.removeEventListener("retune:generations-changed", load);
     };
   }, []);
 
@@ -102,23 +105,22 @@ export function AppSidebar({
 
   const itemClass = (active: boolean) =>
     cn(
-      "hover:bg-sidebar-accent/50 active:bg-sidebar-accent/50 hover:text-primary w-auto transition-all duration-150",
+      "hover:bg-sidebar-accent/50 active:bg-sidebar-accent/50 hover:text-primary w-full transition-all duration-150",
       active && "text-primary bg-sidebar-accent hover:bg-sidebar-accent font-medium",
     );
 
   return (
     <Sidebar className="h-full border-none shadow-none">
       <SidebarContent
-        className="bg-sidebar border-border relative border-r border-dashed"
+        className="bg-sidebar border-border relative border-r"
         style={{ scrollbarWidth: "none" }}
       >
         <div className="flex h-full flex-col pb-4 pl-0">
           <SidebarHeader className="items-start px-5 pt-6">
             <Link
-              href="/dashboard"
-              className="flex items-center gap-2 pl-2 text-lg font-semibold tracking-tight"
+              href="/generate/new"
+              className="pl-2 text-sm font-medium tracking-tight text-foreground/70 hover:text-foreground transition-colors"
             >
-              <span className="inline-block size-2 rounded-sm bg-foreground" aria-hidden />
               Retuned
             </Link>
           </SidebarHeader>
@@ -162,7 +164,7 @@ export function AppSidebar({
                     const active = pathname === href;
                     return (
                       <SidebarMenuItem key={t.id} className="flex">
-                        <SidebarMenuButton asChild className={itemClass(active)}>
+                        <SidebarMenuButton asChild className={cn(itemClass(active), "h-auto py-1.5")}>
                           <Link href={href} className="flex min-w-0 flex-col items-start gap-0">
                             <span className="w-full truncate text-sm">{t.role}</span>
                             <span className="w-full truncate text-[11px] text-muted-foreground">
@@ -198,7 +200,7 @@ export function AppSidebar({
                   <SidebarMenuButton
                     type="button"
                     onClick={handleSignOut}
-                    className="hover:bg-sidebar-accent/50 hover:text-primary w-auto transition-all"
+                    className="hover:bg-sidebar-accent/50 hover:text-primary w-full transition-all"
                   >
                     <LogOut className="size-4 shrink-0" />
                     Sign out
@@ -207,25 +209,17 @@ export function AppSidebar({
               </SidebarMenu>
             </SidebarGroupContent>
 
-            <SidebarGroupLabel className="mt-6">Theme</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <AnimatedThemeToggler className="inline-flex h-8 w-full items-center justify-start gap-2 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/50 hover:text-foreground" />
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
           </SidebarGroup>
 
           <SidebarFooter className="mt-auto px-5 pb-4">
             <div className="flex items-center gap-2 rounded-lg border border-border bg-background/50 px-2.5 py-2">
-              <div className="flex size-7 items-center justify-center rounded-full bg-muted text-xs font-medium">
+              <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium">
                 {initials || "RT"}
               </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-medium leading-tight">{userName || "Retuned user"}</p>
-                <p className="truncate text-[11px] leading-tight text-muted-foreground">{userEmail}</p>
-              </div>
+              <p className="min-w-0 flex-1 truncate text-xs font-medium leading-tight">
+                {userName || userEmail}
+              </p>
+              <AnimatedThemeToggler className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" />
             </div>
           </SidebarFooter>
         </div>

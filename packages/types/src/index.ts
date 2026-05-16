@@ -9,3 +9,4 @@ export * from "./goal";
 export * from "./conflict";
 export * from "./blackboard";
 export * from "./ml-contracts";
+export * from "./generation-sota";

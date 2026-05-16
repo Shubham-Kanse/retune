@@ -15,7 +15,8 @@
     "./honesty": "./src/honesty.ts",
     "./persona": "./src/persona.ts",
     "./market": "./src/market.ts",
-    "./ml": "./src/ml-contracts.ts"
+    "./ml": "./src/ml-contracts.ts",
+    "./generation-sota": "./src/generation-sota.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

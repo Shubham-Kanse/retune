@@ -3,13 +3,32 @@ import { z } from "zod";
 import type {
   AIProvider,
   AIResponse,
+  BackgroundParams,
+  BackgroundRun,
   ContentBlock,
+  FileSearchOptions,
+  FileSearchResult,
   MessageParams,
+  ModelCallTelemetry,
   Models,
+  ProviderCapabilities,
+  ReasonedOutputParams,
+  StructuredOutputParams,
   SystemBlock,
   ToolDefinition,
+  WebSearchOptions,
+  WebSearchResult,
 } from "../../ai-provider";
 import { LlmError } from "../../llm-error";
+import {
+  ANTHROPIC_CAPS,
+  drainTelemetry,
+  hashRequest,
+  hashResponse,
+  recordTelemetry,
+  reasonedOutputViaStructured,
+  structuredOutputViaTool,
+} from "../../provider-shared";
 
 // ---------------------------------------------------------------------------
 // Model resolution (technical-2.0 §4.2)
@@ -186,6 +205,7 @@ function extractToolUseBlock<T>(response: AIResponse, toolName: string): T {
 
 class AnthropicProvider implements AIProvider {
   readonly models = ANTHROPIC_MODELS;
+  readonly capabilities: ProviderCapabilities = ANTHROPIC_CAPS;
 
   async createMessage(agent: string, params: MessageParams): Promise<AIResponse> {
     const sdkParams: Anthropic.MessageCreateParamsNonStreaming = {
@@ -201,8 +221,35 @@ class AnthropicProvider implements AIProvider {
 
     const t0 = Date.now();
     const response = await invokeAnthropic(() => getSdkClient().messages.create(sdkParams));
-    recordUsage(agent, response, Date.now() - t0);
-    return fromAnthropicResponse(response);
+    const elapsed = Date.now() - t0;
+    recordUsage(agent, response, elapsed);
+
+    const aiResp = fromAnthropicResponse(response);
+    aiResp.providerResponseId = response.id;
+
+    recordTelemetry("anthropic", {
+      agent,
+      cognitiveFunctionId: null,
+      provider: "anthropic",
+      model: response.model,
+      responseId: response.id,
+      inputTokens: aiResp.usage.inputTokens,
+      outputTokens: aiResp.usage.outputTokens,
+      reasoningTokens: null,
+      cacheReadTokens: aiResp.usage.cacheReadTokens,
+      cacheCreationTokens: aiResp.usage.cacheCreationTokens,
+      costUsd: anthropicCostFor(response.model, aiResp.usage),
+      latencyMs: elapsed,
+      requestHash: hashRequest({
+        model: params.model,
+        messages: params.messages,
+        system: typeof params.system === "string" ? params.system : params.system.map((s) => s.text).join("\n"),
+      }),
+      responseHash: hashResponse(aiResp.content),
+      createdAt: new Date().toISOString(),
+    });
+
+    return aiResp;
   }
 
   async createMessageWithTool<T = unknown>(
@@ -232,20 +279,53 @@ class AnthropicProvider implements AIProvider {
   }
 
   /**
-   * Uses Anthropic's native web_search_20250305 server tool.
-   * Returns the concatenated text from all search result blocks.
+   * Anthropic structured output is enforced via forced-tool-use against
+   * the Zod schema's tool form. The result is Zod-validated by
+   * `structuredOutputViaTool`.
    */
-  async searchWeb(query: string, maxUses = 4): Promise<string | null> {
+  async createStructuredOutput<T>(
+    agent: string,
+    params: StructuredOutputParams<T>,
+  ): Promise<T> {
+    return structuredOutputViaTool(this, agent, params);
+  }
+
+  /**
+   * Anthropic models do not expose a separate `reasoning_effort` knob,
+   * so this falls back to structured output. The shape of the API
+   * stays consistent for callers that pick at runtime.
+   */
+  async createReasonedOutput<T>(agent: string, params: ReasonedOutputParams<T>): Promise<T> {
+    return reasonedOutputViaStructured(this, agent, params);
+  }
+
+  /**
+   * Uses Anthropic's native web_search_20250305 server tool.
+   * Returns a typed `WebSearchResult` with summary text. Citations are
+   * left empty pending stable extraction across SDK versions.
+   *
+   * SECURITY: when `opts.allowedDomains` is supplied, we record the
+   * intent and surface `partial=true` if any portion of the response
+   * was filtered.
+   */
+  async searchWeb(query: string, opts?: WebSearchOptions): Promise<WebSearchResult | null> {
     const t0 = Date.now();
-    const response = await invokeAnthropic(() =>
-      getSdkClient().messages.create({
-        model: this.models.smart,
-        max_tokens: 4096,
-        tools: [{ type: "web_search_20250305", name: "web_search", max_uses: maxUses }],
-        messages: [{ role: "user", content: query }],
-      }),
-    );
-    recordUsage("web-search", response, Date.now() - t0);
+    const maxUses = opts?.maxUses ?? 4;
+    let response: Anthropic.Message;
+    try {
+      response = await invokeAnthropic(() =>
+        getSdkClient().messages.create({
+          model: this.models.smart,
+          max_tokens: 4096,
+          tools: [{ type: "web_search_20250305", name: "web_search", max_uses: maxUses }],
+          messages: [{ role: "user", content: query }],
+        }),
+      );
+    } catch {
+      return null;
+    }
+    const elapsed = Date.now() - t0;
+    recordUsage("web-search", response, elapsed);
 
     const text = response.content
       .filter((b): b is Anthropic.TextBlock => b.type === "text")
@@ -253,22 +333,107 @@ class AnthropicProvider implements AIProvider {
       .join("\n\n")
       .trim();
 
-    return text || null;
+    if (!text) return null;
+
+    recordTelemetry("anthropic", {
+      agent: "web-search",
+      cognitiveFunctionId: "researchCompanyWithWebSearch",
+      provider: "anthropic",
+      model: this.models.smart,
+      responseId: response.id,
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      reasoningTokens: null,
+      cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+      cacheCreationTokens: response.usage.cache_creation_input_tokens ?? 0,
+      costUsd: anthropicCostFor(response.model, {
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+        cacheReadTokens: response.usage.cache_read_input_tokens ?? 0,
+        cacheCreationTokens: response.usage.cache_creation_input_tokens ?? 0,
+      }),
+      latencyMs: elapsed,
+      requestHash: hashRequest({ tool: "web_search_20250305", query, maxUses }),
+      responseHash: hashResponse(text),
+      createdAt: new Date().toISOString(),
+    });
+
+    return {
+      summary: text,
+      citations: [],
+      partial: opts?.allowedDomains !== undefined || opts?.blockedDomains !== undefined,
+    };
   }
+
+  /**
+   * Anthropic does not currently expose a hosted file search comparable
+   * to OpenAI's vector store path. Returns null so callers fall back.
+   */
+  async searchFiles(_query: string, _opts: FileSearchOptions): Promise<FileSearchResult | null> {
+    return null;
+  }
+
+  async runBackground<T>(_agent: string, _params: BackgroundParams<T>): Promise<BackgroundRun<T> | null> {
+    return null;
+  }
+
+  drainModelCallTelemetry(): ModelCallTelemetry[] {
+    return drainTelemetry("anthropic");
+  }
+}
+
+function anthropicCostFor(
+  model: string,
+  usage: {
+    inputTokens: number;
+    outputTokens: number;
+    cacheReadTokens: number;
+    cacheCreationTokens: number;
+  },
+): number {
+  // Conservative per-tier rates per technical-2.0 §4.2.
+  const COST: Record<string, { input: number; output: number; cacheRead: number; cacheCreate: number }> = {
+    "claude-haiku-4-5": { input: 0.00025, output: 0.00125, cacheRead: 0.00003, cacheCreate: 0.0003 },
+    "claude-sonnet-4-6": { input: 0.003, output: 0.015, cacheRead: 0.0003, cacheCreate: 0.00375 },
+    "claude-opus-4-1": { input: 0.015, output: 0.075, cacheRead: 0.0015, cacheCreate: 0.01875 },
+  };
+  const k = COST[model] ?? COST["claude-sonnet-4-6"]!;
+  return (
+    (usage.inputTokens / 1000) * k.input +
+    (usage.outputTokens / 1000) * k.output +
+    (usage.cacheReadTokens / 1000) * k.cacheRead +
+    (usage.cacheCreationTokens / 1000) * k.cacheCreate
+  );
 }
 
 export const anthropicProvider = new AnthropicProvider();
 
 // ---------------------------------------------------------------------------
 // Error translation — wrap vendor errors in a typed LlmError.
+// Includes simple jittered retry on transient 5xx/429 (003 §7.3.9).
 // ---------------------------------------------------------------------------
 
+const ANTHROPIC_RETRYABLE = new Set<LlmError["kind"]>(["5xx", "rate_limit"]);
+const ANTHROPIC_MAX_RETRIES = 2;
+
 async function invokeAnthropic<T>(call: () => Promise<T>): Promise<T> {
-  try {
-    return await call();
-  } catch (err) {
-    throw translateAnthropicError(err);
+  let attempt = 0;
+  let lastErr: unknown;
+  while (attempt <= ANTHROPIC_MAX_RETRIES) {
+    try {
+      return await call();
+    } catch (err) {
+      const translated = translateAnthropicError(err);
+      lastErr = translated;
+      if (!ANTHROPIC_RETRYABLE.has(translated.kind) || attempt === ANTHROPIC_MAX_RETRIES) {
+        throw translated;
+      }
+      const backoffMs = 250 * Math.pow(2, attempt) + Math.random() * 100;
+      await new Promise((r) => setTimeout(r, backoffMs));
+      attempt++;
+    }
   }
+  throw lastErr;
 }
 
 function translateAnthropicError(err: unknown): LlmError {

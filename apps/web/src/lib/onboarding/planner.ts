@@ -1,6 +1,7 @@
 import {
   buildEducationCards,
   buildExperienceCards,
+  buildExtrasCards,
   buildIdentityCard,
   buildProjectCertificationCards,
   buildSkillCards,
@@ -64,6 +65,23 @@ function roleInterestOptions(profile: UserCareerProfile): string[] {
 }
 
 export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMeta): OnboardingQuestion | null {
+  const question = planNextQuestionInner(profile, meta);
+  if (!question) return null;
+  // Auto-append a Skip pill for any step that allows skipping, unless one
+  // is already present. The chat route already handles `action: "skip"`.
+  if (question.skipAllowed && !question.pills.some((p) => p.action === "skip")) {
+    return {
+      ...question,
+      pills: [
+        ...question.pills,
+        { label: "Skip", value: "skip", action: "skip" as const, field: question.field },
+      ],
+    };
+  }
+  return question;
+}
+
+function planNextQuestionInner(profile: UserCareerProfile, meta: OnboardingMeta): OnboardingQuestion | null {
   // 1. Resume not uploaded yet
   if (!meta.resumeUploaded) {
     return {
@@ -93,19 +111,24 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
 
   // 3. Resume uploaded but not summarized
   if (meta.resumeParsed && !meta.resumeSummarized) {
+    const lowQuality = profile.onboarding.parseQuality.score > 0 && profile.onboarding.parseQuality.score < 55;
     return {
       phase: "resume_summary",
       field: "resume_summary",
       questionKey: "resume_summary",
-      prompt: "Summarize what was extracted from the resume. Reference specific companies, titles, skills found.",
+      prompt: lowQuality
+        ? "Warn the user that extraction quality was low. Suggest uploading a different format, fixing manually, or continuing with gaps filled via chat. Then summarize what was extracted."
+        : "Summarize what was extracted from the resume. Reference specific companies, titles, skills found.",
       answerType: "confirm",
       pills: [
-        { label: "Looks mostly correct", value: "confirm_summary", action: "confirm_field", field: "resume_summary", recommended: true },
-        { label: "Review details", value: "review_details", action: "edit_card", field: "resume_summary" },
-        { label: "Something is wrong", value: "something_wrong", action: "ask_text", field: "resume_summary" },
+        ...(lowQuality ? [{ label: "Upload different file", value: "reupload", action: "navigate" as const, field: "resume" }] : []),
+        { label: "Looks mostly correct", value: "confirm_summary", action: "confirm_field" as const, field: "resume_summary", recommended: !lowQuality },
+        { label: "Review details", value: "review_details", action: "edit_card" as const, field: "resume_summary" },
+        { label: "Something is wrong", value: "something_wrong", action: "ask_text" as const, field: "resume_summary" },
       ],
       cards: buildSummaryCards(profile),
       skipAllowed: false,
+      whyAsked: lowQuality ? "We had trouble reading some sections of your resume." : undefined,
     };
   }
 
@@ -151,6 +174,30 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
       cards: buildExperienceCards(profile),
       skipAllowed: false,
     };
+  }
+
+  // 4b. Experience metrics probing (after experience confirmed)
+  if (meta.experienceConfirmed && !meta.experienceMetricsPrompted) {
+    const topRoles = profile.experience.value
+      .filter((e) => e.title && e.company)
+      .slice(0, 2);
+    if (topRoles.length > 0 && !topRoles.every((r) => r.achievements.length > 0)) {
+      const roleNames = topRoles.map((r) => `${r.title} at ${r.company}`).join(", ");
+      return {
+        phase: "experience_metrics",
+        field: "experience",
+        questionKey: "experience_metrics",
+        prompt: `Ask for measurable impact at their most recent roles (${roleNames}). Examples: "reduced X by 30%", "led team of 5", "shipped 4 product launches". They can skip per-role.`,
+        answerType: "text",
+        pills: [
+          { label: "Skip metrics", value: "skip_metrics", action: "confirm_field", field: "experience" },
+        ],
+        skipAllowed: true,
+        whyAsked: "Quantified achievements dramatically improve resume quality and callback rates.",
+      };
+    }
+    // If all roles already have achievements, skip silently
+    meta.experienceMetricsPrompted = true;
   }
 
   // 5. Education confirmation
@@ -242,6 +289,35 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
       skipAllowed: true,
       whyAsked: "Projects and certifications are optional, but they often become strong evidence for tailored resumes.",
     };
+  }
+
+  // 7b. Extras confirmation (languages, awards, publications, volunteering)
+  if (!meta.extrasConfirmed) {
+    const hasExtras =
+      profile.languages.value.length > 0 ||
+      profile.awards.value.length > 0 ||
+      profile.publications.value.length > 0 ||
+      profile.volunteering.value.length > 0;
+    if (hasExtras) {
+      const cards = buildExtrasCards(profile);
+      return {
+        phase: "extras_confirm",
+        field: "extras",
+        questionKey: "extras_confirm",
+        prompt: "Show extracted languages, awards, publications, and volunteering. Ask if correct.",
+        answerType: "confirm",
+        pills: [
+          { label: "Keep these", value: "confirm_extras", action: "confirm_field", field: "extras", recommended: true },
+          { label: "Edit", value: "edit_extras", action: "ask_text", field: "extras" },
+          { label: "None relevant", value: "none_extras", action: "confirm_field", field: "extras" },
+        ],
+        cards,
+        skipAllowed: true,
+        whyAsked: "Languages, awards, and publications can strengthen niche applications.",
+      };
+    }
+    // No extras extracted — skip silently
+    meta.extrasConfirmed = true;
   }
 
   // 8. Professional identity
@@ -407,6 +483,26 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
     };
   }
 
+  // 14b. Role dealbreakers
+  if (!profile.careerIntent.roleDealbreakers.confirmed) {
+    const selected = new Set(profile.careerIntent.roleDealbreakers.value.map((d) => d.toLowerCase()));
+    const options = ["No on-call", "No travel", "No relocation", "No consulting", "No startups", "No enterprise"];
+    return {
+      phase: "role_dealbreakers",
+      field: "careerIntent.roleDealbreakers",
+      questionKey: "role_dealbreakers",
+      prompt: "Ask if there are any roles, companies, or conditions they'd never accept.",
+      answerType: "multi_select",
+      pills: [
+        ...options.map((opt) => ({ label: opt, value: opt, action: "set_field" as const, field: "careerIntent.roleDealbreakers", selected: selected.has(opt.toLowerCase()) })),
+        { label: "Other", value: "other", action: "ask_text" as const, field: "careerIntent.roleDealbreakers" },
+        { label: "No dealbreakers", value: "confirm_dealbreakers", action: "confirm_field" as const, field: "careerIntent.roleDealbreakers", recommended: true },
+      ],
+      skipAllowed: true,
+      whyAsked: "Dealbreakers help Retuned avoid positioning you for roles you'd reject.",
+    };
+  }
+
   // 15. Emphasis areas
   if (!profile.resumeWritingPreferences.emphasisAreas.confirmed) {
     const allSkills = [...profile.skills.technical.value, ...profile.skills.tools.value, ...profile.skills.business.value].slice(0, 6);
@@ -448,7 +544,45 @@ export function planNextQuestion(profile: UserCareerProfile, meta: OnboardingMet
     };
   }
 
-  // 17. Profile ready
+  // 17. Tone preferences
+  if (!profile.resumeWritingPreferences.toneSignals.confirmed) {
+    const selected = new Set(profile.resumeWritingPreferences.toneSignals.value.map((t) => t.toLowerCase()));
+    const options = ["Direct", "Technical", "Conversational", "Formal", "Punchy", "Story-driven"];
+    return {
+      phase: "tone_preferences",
+      field: "resumeWritingPreferences.toneSignals",
+      questionKey: "tone_preferences",
+      prompt: "Ask what tone future resumes should use.",
+      answerType: "multi_select",
+      pills: [
+        ...options.map((opt) => ({ label: opt, value: opt, action: "set_field" as const, field: "resumeWritingPreferences.toneSignals", selected: selected.has(opt.toLowerCase()) })),
+        { label: "Continue", value: "confirm_tone", action: "confirm_field" as const, field: "resumeWritingPreferences.toneSignals", recommended: profile.resumeWritingPreferences.toneSignals.value.length > 0 },
+      ],
+      skipAllowed: true,
+      whyAsked: "Tone signals control how your resume reads — technical vs conversational, punchy vs formal.",
+    };
+  }
+
+  // 18. Style constraints
+  if (!profile.resumeWritingPreferences.styleConstraints.confirmed) {
+    const selected = new Set(profile.resumeWritingPreferences.styleConstraints.value.map((s) => s.toLowerCase()));
+    const options = ["No buzzwords", "No I/we pronouns", "Active voice only", "No bullet padding", "No jargon", "Keep it concise"];
+    return {
+      phase: "style_constraints",
+      field: "resumeWritingPreferences.styleConstraints",
+      questionKey: "style_constraints",
+      prompt: "Ask if there's anything to avoid in resume writing style.",
+      answerType: "multi_select",
+      pills: [
+        ...options.map((opt) => ({ label: opt, value: opt, action: "set_field" as const, field: "resumeWritingPreferences.styleConstraints", selected: selected.has(opt.toLowerCase()) })),
+        { label: "No constraints", value: "confirm_style", action: "confirm_field" as const, field: "resumeWritingPreferences.styleConstraints", recommended: true },
+      ],
+      skipAllowed: true,
+      whyAsked: "Style constraints prevent future resumes from using patterns you dislike.",
+    };
+  }
+
+  // 19. Profile ready
   return null;
 }
 

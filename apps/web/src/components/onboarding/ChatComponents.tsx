@@ -89,8 +89,8 @@ export function ProfileDisplayCard({ card }: { card: DisplayCard }) {
 
       {card.metadata?.length ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {card.metadata.slice(0, 12).map((item) => (
-            <span key={item} className="rounded-full bg-muted px-2.5 py-1 text-[0.75rem] text-muted-foreground">
+          {Array.from(new Set(card.metadata)).slice(0, 12).map((item, idx) => (
+            <span key={`${item}-${idx}`} className="rounded-full bg-muted px-2.5 py-1 text-[0.75rem] text-muted-foreground">
               {item}
             </span>
           ))}

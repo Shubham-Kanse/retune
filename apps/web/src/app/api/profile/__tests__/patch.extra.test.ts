@@ -30,7 +30,7 @@ function buildReq(body: unknown) {
   });
 }
 
-describe("PATCH /api/profile — additional coverage", () => {
+describe("PATCH /api/profile - additional coverage", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();

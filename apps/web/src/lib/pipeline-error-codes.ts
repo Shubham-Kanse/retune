@@ -31,13 +31,13 @@ export const ERROR_METADATA: Record<PipelineErrorCode, ErrorMetadata> = {
   rate_limited: {
     headline: "Anthropic API is rate-limited",
     detail: "Too many requests hit the API at once. This resolves automatically.",
-    action: "Click Retry — the request will back off and retry.",
+    action: "Click Retry - the request will back off and retry.",
     retryable: true,
   },
   context_too_long: {
     headline: "Job description is too long",
     detail: "The combined profile and JD exceeded the model's context window.",
-    action: "Paste a shorter section of the JD — the first 3–4 sections are enough.",
+    action: "Paste a shorter section of the JD - the first 3–4 sections are enough.",
     retryable: false,
   },
   api_connection: {
@@ -104,7 +104,7 @@ export const ERROR_METADATA: Record<PipelineErrorCode, ErrorMetadata> = {
   validation_failed: {
     headline: "Resume didn't pass quality check",
     detail: "The generated resume scored below the 85/100 quality threshold.",
-    action: "Click Retry — a second pass often produces a higher-quality result.",
+    action: "Click Retry - a second pass often produces a higher-quality result.",
     retryable: true,
   },
   unknown: {

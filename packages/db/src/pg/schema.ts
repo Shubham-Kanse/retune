@@ -51,9 +51,15 @@ import {
 // pgvector type helper
 const vector = (name: string, dim: number) =>
   customType<{ data: number[]; driverData: string }>({
-    dataType() { return `vector(${dim})`; },
-    toDriver(v) { return `[${v.join(",")}]`; },
-    fromDriver(v) { return (v as string).slice(1, -1).split(",").map(Number); },
+    dataType() {
+      return `vector(${dim})`;
+    },
+    toDriver(v) {
+      return `[${v.join(",")}]`;
+    },
+    fromDriver(v) {
+      return (v as string).slice(1, -1).split(",").map(Number);
+    },
   })(name);
 
 const tcol = (name: string) => timestamp(name, { withTimezone: true }).notNull().defaultNow();
@@ -273,7 +279,9 @@ export const evidence_spans = pgTable(
     user_id: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    source_document_id: uuid("source_document_id").references(() => documents.id, { onDelete: "set null" }),
+    source_document_id: uuid("source_document_id").references(() => documents.id, {
+      onDelete: "set null",
+    }),
     start_offset: integer("start_offset").notNull(),
     end_offset: integer("end_offset").notNull(),
     text_snippet: text("text_snippet").notNull(),
@@ -563,6 +571,18 @@ export const profiles = pgTable("profiles", {
   careerProfileVersion: text("career_profile_version").notNull().default("career-profile-v1"),
   profileReadiness: jsonb("profile_readiness").notNull().default(sql`'{}'::jsonb`),
   deEmphasisAreas: jsonb("de_emphasis_areas").notNull().default(sql`'[]'::jsonb`),
+  careerUnderstanding: jsonb("career_understanding").notNull().default(sql`'{}'::jsonb`),
+  careerUnderstandingVersion: text("career_understanding_version")
+    .notNull()
+    .default("career-understanding-v1"),
+  careerUnderstandingFingerprint: text("career_understanding_fingerprint"),
+  careerUnderstandingRevision: integer("career_understanding_revision").notNull().default(0),
+  careerUnderstandingStaleSince: timestamp("career_understanding_stale_since", {
+    withTimezone: true,
+  }),
+  careerUnderstandingUpdatedAt: timestamp("career_understanding_updated_at", {
+    withTimezone: true,
+  }),
   skillsTier1: text("skills_tier1"),
   skillsTier2: text("skills_tier2"),
   skillsTier3: text("skills_tier3"),
@@ -727,6 +747,37 @@ export const generationPreflights = pgTable(
   }),
 );
 
+// 003 SOTA — durable generation request envelope (idempotency + audit + resume).
+export const generation_requests = pgTable(
+  "generation_requests",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    generation_id: uuid("generation_id")
+      .notNull()
+      .references(() => generations.id, { onDelete: "cascade" }),
+    application_id: uuid("application_id"),
+    jd_id: uuid("jd_id").references(() => jds.id, { onDelete: "set null" }),
+    jd_hash: varchar("jd_hash", { length: 128 }).notNull(),
+    idempotency_key: varchar("idempotency_key", { length: 256 }).notNull(),
+    /** Full StartGenerationCommand serialized as JSONB. */
+    command: jsonb("command").notNull(),
+    market: varchar("market", { length: 8 }).notNull().default("US"),
+    quality_mode: varchar("quality_mode", { length: 16 }).notNull().default("balanced"),
+    output_suite: jsonb("output_suite").notNull().default(sql`'["resume"]'::jsonb`),
+    preflight_id: uuid("preflight_id"),
+    submitted_at: timestamp("submitted_at", { withTimezone: true }).notNull().defaultNow(),
+    created_at: now(),
+  },
+  (t) => ({
+    user_idem_ux: uniqueIndex("generation_requests_user_idem_ux").on(t.user_id, t.idempotency_key),
+    jd_hash_ix: index("generation_requests_jd_hash_ix").on(t.jd_hash),
+    generation_ix: index("generation_requests_generation_ix").on(t.generation_id),
+  }),
+);
+
 export const contestLog = pgTable("contest_log", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   applicationId: uuid("application_id")
@@ -773,17 +824,38 @@ export const usageRecords = pgTable(
     createdAt: tcol("created_at"),
   },
   (t) => ({
-    user_type_created_ix: index("usage_user_type_created_ix").on(
-      t.userId,
-      t.type,
-      t.createdAt,
-    ),
+    user_type_created_ix: index("usage_user_type_created_ix").on(t.userId, t.type, t.createdAt),
     user_app_type_created_ix: index("usage_user_app_type_created_ix").on(
       t.userId,
       t.applicationId,
       t.type,
       t.createdAt,
     ),
+  }),
+);
+
+// ─────────────── Resume Extraction Audit (OWASP A09) ───────────────
+
+export const resume_extraction_audit = pgTable(
+  "resume_extraction_audit",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    ingestion_id: uuid("ingestion_id"),
+    content_hash: varchar("content_hash", { length: 64 }).notNull(),
+    detected_type: varchar("detected_type", { length: 32 }),
+    classification_confidence: doublePrecision("classification_confidence"),
+    safety_flags: jsonb("safety_flags").notNull().default(sql`'[]'::jsonb`),
+    raw_extraction: jsonb("raw_extraction"),
+    validation_violations: jsonb("validation_violations").notNull().default(sql`'[]'::jsonb`),
+    was_rejected: boolean("was_rejected").notNull().default(false),
+    reject_reason: text("reject_reason"),
+    created_at: now(),
+  },
+  (t) => ({
+    user_ix: index("resume_audit_user_ix").on(t.user_id, t.created_at),
   }),
 );
 
@@ -812,6 +884,7 @@ export const pg_schema = {
   gdpr_packets,
   case_base_entries,
   ontology_versions,
+  resume_extraction_audit,
   // Legacy v1 product tables
   profiles,
   onboardingSessions,

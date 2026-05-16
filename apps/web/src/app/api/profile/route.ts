@@ -1,13 +1,13 @@
 import { withAuth } from "@/lib/api-handler";
 import { ValidationError } from "@/lib/errors";
+import { persistProfile } from "@/lib/profile-domain/repositories/profile-repository";
+import { patchProfileSchema } from "@/lib/profile-domain/schemas";
+import { normalizeProfile } from "@/lib/profile-domain/services/normalizer";
+import { parseJsonSafe } from "@/lib/profile-domain/utils/json";
 import { db, profiles } from "@retune/db";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
-import { patchProfileSchema } from "@/lib/profile-domain/schemas";
-import { normalizeProfile } from "@/lib/profile-domain/services/normalizer";
-import { persistProfile } from "@/lib/profile-domain/repositories/profile-repository";
-import { parseJsonSafe } from "@/lib/profile-domain/utils/json";
 
 export const GET = withAuth(async (_request, session) => {
   const rows = await db.select().from(profiles).where(eq(profiles.userId, session.userId)).limit(1);
@@ -34,8 +34,22 @@ export const GET = withAuth(async (_request, session) => {
     skillsTier3: parseJsonSafe(profile.skillsTier3, []),
     voiceNotes: profile.voiceNotes,
     careerProfile: (profile as { careerProfile?: unknown }).careerProfile ?? null,
-    careerProfileVersion: (profile as { careerProfileVersion?: unknown }).careerProfileVersion ?? null,
+    careerProfileVersion:
+      (profile as { careerProfileVersion?: unknown }).careerProfileVersion ?? null,
     profileReadiness: (profile as { profileReadiness?: unknown }).profileReadiness ?? null,
+    careerUnderstanding: (profile as { careerUnderstanding?: unknown }).careerUnderstanding ?? null,
+    careerUnderstandingVersion:
+      (profile as { careerUnderstandingVersion?: unknown }).careerUnderstandingVersion ?? null,
+    careerUnderstandingFingerprint:
+      (profile as { careerUnderstandingFingerprint?: unknown }).careerUnderstandingFingerprint ??
+      null,
+    careerUnderstandingRevision:
+      (profile as { careerUnderstandingRevision?: unknown }).careerUnderstandingRevision ?? 0,
+    careerUnderstandingStaleSince:
+      (profile as { careerUnderstandingStaleSince?: unknown }).careerUnderstandingStaleSince ??
+      null,
+    careerUnderstandingUpdatedAt:
+      (profile as { careerUnderstandingUpdatedAt?: unknown }).careerUnderstandingUpdatedAt ?? null,
     profileMarkdown: profile.profileMarkdown,
     completenessScore: profile.completenessScore,
   });
@@ -51,7 +65,11 @@ export const PATCH = withAuth(async (request, session) => {
     throw new ValidationError(parsed.error.issues[0]?.message ?? "Invalid input");
   }
 
-  const normalized = normalizeProfile(parsed.data as Record<string, unknown>, session.email, session.fullName ?? "");
+  const normalized = normalizeProfile(
+    parsed.data as Record<string, unknown>,
+    session.email,
+    session.fullName ?? "",
+  );
   const persisted = await persistProfile({
     userId: session.userId,
     sessionEmail: session.email,

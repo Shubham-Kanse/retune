@@ -37,6 +37,24 @@ export interface GenerationResultPayload {
   ticks_executed: number;
   generation_time_ms: number;
   termination: string | null;
+  /**
+   * SOTA rendered package — list of artifact metadata (id, kind, sha256,
+   * parseable, bytes). Populated when ApplicationPackageRenderer ran.
+   * 003 §6.8 — lets the result page hydrate from durable storage after
+   * process restart.
+   */
+  rendered_package: {
+    finalized: boolean;
+    finalized_at: string | null;
+    artifacts: Array<{
+      id: string;
+      kind: string;
+      sha256: string | null;
+      bytes: number | null;
+      parseable: boolean;
+      rendered_at: string;
+    }>;
+  } | null;
 }
 
 const SECTION_ORDER: SectionDraft["kind"][] = [
@@ -168,6 +186,7 @@ export function renderResult(
       ticks_executed: meta.ticks_executed,
       generation_time_ms: meta.generation_time_ms,
       termination: meta.termination,
+      rendered_package: null,
     };
   }
 
@@ -228,5 +247,32 @@ export function renderResult(
     ticks_executed: meta.ticks_executed,
     generation_time_ms: meta.generation_time_ms,
     termination: meta.termination,
+    rendered_package: extractRenderedPackage(blackboard),
+  };
+}
+
+function extractRenderedPackage(
+  blackboard: Blackboard,
+): GenerationResultPayload["rendered_package"] {
+  const sota = (blackboard as unknown as { sota?: Record<string, unknown> }).sota;
+  if (!sota || typeof sota !== "object") return null;
+  const pkg = (sota as { rendered_package?: unknown }).rendered_package as
+    | { finalized?: boolean; finalized_at?: string | null; artifacts?: unknown }
+    | undefined;
+  if (!pkg) return null;
+  const artifactsRaw = Array.isArray(pkg.artifacts) ? pkg.artifacts : [];
+  return {
+    finalized: !!pkg.finalized,
+    finalized_at: pkg.finalized_at ?? null,
+    artifacts: artifactsRaw
+      .filter((a): a is Record<string, unknown> => !!a && typeof a === "object")
+      .map((a) => ({
+        id: String(a.id ?? ""),
+        kind: String(a.kind ?? ""),
+        sha256: typeof a.sha256 === "string" ? a.sha256 : null,
+        bytes: typeof a.bytes === "number" ? a.bytes : null,
+        parseable: a.parseable !== false,
+        rendered_at: typeof a.rendered_at === "string" ? a.rendered_at : "",
+      })),
   };
 }

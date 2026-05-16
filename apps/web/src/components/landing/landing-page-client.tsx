@@ -968,7 +968,7 @@ export default function LandingPageClient({
             <Reveal delay={80} className="mb-16">
               <p className="text-sm text-muted-foreground max-w-lg leading-relaxed">
                 Paste a job posting URL. Watch the pipeline run. Receive a submission-ready
-                application package — resume, cover letter, and strategy — in under 2 minutes.
+                application package - resume, cover letter, and strategy - in under 2 minutes.
               </p>
             </Reveal>
 

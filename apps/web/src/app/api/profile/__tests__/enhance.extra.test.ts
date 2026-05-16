@@ -26,7 +26,7 @@ function buildReq(body: unknown, contentLength?: string) {
 
 const validProfile = { voiceNotes: "I build things", experience: [], projects: [] };
 
-describe("POST /api/profile/enhance-section — additional coverage", () => {
+describe("POST /api/profile/enhance-section - additional coverage", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();

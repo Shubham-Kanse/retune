@@ -64,12 +64,15 @@ export type OnboardingPhase =
   | "resume_summary"
   | "identity_confirm"
   | "experience_confirm"
+  | "experience_metrics"
   | "education_confirm"
   | "skills_confirm"
+  | "extras_confirm"
   | "projects_certifications_review"
   | "professional_identity"
   | "career_direction"
   | "role_interests"
+  | "role_dealbreakers"
   | "market_preferences"
   | "work_preferences"
   | "seniority_comfort"
@@ -77,6 +80,7 @@ export type OnboardingPhase =
   | "emphasis_preferences"
   | "de_emphasis_preferences"
   | "tone_preferences"
+  | "style_constraints"
   | "profile_gap_fill"
   | "profile_ready"
   | "profile_enhancement"
@@ -282,10 +286,13 @@ export interface OnboardingMeta {
   educationConfirmed: boolean;
   skillsConfirmed: boolean;
   projectsCertificationsReviewed: boolean;
+  extrasConfirmed: boolean;
+  experienceMetricsPrompted: boolean;
   educationNotApplicable: boolean;
   optionalTonePrompted: boolean;
   pendingTextInput?: PendingTextInput;
   enhancementTurns: number;
+  stepHistory: string[];
   resetCount: number;
   status: "draft" | "ready" | "completed";
   resumeFileHash?: string | null;

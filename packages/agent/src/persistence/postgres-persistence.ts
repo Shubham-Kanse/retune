@@ -48,42 +48,43 @@ export class PostgresPersistence implements TickPersistence, GenerationReplayLoa
     // We use .onConflictDoNothing() for generations — the row may
     // already exist from a previous (crashed) run; we don't want to
     // reset ticks_executed.
+
+    // First try with jd_id; if the FK is violated fall back to null in a
+    // fresh statement (the transaction would be aborted so we can't reuse tx).
+    let jd_id_to_use: string | null = input.jd_id ?? null;
+    try {
+      await this.db
+        .insert(generations)
+        .values({
+          id: input.generation_id,
+          user_id: input.user_id,
+          jd_id: jd_id_to_use,
+          ontology_version: input.ontology_version,
+          current_blackboard: input.initial_blackboard as unknown as Record<string, unknown>,
+        })
+        .onConflictDoNothing();
+    } catch (err: unknown) {
+      const e = err as { code?: string; constraint_name?: string; message?: string };
+      const fkViolation = e?.code === "23503";
+      const jdConstraint =
+        e?.constraint_name === "generations_jd_id_fkey" ||
+        String(e?.message ?? "").includes("generations_jd_id_fkey");
+      if (!fkViolation || !jdConstraint) throw err;
+      // Retry with jd_id: null in a fresh statement
+      jd_id_to_use = null;
+      await this.db
+        .insert(generations)
+        .values({
+          id: input.generation_id,
+          user_id: input.user_id,
+          jd_id: null,
+          ontology_version: input.ontology_version,
+          current_blackboard: input.initial_blackboard as unknown as Record<string, unknown>,
+        })
+        .onConflictDoNothing();
+    }
+
     await this.db.transaction(async (tx) => {
-      try {
-        await tx
-          .insert(generations)
-          .values({
-            id: input.generation_id,
-            user_id: input.user_id,
-            jd_id: input.jd_id ?? null,
-            ontology_version: input.ontology_version,
-            current_blackboard: input.initial_blackboard as unknown as Record<string, unknown>,
-          })
-          .onConflictDoNothing();
-      } catch (err: unknown) {
-        // Some deployments still have `generations.jd_id` FK-bound to a
-        // different JD table shape. Fall back to null to keep generation
-        // durable instead of failing at startup.
-        const e = err as { code?: string; constraint_name?: string; message?: string };
-        const fkViolation = e?.code === "23503";
-        const jdConstraint =
-          e?.constraint_name === "generations_jd_id_fkey" ||
-          String(e?.message ?? "").includes("generations_jd_id_fkey");
-        if (!fkViolation || !jdConstraint) throw err;
-
-        await tx
-          .insert(generations)
-          .values({
-            id: input.generation_id,
-            user_id: input.user_id,
-            jd_id: null,
-            ontology_version: input.ontology_version,
-            current_blackboard: input.initial_blackboard as unknown as Record<string, unknown>,
-          })
-          .onConflictDoNothing();
-      }
-
-      // Seed goals (also idempotent — if the row is already there we leave it).
       if (input.initial_goals.length > 0) {
         await tx
           .insert(goals_table)

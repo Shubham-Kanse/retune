@@ -10,7 +10,7 @@ const testimonials = [
   { id: 4, quote: "As a career changer, Retune helped me frame my transferable skills in a way that resonated with hiring managers.", author: "David P.", role: "Data Scientist", blurColor: "bg-blue-500" },
   { id: 5, quote: "The application strategy feature is a game-changer. It's like having a career coach available 24/7.", author: "Lisa W.", role: "Marketing Director", blurColor: "bg-orange-500" },
   { id: 6, quote: "I recommended Retune to my entire bootcamp cohort. Everyone who used it got interviews within 2 weeks.", author: "James M.", role: "Full-Stack Developer", blurColor: "bg-cyan-500" },
-  { id: 7, quote: "The AI understands nuance. It doesn't just keyword-stuff — it tells a compelling story about your career.", author: "Nina P.", role: "VP of Engineering", blurColor: "bg-rose-500" },
+  { id: 7, quote: "The AI understands nuance. It doesn't just keyword-stuff - it tells a compelling story about your career.", author: "Nina P.", role: "VP of Engineering", blurColor: "bg-rose-500" },
 ];
 
 function Avatar({ name }: { name: string }) {

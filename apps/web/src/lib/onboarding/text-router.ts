@@ -34,9 +34,11 @@ export type RouterField =
   | "careerIntent.careerDirection"
   | "careerIntent.seniorityComfort"
   | "careerIntent.industriesOfInterest"
+  | "careerIntent.roleDealbreakers"
   | "resumeWritingPreferences.emphasisAreas"
   | "resumeWritingPreferences.deEmphasisAreas"
-  | "resumeWritingPreferences.toneSignals";
+  | "resumeWritingPreferences.toneSignals"
+  | "resumeWritingPreferences.styleConstraints";
 
 export type RouterDecision =
   | {
@@ -140,6 +142,10 @@ const FIELD_SCHEMAS: Record<RouterField, string> = {
     "array of themes future resumes should avoid over-highlighting.",
   "resumeWritingPreferences.toneSignals":
     "array of tone strings, e.g. Direct, Technical, Business-impact, Concise.",
+  "resumeWritingPreferences.styleConstraints":
+    'array of style constraint strings, e.g. "No buzzwords", "Active voice only", "No I/we pronouns".',
+  "careerIntent.roleDealbreakers":
+    'array of dealbreaker strings, e.g. "No on-call", "No travel", "No relocation".',
 };
 
 // ─── Prompt assembly ─────────────────────────────────────────────────────────
@@ -176,7 +182,7 @@ function buildAnsweredBlock(answeredKeys: string[], skippedKeys: string[]): stri
 }
 
 function buildQuestionBlock(question: OnboardingQuestion | null): string {
-  if (!question) return "[QUESTION] (no current question — onboarding may be complete)";
+  if (!question) return "[QUESTION] (no current question - onboarding may be complete)";
   const fieldKey = question.field as RouterField;
   const schema = FIELD_SCHEMAS[fieldKey] ?? "free text";
   return [
@@ -298,7 +304,7 @@ function safeFallback(input: RouterInput): RouterDecision {
   return {
     intent: "ambiguous",
     clarification: input.question
-      ? `I want to make sure I capture this right — could you rephrase your answer to "${input.question.questionKey}"?`
+      ? `I want to make sure I capture this right - could you rephrase your answer to "${input.question.questionKey}"?`
       : "Could you rephrase that?",
     rationale: "router_unavailable_or_failed",
   };

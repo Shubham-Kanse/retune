@@ -121,7 +121,7 @@ export function buildProfileMarkdown(profile: NormalizedProfile): string {
               endDate?: string;
               description?: string;
             };
-            return `### ${e.title ?? "Role"} — ${e.company ?? "Company"}\n${[e.startDate, e.endDate]
+            return `### ${e.title ?? "Role"} - ${e.company ?? "Company"}\n${[e.startDate, e.endDate]
               .filter(Boolean)
               .join(" – ")}\n${e.description ?? ""}`;
           })
@@ -131,7 +131,7 @@ export function buildProfileMarkdown(profile: NormalizedProfile): string {
       ? `## Education\n${profile.education
           .map((entry) => {
             const e = (entry ?? {}) as { degree?: string; institution?: string };
-            return `${e.degree ?? ""}${e.degree && e.institution ? " — " : ""}${e.institution ?? ""}`;
+            return `${e.degree ?? ""}${e.degree && e.institution ? " - " : ""}${e.institution ?? ""}`;
           })
           .filter(Boolean)
           .join("\n")}`

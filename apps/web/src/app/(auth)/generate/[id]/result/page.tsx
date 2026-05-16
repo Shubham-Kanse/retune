@@ -82,7 +82,7 @@ function asArray<T>(value: unknown): T[] {
 }
 
 function formatDurationMs(ms: number | null): string {
-  if (ms == null || ms <= 0 || !Number.isFinite(ms)) return "—";
+  if (ms == null || ms <= 0 || !Number.isFinite(ms)) return "-";
   const totalSec = Math.round(ms / 1000);
   const m = Math.floor(totalSec / 60);
   const s = totalSec % 60;
@@ -384,17 +384,17 @@ export default function ResultPage() {
         <div className="grid grid-cols-3 gap-3 mb-6">
           <StatCard
             label="Interview readiness"
-            value={score != null ? `${Math.round(score)}/100` : "—"}
+            value={score != null ? `${Math.round(score)}/100` : "-"}
             color={score != null && score >= 80 ? "#2d8a5e" : "#1a1a1a"}
           />
           <StatCard
             label="ATS score"
-            value={result.ats_score != null ? `${Math.round(result.ats_score)}%` : "—"}
+            value={result.ats_score != null ? `${Math.round(result.ats_score)}%` : "-"}
             color={result.ats_score != null && result.ats_score >= 80 ? "#2d8a5e" : "#1a1a1a"}
           />
           <StatCard
             label="Callback chance"
-            value={callbackPct != null ? `${callbackPct}%` : "—"}
+            value={callbackPct != null ? `${callbackPct}%` : "-"}
             sub={callbackRange}
             color={callbackPct != null && callbackPct >= 70 ? "#2d8a5e" : "#1a1a1a"}
           />

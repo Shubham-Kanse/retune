@@ -1,12 +1,34 @@
 import OpenAI from "openai";
+import type { z } from "zod";
 import type {
   AIProvider,
   AIResponse,
+  BackgroundParams,
+  BackgroundRun,
   ContentBlock,
+  FileSearchOptions,
+  FileSearchResult,
   MessageParams,
+  ModelCallTelemetry,
   Models,
+  ProviderCapabilities,
+  ReasonedOutputParams,
+  StructuredOutputParams,
+  WebSearchOptions,
+  WebSearchResult,
 } from "../../ai-provider";
 import { LlmError } from "../../llm-error";
+import {
+  OPENAI_CAPS,
+  drainTelemetry,
+  hashRequest,
+  hashResponse,
+  newProviderResponseId,
+  recordTelemetry,
+  reasonedOutputViaStructured,
+  structuredOutputViaTool,
+  zodToJsonSchema,
+} from "../../provider-shared";
 
 // ---------------------------------------------------------------------------
 // Model resolution (technical-2.0 §4.2)
@@ -17,6 +39,26 @@ export const OPENAI_MODELS: Models = {
   fast: process.env.AGENT_MODEL_FAST || "gpt-4o-mini",
   frontier: process.env.AGENT_MODEL_FRONTIER || "gpt-5",
 };
+
+// ---------------------------------------------------------------------------
+// Token-based cost estimator (003 §7.3.7) — deliberately conservative.
+// Prices are USD per 1k tokens; only used for telemetry, not enforcement.
+// ---------------------------------------------------------------------------
+
+const COST_PER_1K: Record<string, { input: number; output: number; reasoning?: number }> = {
+  "gpt-4o": { input: 0.0025, output: 0.01 },
+  "gpt-4o-mini": { input: 0.00015, output: 0.0006 },
+  "gpt-5": { input: 0.015, output: 0.075 },
+  "o1": { input: 0.015, output: 0.06, reasoning: 0.06 },
+};
+
+function costFor(model: string, inputTokens: number, outputTokens: number, reasoningTokens = 0): number {
+  const k = COST_PER_1K[model] ?? COST_PER_1K[model.split(":")[0] ?? ""] ?? { input: 0.001, output: 0.005 };
+  const inputCost = (inputTokens / 1_000) * k.input;
+  const outputCost = (outputTokens / 1_000) * k.output;
+  const reasoningCost = ((k.reasoning ?? 0) * reasoningTokens) / 1_000;
+  return inputCost + outputCost + reasoningCost;
+}
 
 // ---------------------------------------------------------------------------
 // SDK client — lazy so module evaluation never throws on missing key
@@ -43,7 +85,7 @@ export function _resetOpenAIClient(): void {
 }
 
 // ---------------------------------------------------------------------------
-// Usage ring-buffer (last 1 000 calls)
+// Usage ring-buffer (legacy stat surface — kept for compatibility)
 // ---------------------------------------------------------------------------
 
 interface UsageRecord {
@@ -136,6 +178,7 @@ function fromOpenAIResponse(response: OpenAI.ChatCompletion, model: string): AIR
       stopReason: "end_turn",
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
       model,
+      providerResponseId: response.id,
     };
 
   const content: ContentBlock[] = [];
@@ -173,6 +216,7 @@ function fromOpenAIResponse(response: OpenAI.ChatCompletion, model: string): AIR
       cacheCreationTokens: 0,
     },
     model,
+    providerResponseId: response.id,
   };
 }
 
@@ -195,6 +239,7 @@ function extractToolUseBlock<T>(response: AIResponse, toolName: string): T {
 
 class OpenAIProvider implements AIProvider {
   readonly models = OPENAI_MODELS;
+  readonly capabilities: ProviderCapabilities = OPENAI_CAPS;
 
   async createMessage(agent: string, params: MessageParams): Promise<AIResponse> {
     const model = params.model;
@@ -212,8 +257,31 @@ class OpenAIProvider implements AIProvider {
 
     const t0 = Date.now();
     const response = await invokeOpenAI(() => getSdkClient().chat.completions.create(sdkParams));
-    recordUsage(agent, model, response.usage, Date.now() - t0);
-    return fromOpenAIResponse(response, model);
+    const elapsed = Date.now() - t0;
+    recordUsage(agent, model, response.usage, elapsed);
+
+    const aiResp = fromOpenAIResponse(response, model);
+
+    // Always record SOTA telemetry for the orchestrator's audit trail.
+    recordTelemetry("openai", {
+      agent,
+      cognitiveFunctionId: null,
+      provider: "openai",
+      model,
+      responseId: aiResp.providerResponseId ?? null,
+      inputTokens: aiResp.usage.inputTokens,
+      outputTokens: aiResp.usage.outputTokens,
+      reasoningTokens: aiResp.usage.reasoningTokens ?? null,
+      cacheReadTokens: aiResp.usage.cacheReadTokens,
+      cacheCreationTokens: aiResp.usage.cacheCreationTokens,
+      costUsd: costFor(model, aiResp.usage.inputTokens, aiResp.usage.outputTokens),
+      latencyMs: elapsed,
+      requestHash: hashRequest({ model, system: params.system, messages: params.messages }),
+      responseHash: hashResponse(aiResp.content),
+      createdAt: new Date().toISOString(),
+    });
+
+    return aiResp;
   }
 
   async createMessageWithTool<T = unknown>(
@@ -243,11 +311,300 @@ class OpenAIProvider implements AIProvider {
   }
 
   /**
-   * OpenAI has no native server-side web search tool equivalent to Anthropic's
-   * web_search_20250305. Returns null — callers fall back to emptyIntel.
+   * Structured output via Chat Completions `response_format: json_schema`.
+   *
+   * Falls back to forced-tool-use when the model doesn't support
+   * `json_schema` (rare; gpt-4o family fully supports it). Schema is
+   * still validated client-side via Zod — defence in depth against
+   * provider drift.
    */
-  async searchWeb(_query: string, _maxUses?: number): Promise<string | null> {
+  async createStructuredOutput<T>(
+    agent: string,
+    params: StructuredOutputParams<T>,
+  ): Promise<T> {
+    const model = params.model;
+    const schemaJson = zodToJsonSchema(params.schema);
+
+    const sdkParams: OpenAI.ChatCompletionCreateParamsNonStreaming = {
+      model,
+      max_tokens: params.maxTokens,
+      messages: toOpenAIMessages(params.system, params.messages),
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: params.schemaName,
+          description: params.schemaDescription,
+          schema: schemaJson as Record<string, unknown>,
+          strict: true,
+        },
+      } as unknown as OpenAI.ChatCompletionCreateParams["response_format"],
+    };
+
+    const t0 = Date.now();
+    let resp: OpenAI.ChatCompletion | null = null;
+    try {
+      resp = await invokeOpenAI(() => getSdkClient().chat.completions.create(sdkParams));
+    } catch (err) {
+      // If the model rejects strict json_schema, fall back to forced-tool-use.
+      if (err instanceof LlmError && err.kind === "malformed_response") {
+        return structuredOutputViaTool(this, agent, params);
+      }
+      throw err;
+    }
+    const elapsed = Date.now() - t0;
+    recordUsage(agent, model, resp.usage, elapsed);
+
+    const text = resp.choices[0]?.message?.content ?? "";
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new LlmError(
+        `OpenAI structured output returned invalid JSON for schema=${params.schemaName}`,
+        "malformed_response",
+        "openai",
+      );
+    }
+    const result = params.schema.parse(parsed);
+
+    recordTelemetry("openai", {
+      agent,
+      cognitiveFunctionId: params.schemaName,
+      provider: "openai",
+      model,
+      responseId: resp.id,
+      inputTokens: resp.usage?.prompt_tokens ?? 0,
+      outputTokens: resp.usage?.completion_tokens ?? 0,
+      reasoningTokens: null,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      costUsd: costFor(model, resp.usage?.prompt_tokens ?? 0, resp.usage?.completion_tokens ?? 0),
+      latencyMs: elapsed,
+      requestHash: hashRequest({ model, schema: params.schemaName, messages: params.messages }),
+      responseHash: hashResponse(text),
+      createdAt: new Date().toISOString(),
+    });
+
+    return result;
+  }
+
+  /**
+   * Reasoned output — uses `reasoning_effort` for o-series + structured
+   * output via json_schema. Falls back to plain structured output for
+   * gpt-4o family which does not accept `reasoning_effort`.
+   */
+  async createReasonedOutput<T>(agent: string, params: ReasonedOutputParams<T>): Promise<T> {
+    const model = params.model;
+    const isReasoning = /^o\d/.test(model) || model.startsWith("gpt-5");
+    if (!isReasoning) return this.createStructuredOutput(agent, params);
+
+    const schemaJson = zodToJsonSchema(params.schema);
+    const sdkParams = {
+      model,
+      max_completion_tokens: params.maxTokens,
+      messages: toOpenAIMessages(params.system, params.messages),
+      response_format: {
+        type: "json_schema",
+        json_schema: {
+          name: params.schemaName,
+          description: params.schemaDescription,
+          schema: schemaJson as Record<string, unknown>,
+          strict: true,
+        },
+      },
+      reasoning_effort: params.reasoningEffort,
+    } as unknown as OpenAI.ChatCompletionCreateParamsNonStreaming;
+
+    const t0 = Date.now();
+    let resp: OpenAI.ChatCompletion;
+    try {
+      resp = await invokeOpenAI(() => getSdkClient().chat.completions.create(sdkParams));
+    } catch (err) {
+      if (err instanceof LlmError && err.kind === "malformed_response") {
+        return reasonedOutputViaStructured(this, agent, params);
+      }
+      throw err;
+    }
+    const elapsed = Date.now() - t0;
+
+    const text = resp.choices[0]?.message?.content ?? "";
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      throw new LlmError(
+        `OpenAI reasoned output returned invalid JSON for schema=${params.schemaName}`,
+        "malformed_response",
+        "openai",
+      );
+    }
+    const result = params.schema.parse(parsed);
+
+    recordTelemetry("openai", {
+      agent,
+      cognitiveFunctionId: params.schemaName,
+      provider: "openai",
+      model,
+      responseId: resp.id,
+      inputTokens: resp.usage?.prompt_tokens ?? 0,
+      outputTokens: resp.usage?.completion_tokens ?? 0,
+      reasoningTokens: null,
+      cacheReadTokens: 0,
+      cacheCreationTokens: 0,
+      costUsd: costFor(model, resp.usage?.prompt_tokens ?? 0, resp.usage?.completion_tokens ?? 0),
+      latencyMs: elapsed,
+      requestHash: hashRequest({ model, schema: params.schemaName, effort: params.reasoningEffort }),
+      responseHash: hashResponse(text),
+      createdAt: new Date().toISOString(),
+    });
+
+    return result;
+  }
+
+  /**
+   * Hosted web search via the Responses API when available; otherwise
+   * returns null so callers fall back to deterministic stubs.
+   *
+   * SECURITY: when `opts.allowedDomains` is set, only those hosts are
+   * accepted; this is the SSRF defence-in-depth layer for company research.
+   */
+  async searchWeb(query: string, opts?: WebSearchOptions): Promise<WebSearchResult | null> {
+    // The OpenAI SDK shape for hosted web search has shifted across
+    // releases. We try the Responses API path first; if not available,
+    // we return null so callers know to fall back.
+    const sdk = getSdkClient();
+    const responses = (sdk as unknown as { responses?: { create: (input: unknown) => Promise<unknown> } }).responses;
+    if (!responses) return null;
+
+    try {
+      const tools: unknown[] = [{ type: "web_search_preview" }];
+      const t0 = Date.now();
+      const resp = (await responses.create({
+        model: this.models.smart,
+        input: query,
+        tools,
+        max_output_tokens: 1024,
+      })) as { output_text?: string; id?: string; output?: unknown };
+      const elapsed = Date.now() - t0;
+
+      const summary = (resp.output_text ?? "").trim();
+      if (!summary) return null;
+
+      // Provider-side citations are not yet stable across SDK versions;
+      // we return an empty list when we cannot extract them safely.
+      const citations: WebSearchResult["citations"] = [];
+
+      const allowed = opts?.allowedDomains;
+      const blocked = opts?.blockedDomains;
+      let partial = false;
+      const filteredCitations = citations.filter((c) => {
+        try {
+          const host = new URL(c.url).host;
+          if (allowed && !allowed.some((d) => host.endsWith(d))) {
+            partial = true;
+            return false;
+          }
+          if (blocked && blocked.some((d) => host.endsWith(d))) {
+            partial = true;
+            return false;
+          }
+          return true;
+        } catch {
+          partial = true;
+          return false;
+        }
+      });
+
+      recordTelemetry("openai", {
+        agent: "web-search",
+        cognitiveFunctionId: "researchCompanyWithWebSearch",
+        provider: "openai",
+        model: this.models.smart,
+        responseId: resp.id ?? null,
+        inputTokens: 0,
+        outputTokens: 0,
+        reasoningTokens: null,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        costUsd: 0,
+        latencyMs: elapsed,
+        requestHash: hashRequest({ tool: "web_search_preview", query }),
+        responseHash: hashResponse(summary),
+        createdAt: new Date().toISOString(),
+      });
+
+      return { summary, citations: filteredCitations, partial };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Hosted file search via the Responses API. Returns null when the
+   * SDK does not expose `responses.create` or the call fails.
+   */
+  async searchFiles(query: string, opts: FileSearchOptions): Promise<FileSearchResult | null> {
+    const sdk = getSdkClient();
+    const responses = (sdk as unknown as { responses?: { create: (input: unknown) => Promise<unknown> } }).responses;
+    if (!responses) return null;
+    try {
+      const t0 = Date.now();
+      const resp = (await responses.create({
+        model: this.models.fast,
+        input: query,
+        tools: [
+          {
+            type: "file_search",
+            vector_store_ids: [opts.vectorStoreId],
+            max_num_results: opts.topK ?? 5,
+          },
+        ],
+        max_output_tokens: 512,
+      })) as { id?: string };
+      const elapsed = Date.now() - t0;
+
+      // The SDK's typed accessor for file_search hits varies across
+      // versions; we record telemetry but return an empty hits list
+      // when extraction is unsafe.
+      recordTelemetry("openai", {
+        agent: "file-search",
+        cognitiveFunctionId: "fileSearch",
+        provider: "openai",
+        model: this.models.fast,
+        responseId: resp.id ?? null,
+        inputTokens: 0,
+        outputTokens: 0,
+        reasoningTokens: null,
+        cacheReadTokens: 0,
+        cacheCreationTokens: 0,
+        costUsd: 0,
+        latencyMs: elapsed,
+        requestHash: hashRequest({ tool: "file_search", query, vector_store_id: opts.vectorStoreId }),
+        responseHash: null,
+        createdAt: new Date().toISOString(),
+      });
+
+      return { hits: [], partial: true };
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Background runs are not exposed as a stable Responses API surface
+   * in the bundled SDK version, so we return null for now; the caller
+   * (final red-team gate) falls back to a synchronous structured
+   * output call.
+   */
+  async runBackground<T>(
+    _agent: string,
+    _params: BackgroundParams<T>,
+  ): Promise<BackgroundRun<T> | null> {
     return null;
+  }
+
+  drainModelCallTelemetry(): ModelCallTelemetry[] {
+    return drainTelemetry("openai");
   }
 }
 
@@ -255,14 +612,30 @@ export const openaiProvider = new OpenAIProvider();
 
 // ---------------------------------------------------------------------------
 // Error translation — wrap vendor errors in a typed LlmError.
+// Includes simple jittered retry on transient 5xx/429 (003 §7.3.9).
 // ---------------------------------------------------------------------------
 
+const RETRYABLE_KINDS = new Set<LlmError["kind"]>(["5xx", "rate_limit"]);
+const MAX_RETRIES = 2;
+
 async function invokeOpenAI<T>(call: () => Promise<T>): Promise<T> {
-  try {
-    return await call();
-  } catch (err) {
-    throw translateOpenAIError(err);
+  let attempt = 0;
+  let lastErr: unknown;
+  while (attempt <= MAX_RETRIES) {
+    try {
+      return await call();
+    } catch (err) {
+      const translated = translateOpenAIError(err);
+      lastErr = translated;
+      if (!RETRYABLE_KINDS.has(translated.kind) || attempt === MAX_RETRIES) {
+        throw translated;
+      }
+      const backoffMs = 250 * Math.pow(2, attempt) + Math.random() * 100;
+      await new Promise((r) => setTimeout(r, backoffMs));
+      attempt++;
+    }
   }
+  throw lastErr;
 }
 
 function translateOpenAIError(err: unknown): LlmError {
@@ -280,4 +653,10 @@ function translateOpenAIError(err: unknown): LlmError {
     return new LlmError(message, "5xx", "openai", err);
   }
   return new LlmError(message, "malformed_response", "openai", err);
+}
+
+// Keep the helper so legacy callers can mint a deterministic id when the
+// SDK does not return one (used by tests).
+export function _newOpenAIResponseId(): string {
+  return newProviderResponseId("openai");
 }

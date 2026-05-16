@@ -62,7 +62,7 @@ export function ATSAnalysisModal({
               ATS Score
             </p>
             <div className={cn("text-5xl font-bold", scoreColor)}>
-              {atsScore !== null ? `${atsScore}%` : "—"}
+              {atsScore !== null ? `${atsScore}%` : "-"}
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
               {atsScore && atsScore >= 85

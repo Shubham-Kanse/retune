@@ -15,7 +15,7 @@ import {
 
 const steps = [
   { title: "Paste the job", body: "Drop a JD, a URL, or describe the role in plain English." },
-  { title: "We tune from your profile", body: "Retuned reads your career brain — experience, evidence, links — and rewrites for the role." },
+  { title: "We tune from your profile", body: "Retuned reads your career brain - experience, evidence, links - and rewrites for the role." },
   { title: "Export & apply", body: "Get a tailored resume, cover letter, ATS read‑out, and a focused application strategy." },
 ];
 
@@ -31,7 +31,7 @@ const features = [
 const faqs = [
   {
     q: "How is this different from a generic AI resume builder?",
-    a: "Retuned doesn't write generic resumes. It reads your career brain (real evidence — projects, metrics, links) and tunes for one specific job at a time. Every line traces back to something you actually did.",
+    a: "Retuned doesn't write generic resumes. It reads your career brain (real evidence - projects, metrics, links) and tunes for one specific job at a time. Every line traces back to something you actually did.",
   },
   {
     q: "Will my resume pass ATS systems?",

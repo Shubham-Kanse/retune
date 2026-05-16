@@ -9,6 +9,11 @@
  *   - `runGeneration`       — seed goals + run orchestrator from tick 0
  *   - `resumeGeneration`    — load from DB and continue
  *   - `recordAnswer`        — atomic DB update: mark answered, re-open parent goal
+ *
+ * v003 Phase 2 — payload parity: GenerationSeed now carries the full
+ * input payload so the Temporal path is semantically equivalent to the
+ * in-memory path. The legacy fields (jd_title, company) are kept for
+ * backwards-compat with workflows started before this change.
  */
 
 export interface GenerationSeed {
@@ -18,6 +23,24 @@ export interface GenerationSeed {
   jd_title?: string;
   company?: string;
   market?: "US" | "UK";
+  /** Full JD body. Required when `jd_url` is not set. */
+  jd_text?: string;
+  /** Source URL (the worker fetches via Jina if `jd_text` is absent). */
+  jd_url?: string;
+  /** Free-form profile / resume body — drives extract_voice_fingerprint. */
+  profile_text?: string;
+  /** 004 §11 — full CareerProfileV1 JSON. */
+  career_profile?: unknown;
+  /** 004 §11 — derived CareerUnderstandingV1 JSON. */
+  career_understanding?: unknown;
+  /** Idempotency key from the upstream request. */
+  idempotency_key?: string;
+  /** Stable request hash — useful for cross-checking durable rows. */
+  jd_hash?: string;
+  /** Optional preflight id linking back to generation_preflights row. */
+  preflight_id?: string;
+  /** SOTA quality mode (`fast` | `balanced` | `frontier`). */
+  quality_mode?: "fast" | "balanced" | "frontier";
 }
 
 export interface GenerationOutcome {

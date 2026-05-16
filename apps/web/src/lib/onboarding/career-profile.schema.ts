@@ -194,6 +194,28 @@ function describeExperience(entry: ExperienceEntry): string {
   ].filter(Boolean).join("\n");
 }
 
+function deriveExperienceLevel(profile: UserCareerProfile): "entry" | "early" | "mid" | "senior" | "staff" {
+  // Use confirmed seniority comfort if available
+  const comfort = profile.careerIntent.seniorityComfort.value;
+  if (comfort.length > 0 && profile.careerIntent.seniorityComfort.confirmed) {
+    const last = comfort[comfort.length - 1]!.toLowerCase();
+    if (last.includes("entry") || last.includes("associate")) return "entry";
+    if (last.includes("mid")) return "mid";
+    if (last.includes("senior")) return "senior";
+    if (last.includes("lead") || last.includes("staff") || last.includes("manager") || last.includes("principal")) return "staff";
+  }
+  // Derive from yearsOfExperience
+  const years = profile.professionalProfile.yearsOfExperience.value;
+  if (typeof years === "number") {
+    if (years < 1) return "entry";
+    if (years < 2) return "early";
+    if (years < 5) return "mid";
+    if (years < 9) return "senior";
+    return "staff";
+  }
+  return "mid";
+}
+
 export function careerProfileToNormalized(
   profile: UserCareerProfile,
   fallbackEmail: string,
@@ -215,12 +237,20 @@ export function careerProfileToNormalized(
     email: profile.identity.email.value || fallbackEmail,
     phone: asStringOrNull(profile.identity.phone.value),
     linkedin: asStringOrNull(profile.identity.linkedin.value),
+    github: asStringOrNull(profile.identity.github.value),
+    portfolio: asStringOrNull(profile.identity.portfolio.value),
+    website: asStringOrNull(profile.identity.website.value),
     location: profile.identity.location.value,
     visaStatus: null,
     currentTitle: asStringOrNull(profile.professionalProfile.currentTitles.value[0] ?? profile.experience.value[0]?.title),
+    yearsOfExperience: profile.professionalProfile.yearsOfExperience.value,
+    professionalSummary: null,
+    summarySignals: profile.professionalProfile.summarySignals.value,
+    domainExperience: profile.professionalProfile.domainExperience.value,
+    careerHighlights: profile.professionalProfile.careerHighlights.value,
     relocationPreferences: [],
     targetRoles: profile.careerIntent.interestedRoles.value,
-    experienceLevel: "mid",
+    experienceLevel: deriveExperienceLevel(profile),
     experience: profile.experience.value.map((entry) => ({
       company: entry.company,
       title: entry.title,
@@ -249,6 +279,16 @@ export function careerProfileToNormalized(
       year: entry.year ? Number.parseInt(entry.year, 10) || undefined : undefined,
       keyMetric: entry.impact,
     })),
+    languages: profile.languages.value,
+    awards: profile.awards.value,
+    publications: profile.publications.value,
+    volunteering: profile.volunteering.value,
+    technicalSkills: profile.skills.technical.value,
+    tools: profile.skills.tools.value,
+    methodologies: profile.skills.methodologies.value,
+    softSkills: profile.skills.softSkills.value,
+    domainSkills: profile.skills.domainSkills.value,
+    professionalSkills: profile.skills.business.value,
     skillsTier1: technical,
     skillsTier2: tools,
     skillsTier3: professional,

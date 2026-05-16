@@ -36,6 +36,7 @@ export function useOnboardingChat() {
   const [messages, setMessages] = useState<UIMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [phase, setPhase] = useState<string>("orb_intro");
   const [readiness, setReadiness] = useState<ProfileReadiness>({
     canEnterDashboard: false,
@@ -277,16 +278,81 @@ export function useOnboardingChat() {
   // ── Public: upload file ─────────────────────────────────────────────────
   const uploadFile = useCallback(async (file: File) => {
     setExtractionStatus("pending");
-    setMessages(prev => [...prev, { id: `proc-${Date.now()}`, role: "assistant", content: "Reading your resume...", isProcessing: true }]);
+    setMessages(prev => [...prev, { id: `proc-${Date.now()}`, role: "assistant", content: "Reading your resume…", isProcessing: true }]);
 
     const fd = new FormData();
     fd.append("file", file);
 
     try {
-      const res = await fetch("/api/onboarding/upload", { method: "POST", body: fd });
-      const data = await res.json().catch(() => ({}));
+      // Try streaming endpoint first for real-time progress
+      const res = await fetch("/api/onboarding/upload/stream", { method: "POST", body: fd });
 
-      // Remove processing message
+      if (res.headers.get("content-type")?.includes("text/event-stream") && res.body) {
+        // SSE streaming path — show live progress
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let completed = false;
+
+        const updateProcessingMessage = (text: string) => {
+          setMessages(prev => prev.map(m => m.isProcessing ? { ...m, content: text } : m));
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          for (;;) {
+            const sep = buf.indexOf("\n\n");
+            if (sep === -1) break;
+            const frame = buf.slice(0, sep);
+            buf = buf.slice(sep + 2);
+            if (!frame.length) continue;
+
+            let eventType = "";
+            const dataLines: string[] = [];
+            for (const line of frame.split("\n")) {
+              if (line.startsWith("event:")) eventType = line.slice(6).trim();
+              else if (line.startsWith("data:")) dataLines.push(line.slice(5).replace(/^ /, ""));
+            }
+            if (!dataLines.length) continue;
+            const raw = dataLines.join("\n");
+
+            if (eventType === "extraction_stage") {
+              try {
+                const { stage } = JSON.parse(raw) as { stage: string };
+                if (stage === "reading") updateProcessingMessage("Reading your resume…");
+                else if (stage === "understanding") updateProcessingMessage("Understanding your career…");
+                else if (stage === "organizing") updateProcessingMessage("Organizing your profile…");
+              } catch {}
+            } else if (eventType === "extraction_complete") {
+              try {
+                const data = JSON.parse(raw);
+                setMessages(prev => prev.filter(m => !m.isProcessing));
+                setExtractionStatus("done");
+                if (data.readiness) setReadiness(data.readiness);
+                if (data.nextQuestion) {
+                  setCurrentQuestion(data.nextQuestion);
+                  setCurrentPills(data.nextQuestion.pills ?? []);
+                  setCurrentCards(data.nextQuestion.cards ?? data.cards ?? []);
+                }
+                completed = true;
+                void sendTurn({ kind: "resume_uploaded" });
+              } catch {}
+            } else if (eventType === "extraction_error") {
+              setMessages(prev => prev.filter(m => !m.isProcessing));
+              setExtractionStatus("failed");
+              setMessages(prev => [...prev, { id: `err-${Date.now()}`, role: "assistant", content: "Couldn't read that file. Try a different format?", pills: [{ label: "Try again", value: "upload_resume", action: "navigate", field: "resume" }] }]);
+              void sendTurn({ kind: "resume_failed" });
+              completed = true;
+            }
+          }
+        }
+        if (completed) return;
+      }
+
+      // Fallback: JSON response (cached result or non-streaming)
+      const data = await res.json().catch(() => ({}));
       setMessages(prev => prev.filter(m => !m.isProcessing));
 
       if (!res.ok || !data.ok) {
@@ -312,40 +378,54 @@ export function useOnboardingChat() {
   }, [sendTurn]);
 
   // ── Public: start over ──────────────────────────────────────────────────
+  // Two-phase reset for a smooth visual transition:
+  //   1. Set isResetting=true → page fades out current chat (~280ms)
+  //   2. After fade, clear all client state and dispatch the server wipe.
+  // The fresh question streams in over the cleared canvas as the new chat fades back in.
   const startOver = useCallback(() => {
-    setMessages([]);
-    setPhase("orb_intro");
-    setReadiness({
-      canEnterDashboard: false,
-      score: 0,
-      blockers: [],
-      warnings: [],
-      suggestions: [],
-      completedCategories: {
-          identity: 0,
-          experience: 0,
-          experienceOrProjects: 0,
-          education: 0,
-          educationOrNotApplicable: 0,
-          skills: 0,
-          professionalProfile: 0,
-          careerIntent: 0,
-          resumeWritingSignals: 0,
-          resumeWritingPreferences: 0,
-          qualityAndConfirmation: 0,
-      },
-    });
-    setCurrentPills([]);
-    setCurrentCards([]);
-    setExtractionStatus("none");
-    setIsComplete(false);
-    void sendTurn({ kind: "start_over" });
+    setIsResetting(true);
+    setTimeout(() => {
+      setMessages([]);
+      setPhase("orb_intro");
+      setReadiness({
+        canEnterDashboard: false,
+        score: 0,
+        blockers: [],
+        warnings: [],
+        suggestions: [],
+        completedCategories: {
+            identity: 0,
+            experience: 0,
+            experienceOrProjects: 0,
+            education: 0,
+            educationOrNotApplicable: 0,
+            skills: 0,
+            professionalProfile: 0,
+            careerIntent: 0,
+            resumeWritingSignals: 0,
+            resumeWritingPreferences: 0,
+            qualityAndConfirmation: 0,
+        },
+      });
+      setCurrentPills([]);
+      setCurrentCards([]);
+      setExtractionStatus("none");
+      setIsComplete(false);
+      setIsResetting(false);
+      void sendTurn({ kind: "start_over" });
+    }, 280);
+  }, [sendTurn]);
+
+  // ── Public: finish now (skip remaining optional steps) ─────────────────
+  const finishNow = useCallback(() => {
+    void sendTurn({ kind: "finish_now" });
   }, [sendTurn]);
 
   return {
     messages,
     isStreaming,
     isComplete,
+    isResetting,
     phase,
     readiness,
     currentQuestion,
@@ -360,5 +440,6 @@ export function useOnboardingChat() {
     submitSkills,
     uploadFile,
     startOver,
+    finishNow,
   };
 }

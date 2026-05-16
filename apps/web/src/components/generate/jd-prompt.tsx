@@ -6,20 +6,12 @@ import {
   PromptInputActions,
   PromptInputTextarea,
 } from "@/components/prompt-kit/prompt-input";
-import { PromptSuggestion } from "@/components/prompt-kit/prompt-suggestion";
 import { Button } from "@/components/ui/button";
-import { ArrowUp, Link2, Type } from "lucide-react";
+import { ArrowRight, Link2, Type } from "lucide-react";
 import { useState } from "react";
 
 export type InputMode = "text" | "url";
 export type Market = "us" | "uk";
-
-const suggestions = [
-  "Senior PM at a fintech",
-  "Founding engineer at an early-stage SaaS",
-  "FAANG software engineer",
-  "Staff designer at a healthcare startup",
-];
 
 export function JdPrompt({
   onStart,
@@ -32,7 +24,7 @@ export function JdPrompt({
   placeholderUrl?: string;
   placeholderText?: string;
 }) {
-  const [mode, setMode] = useState<InputMode>("text");
+  const [mode, setMode] = useState<InputMode>("url");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [market, setMarket] = useState<Market>("us");
@@ -74,14 +66,14 @@ export function JdPrompt({
           <PromptInputActions className="flex-wrap justify-between gap-2 pt-2">
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex rounded-full border border-border bg-background p-0.5">
-                {(["text", "url"] as const).map((m) => (
+                {(["url", "text"] as const).map((m) => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => setMode(m)}
                     className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                       mode === m
-                        ? "bg-foreground text-background"
+                        ? "bg-foreground/80 text-background"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -98,7 +90,7 @@ export function JdPrompt({
                     onClick={() => setMarket(m)}
                     className={`rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
                       market === m
-                        ? "bg-foreground text-background"
+                        ? "bg-foreground/80 text-background"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                   >
@@ -109,29 +101,15 @@ export function JdPrompt({
             </div>
             <PromptInputAction tooltip="Tune">
               <Button
-                size="icon"
-                className="size-9 rounded-full"
+                className="rounded-full px-4 gap-1.5"
                 disabled={!canSubmit}
                 onClick={fire}
               >
-                <ArrowUp className="size-4" />
+                Tune <ArrowRight className="size-3.5" />
               </Button>
             </PromptInputAction>
           </PromptInputActions>
         </PromptInput>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {suggestions.map((s) => (
-          <PromptSuggestion
-            key={s}
-            onClick={() => {
-              setMode("text");
-              setText(s);
-            }}
-          >
-            {s}
-          </PromptSuggestion>
-        ))}
       </div>
     </div>
   );

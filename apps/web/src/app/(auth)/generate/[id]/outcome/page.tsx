@@ -12,8 +12,8 @@ const OUTCOMES: Array<{ value: OutcomeKind; label: string; hint: string }> = [
   { value: "screen", label: "Screen", hint: "First-stage interview scheduled" },
   { value: "onsite", label: "Onsite", hint: "Final-round invitation" },
   { value: "offer", label: "Offer", hint: "Written offer received" },
-  { value: "rejection_with_reason", label: "Rejection with reason", hint: "Rejected — feedback provided" },
-  { value: "rejection_without_reason", label: "Rejection without reason", hint: "Rejected — no feedback" },
+  { value: "rejection_with_reason", label: "Rejection with reason", hint: "Rejected - feedback provided" },
+  { value: "rejection_without_reason", label: "Rejection without reason", hint: "Rejected - no feedback" },
 ];
 
 type OutcomeKind = "no_response" | "callback" | "screen" | "onsite" | "offer" | "rejection_with_reason" | "rejection_without_reason";

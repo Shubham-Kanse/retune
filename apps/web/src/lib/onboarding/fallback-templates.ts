@@ -1,7 +1,8 @@
 export const FALLBACK_MESSAGES: Record<string, string> = {
   resume_upload:
     "Upload your resume and I'll extract your experience, education, skills, and contact details.",
-  resume_parsing: "I'm reading your resume now.",
+  resume_parsing: "Reading your resume…",
+  resume_extracting: "Reading your resume — this usually takes 5–15 seconds…",
   resume_summary:
     "I've reviewed your resume and created a draft profile. Let's quickly confirm what I found.",
   identity_confirm:
@@ -32,8 +33,16 @@ export const FALLBACK_MESSAGES: Record<string, string> = {
     "What should future resumes highlight most?",
   de_emphasis_preferences:
     "What should future resumes avoid over-highlighting?",
+  role_dealbreakers:
+    "Any roles, companies, or conditions you'd never accept?",
   tone_preferences:
     "What tone should future resumes use?",
+  style_constraints:
+    "Anything to avoid in resume writing style?",
+  experience_metrics:
+    "Quick win: what was the most measurable impact of your recent work?",
+  extras_confirm:
+    "I found some additional details — languages, awards, or publications. Should I keep these?",
   profile_ready:
     "Thank you. Your Retuned profile is complete, and I'm taking you to the dashboard now.",
 };

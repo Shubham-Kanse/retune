@@ -212,8 +212,25 @@ export class Orchestrator {
       }
 
       // Pick a goal.
-      const goal = this.deps.goal_stack.peek_next();
+      // 003 §9: if the goal stack supports prerequisite-aware peek,
+      // pass a blackboard reader so production goals don't run before
+      // their dependencies have been written.
+      const blackboard_reader = (path: string) => this.deps.blackboard.get(path);
+      this.deps.goal_stack.reconcile_prerequisites?.(blackboard_reader);
+      const goal = this.deps.goal_stack.peek_next({ blackboard: blackboard_reader });
       if (!goal) {
+        // If pending goals exist but are all blocked on prerequisites,
+        // surface that as a non-error termination so the API/UI can
+        // explain the situation rather than reporting "no_open_work".
+        const blocked = this.deps.goal_stack.pending_blocked_by_prerequisites?.(blackboard_reader) ?? [];
+        if (blocked.length > 0) {
+          for (const g of blocked) {
+            this.deps.goal_stack.mark_blocked_on_prerequisites?.(
+              g.id,
+              `unmet_prerequisites: ${(g.requires ?? []).join(",")}`,
+            );
+          }
+        }
         termination = "no_open_work";
         break;
       }

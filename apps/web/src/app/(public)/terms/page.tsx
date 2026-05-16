@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Terms of Service — Retuned",
+  title: "Terms of Service - Retuned",
   description: "Retuned's terms and conditions for using our service.",
 };
 

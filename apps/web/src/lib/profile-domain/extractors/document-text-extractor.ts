@@ -1,5 +1,12 @@
+import { createRequire } from "node:module";
 import mammoth from "mammoth";
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+
+// `pdf-parse` ships as CJS only and re-exports a constructor that depends on a
+// runtime side-effect bundled with the .cjs entry. `import` in ESM hits a
+// resolution edge case that some bundlers/tsx versions don't handle, so we
+// resolve it via `createRequire` to work uniformly in Next.js dev, prod, and
+// standalone tsx scripts.
+const require = createRequire(import.meta.url);
 const { PDFParse } = require("pdf-parse") as {
   PDFParse: new (opts: { data: Uint8Array }) => { getText(): Promise<{ text: string }>; destroy(): Promise<void> };
 };

@@ -178,7 +178,7 @@ export function UpgradeButton({ compact }: { compact?: boolean }) {
               </div>
 
               <p className="text-[11px] text-[#9a9690] text-center mt-6">
-                Online payment coming soon — email us to activate immediately. All plans include ATS-optimized resume, cover letter, and strategy generation.
+                Online payment coming soon - email us to activate immediately. All plans include ATS-optimized resume, cover letter, and strategy generation.
               </p>
             </div>
           </div>

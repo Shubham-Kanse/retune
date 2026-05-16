@@ -53,6 +53,9 @@ vi.mock("@retune/db/schema", () => ({
     expiresAt: "expiresAt",
     updatedAt: "updatedAt",
   },
+  profiles: {
+    userId: "userId",
+  },
 }));
 
 describe("POST /api/generate preflight consume semantics", () => {

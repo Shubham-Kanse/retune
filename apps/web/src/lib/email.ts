@@ -90,12 +90,12 @@ export async function sendGenerationCompleteEmail(
   const appUrl = `${APP_URL}/applications/${applicationId}`;
   await sendEmail({
     to,
-    subject: `Your resume is ready — ${companyName}`,
+    subject: `Your resume is ready - ${companyName}`,
     html: `
       <div style="font-family:Roboto, Arial, Helvetica, sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
         <h2 style="font-size:20px;font-weight:600;margin-bottom:16px">Your resume is ready</h2>
         <p style="margin-bottom:24px;color:#555">
-          Your tailored application package for <strong>${companyName}</strong> is complete —
+          Your tailored application package for <strong>${companyName}</strong> is complete -
           resume, cover letter, ATS score, and application strategy are all ready to download.
         </p>
         <a href="${appUrl}" style="display:inline-block;background:#000;color:#fff;padding:12px 24px;text-decoration:none;font-weight:500">

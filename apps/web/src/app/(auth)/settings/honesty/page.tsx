@@ -59,7 +59,7 @@ function HonestyCalibrationTable({
             {row.trend === "up" && <span className="text-foreground">↑</span>}
             {row.trend === "down" && <span className="text-red-500">↓</span>}
             {(!row.trend || row.trend === "stable") && (
-              <span className="text-muted-foreground">—</span>
+              <span className="text-muted-foreground">-</span>
             )}
           </span>
         </div>

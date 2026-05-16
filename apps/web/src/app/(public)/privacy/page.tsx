@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "Privacy Policy — Retuned",
+  title: "Privacy Policy - Retuned",
   description: "Learn how Retuned handles your data and privacy.",
 };
 

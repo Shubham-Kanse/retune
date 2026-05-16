@@ -626,7 +626,7 @@ function TipsStrip() {
     {
       num: "02",
       title: "Richer profile = better bullets",
-      desc: "Add metrics to your experience entries — numbers are what the evidence mapper needs.",
+      desc: "Add metrics to your experience entries - numbers are what the evidence mapper needs.",
     },
     {
       num: "03",

@@ -85,7 +85,7 @@ function classifySelection(
   // in a short paragraph isn't misclassified as full_bullet
   if (words.length === 1) {
     const trimmedBefore = before.trim();
-    if (trimmedBefore === "" || /[•\-–—]$/.test(trimmedBefore)) {
+    if (trimmedBefore === "" || /[•\-–*]$/.test(trimmedBefore)) {
       return "single_action_verb";
     }
     if (FILLER_QUALIFIERS.has(selLower)) return "filler_qualifier";
@@ -132,7 +132,7 @@ Maintain grammatical fit with the text before and after it.
 
   filler_qualifier: `
 The selected text is a vague filler qualifier.
-Replace it with a stronger, specific qualifier — or return an empty string if the sentence is better without it.
+Replace it with a stronger, specific qualifier - or return an empty string if the sentence is better without it.
 Examples:
   "key" → "mission-critical" / "revenue-driving" / "high-impact"
   "major" → "company-wide" / "enterprise-level" / "cross-functional"
@@ -143,7 +143,7 @@ Output: 1–3 words, or empty string for removal.
   short_phrase: `
 The selected text is a short phrase within a larger sentence.
 Improve it: make it more concrete, specific, and aligned with the role.
-Preserve grammatical flow with the surrounding text — your output must slot naturally between the before and after text.
+Preserve grammatical flow with the surrounding text - your output must slot naturally between the before and after text.
 Use precise industry terminology matching the job title.
 Do not change semantic meaning unless instructed.
 `.trim(),
@@ -162,7 +162,7 @@ Rewrite it using the best-fit bullet structure:
   PAR: [Problem] + [Action] + [Result]
   XYZ: Accomplished X by doing Y, resulting in Z
 Rules:
-  - Front-load with the most impressive element (result or strong action verb — never setup)
+  - Front-load with the most impressive element (result or strong action verb - never setup)
   - Start with a strong past-tense action verb
   - Quantify impact wherever possible; use [X]% / [N] / $[X]K as placeholders if metrics are absent
   - Keep to one line (under 25 words) unless the original is multi-line
@@ -176,7 +176,7 @@ Rewrite all of them. Rules:
   - Each bullet starts with a different strong past-tense action verb
   - Parallel grammatical structure across all bullets (verb + object + result)
   - Quantify wherever possible; use [X] placeholders for missing metrics
-  - Return bullets separated by newlines — no bullet characters (•, -, *)
+  - Return bullets separated by newlines - no bullet characters (•, -, *)
   - Match the count: same number of output bullets as input bullets
 `.trim(),
 
@@ -230,7 +230,7 @@ function buildPrompt(
   lines.push("- The replacement field must contain ONLY the text that replaces the selection.");
   lines.push("- No explanations, no preamble, no questions, no markdown.");
   lines.push(
-    "- Never refuse or ask for more context — always produce the best possible replacement with what you have.",
+    "- Never refuse or ask for more context - always produce the best possible replacement with what you have.",
   );
   lines.push(
     `- The result must read naturally as: "${before.trim()} [YOUR OUTPUT] ${after.trim()}"`,
@@ -244,14 +244,14 @@ function buildPrompt(
 const OUTPUT_TOOL: ToolDefinition = {
   name: "output_replacement",
   description:
-    "Output the exact replacement text that will substitute the user's selected resume text. Always call this tool — never respond in plain text.",
+    "Output the exact replacement text that will substitute the user's selected resume text. Always call this tool - never respond in plain text.",
   inputSchema: {
     type: "object" as const,
     properties: {
       replacement: {
         type: "string",
         description:
-          "The replacement text. Must be ONLY the text that substitutes the selection — no explanations, no quotes, no bullet characters.",
+          "The replacement text. Must be ONLY the text that substitutes the selection - no explanations, no quotes, no bullet characters.",
       },
     },
     required: ["replacement"],
@@ -260,7 +260,7 @@ const OUTPUT_TOOL: ToolDefinition = {
 
 const SYSTEM_PROMPT =
   "You are an expert resume and cover letter writer. Your ONLY job is to call the output_replacement tool with the best possible replacement text. " +
-  "You MUST always call the tool — never respond in prose, never ask questions, never refuse. " +
+  "You MUST always call the tool - never respond in prose, never ask questions, never refuse. " +
   "Work with the context provided and produce the highest-quality replacement possible.";
 
 const AUTO_ENHANCE_INSTRUCTION =
@@ -275,7 +275,7 @@ function sanitizeReplacement(text: string): string {
       // Strip wrapping quotes the model might add
       .replace(/^["'`"']+|["'`"']+$/g, "")
       // Strip leading bullet characters
-      .replace(/^[\s•\-–—*]+/, "")
+      .replace(/^[\s•\-–*]+/, "")
       .trim()
   );
 }

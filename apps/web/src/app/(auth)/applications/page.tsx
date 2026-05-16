@@ -55,7 +55,7 @@ function statusColor(v: string | null) {
 }
 
 function fmt(iso: string | null) {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -95,6 +95,7 @@ export default function ApplicationsPage() {
       const res = await fetch(`/api/brain/generations/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
       setItems((prev) => prev.filter((i) => i.id !== id));
+      window.dispatchEvent(new Event("retune:generations-changed"));
     } catch {}
     finally {
       setDeletingId(null);
@@ -169,7 +170,7 @@ export default function ApplicationsPage() {
                   <span className="hidden w-10 shrink-0 text-right font-mono text-xs tabular-nums text-muted-foreground sm:inline">
                     {item.interviewReadyScore != null
                       ? Math.round(item.interviewReadyScore)
-                      : "—"}
+                      : "-"}
                   </span>
                   <ArrowRight className="size-3.5 text-muted-foreground/50" />
                 </Link>

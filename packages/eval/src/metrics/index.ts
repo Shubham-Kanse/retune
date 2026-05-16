@@ -14,3 +14,8 @@ export {
   type CriterionResult,
   type EvalSummary,
 } from "./launch-criteria";
+export {
+  score_sota_artifacts,
+  type SotaArtifactScore,
+  type ScoreInput,
+} from "./sota-artifact-scoring";

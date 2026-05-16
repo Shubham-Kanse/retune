@@ -197,6 +197,9 @@ export {
   type VoiceAuthenticityResult,
 } from "./pipeline/enforcement/voice-authenticator";
 
+// 003 SOTA generation module — safe (deterministic, no native deps).
+export * from "./generation-sota";
+
 // Enhanced agent wrapper — safe
 export {
   buildCachedSystemPromptForAgent,
