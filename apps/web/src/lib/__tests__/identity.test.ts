@@ -26,6 +26,8 @@ vi.mock("@/lib/supabase/server", () => ({
   })),
 }));
 
+const consentValuesMock = vi.fn();
+
 vi.mock("@retune/db", () => ({
   db: {
     select: selectMock,
@@ -33,6 +35,7 @@ vi.mock("@retune/db", () => ({
   },
   users: { id: "id", onboardingCompleted: "onboardingCompleted", __table: "users" },
   subscriptions: { __table: "subscriptions" },
+  processorConsents: { __table: "processor_consents" },
 }));
 
 describe("IdentityModule", () => {
@@ -49,8 +52,10 @@ describe("IdentityModule", () => {
     subValuesMock.mockReturnValue({ onConflictDoNothing: subOnConflictMock });
     userOnConflictMock.mockResolvedValue(undefined);
     subOnConflictMock.mockResolvedValue(undefined);
+    consentValuesMock.mockResolvedValue(undefined);
     insertMock.mockImplementation((table: { __table?: string }) => {
       if (table.__table === "users") return { values: userValuesMock };
+      if (table.__table === "processor_consents") return { values: consentValuesMock };
       return { values: subValuesMock };
     });
   });
@@ -65,6 +70,31 @@ describe("IdentityModule", () => {
     expect(res).toEqual({ userId: "u1", emailVerificationSent: true });
     expect(userValuesMock).toHaveBeenCalledTimes(1);
     expect(subValuesMock).toHaveBeenCalledTimes(1);
+    // No consents passed → no consent insert.
+    expect(consentValuesMock).not.toHaveBeenCalled();
+  });
+
+  it("signUp persists processor consents when provided", async () => {
+    signUpMock.mockResolvedValue({ data: { user: { id: "u1" } }, error: null });
+    const { createIdentityModule } = await import("@/lib/identity");
+
+    const identity = createIdentityModule();
+    await identity.signUp({
+      email: "x@y.com",
+      password: "Password123",
+      fullName: "X",
+      processorConsents: { anthropic: true, openai: true, retune: false },
+    });
+
+    expect(consentValuesMock).toHaveBeenCalledTimes(1);
+    const rows = consentValuesMock.mock.calls[0]?.[0] as Array<Record<string, unknown>>;
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.processor).sort()).toEqual(["anthropic", "openai"]);
+    for (const r of rows) {
+      expect(r.userId).toBe("u1");
+      expect(r.granted).toBe(true);
+      expect(r.grantedAt).toBeInstanceOf(Date);
+    }
   });
 
   it("signIn returns onboarding flag", async () => {

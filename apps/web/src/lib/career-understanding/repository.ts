@@ -1,14 +1,5 @@
-/**
- * Career understanding persistence.
- *
- * Goes through Supabase like the existing profile repository so RLS and
- * column casing stay consistent. Optimistic-revision checks prevent two
- * concurrent applies from clobbering each other.
- */
-
-import { createClient } from "@/lib/supabase/server";
 import * as dbModule from "@retune/db";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { isCareerUnderstandingV1 } from "./schema";
 import {
   CAREER_UNDERSTANDING_VERSION,
@@ -23,7 +14,6 @@ export class StaleRevisionError extends Error {
   }
 }
 
-/** Read the current understanding row for a user. */
 export async function getCareerUnderstandingByUserId(
   userId: string,
 ): Promise<CareerUnderstandingRecord | null> {
@@ -36,9 +26,7 @@ export async function getCareerUnderstandingByUserId(
   if (!row) return null;
 
   const understanding = row.careerUnderstanding ?? null;
-  if (!isCareerUnderstandingV1(understanding)) {
-    return null;
-  }
+  if (!isCareerUnderstandingV1(understanding)) return null;
 
   return {
     understanding,
@@ -63,72 +51,54 @@ export async function getCareerUnderstandingByUserId(
   };
 }
 
-/**
- * Write the understanding row for a user. When `expectedRevision` is
- * supplied the update is rejected (StaleRevisionError) if another writer
- * has incremented the revision in between.
- */
 export async function persistCareerUnderstanding(params: {
   userId: string;
   understanding: CareerUnderstandingV1;
   expectedRevision?: number;
 }): Promise<{ revision: number }> {
-  const supabase = await createClient();
   const now = new Date();
   const understanding: CareerUnderstandingV1 = {
     ...params.understanding,
     schemaVersion: CAREER_UNDERSTANDING_VERSION,
     userId: params.userId,
     updatedAt: now.toISOString(),
-    revision: params.understanding.revision,
   };
 
-  // Optimistic revision check — only update when the row's current
-  // revision matches what we expected. Returns the updated row so we can
-  // detect the no-op case (stale).
-  let query = supabase
-    .from("profiles")
-    .update({
-      career_understanding: understanding,
-      career_understanding_version: CAREER_UNDERSTANDING_VERSION,
-      career_understanding_fingerprint: understanding.sourceProfileFingerprint,
-      career_understanding_revision: understanding.revision,
-      career_understanding_stale_since: understanding.staleSince ?? null,
-      career_understanding_updated_at: now.toISOString(),
-      updated_at: now.toISOString(),
+  const whereClause =
+    typeof params.expectedRevision === "number"
+      ? and(
+          eq(dbModule.profiles.userId, params.userId),
+          eq(dbModule.profiles.careerUnderstandingRevision, params.expectedRevision),
+        )
+      : eq(dbModule.profiles.userId, params.userId);
+
+  const updated = await dbModule.db
+    .update(dbModule.profiles)
+    .set({
+      careerUnderstanding: understanding as unknown as typeof dbModule.profiles.$inferInsert["careerUnderstanding"],
+      careerUnderstandingVersion: CAREER_UNDERSTANDING_VERSION,
+      careerUnderstandingFingerprint: understanding.sourceProfileFingerprint,
+      careerUnderstandingRevision: understanding.revision,
+      careerUnderstandingStaleSince: understanding.staleSince ? new Date(understanding.staleSince) : null,
+      careerUnderstandingUpdatedAt: now,
+      updatedAt: now,
     })
-    .eq("user_id", params.userId);
-  if (typeof params.expectedRevision === "number") {
-    query = query.eq("career_understanding_revision", params.expectedRevision);
-  }
-  const { data, error } = await query.select("career_understanding_revision");
-  if (error) {
-    throw new Error(`[career-understanding] failed to persist: ${error.message}`);
-  }
-  if (!data || data.length === 0) {
+    .where(whereClause)
+    .returning();
+
+  if (!updated || updated.length === 0) {
     throw new StaleRevisionError();
   }
   return { revision: understanding.revision };
 }
 
-/**
- * Mark the existing understanding stale without changing its content. Used
- * when fact edits land but the user has not yet asked Retune to re-read.
- */
 export async function markCareerUnderstandingStale(params: {
   userId: string;
   staleSince?: Date;
 }): Promise<void> {
-  const supabase = await createClient();
-  const ts = (params.staleSince ?? new Date()).toISOString();
-  const { error } = await supabase
-    .from("profiles")
-    .update({
-      career_understanding_stale_since: ts,
-      updated_at: ts,
-    })
-    .eq("user_id", params.userId);
-  if (error) {
-    throw new Error(`[career-understanding] failed to mark stale: ${error.message}`);
-  }
+  const ts = params.staleSince ?? new Date();
+  await dbModule.db
+    .update(dbModule.profiles)
+    .set({ careerUnderstandingStaleSince: ts, updatedAt: ts })
+    .where(eq(dbModule.profiles.userId, params.userId));
 }

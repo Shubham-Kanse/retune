@@ -23,6 +23,8 @@ describe("POST /api/auth/signup", () => {
     });
   }
 
+  const allConsents = { anthropic: true, openai: true, retune: true };
+
   it("creates account and returns user id", async () => {
     signUp.mockResolvedValue({ userId: "u1", emailVerificationSent: true });
     const { POST } = await import("@/app/api/auth/signup/route");
@@ -32,6 +34,7 @@ describe("POST /api/auth/signup", () => {
         email: "user@example.com",
         password: "Password123",
         fullName: "Test User",
+        processorConsents: allConsents,
       }),
     );
 
@@ -41,6 +44,7 @@ describe("POST /api/auth/signup", () => {
       email: "user@example.com",
       password: "Password123",
       fullName: "Test User",
+      processorConsents: allConsents,
     });
   });
 
@@ -52,11 +56,24 @@ describe("POST /api/auth/signup", () => {
       req({
         email: "user@example.com",
         password: "Password123",
+        processorConsents: allConsents,
       }),
     );
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ userId: undefined, emailVerificationSent: true });
+  });
+
+  it("rejects when consents are missing", async () => {
+    const { POST } = await import("@/app/api/auth/signup/route");
+    const res = await POST(
+      req({
+        email: "user@example.com",
+        password: "Password123",
+        processorConsents: { anthropic: true, openai: true },
+      }),
+    );
+    expect(res.status).toBe(400);
   });
 
   it("returns 400 for invalid schema", async () => {

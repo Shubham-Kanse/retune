@@ -308,3 +308,12 @@ export function updateProfileOnboardingReadiness(
   profile.updatedAt = new Date().toISOString();
   return profile;
 }
+
+export const profileReadinessSchema = z.object({
+  canEnterDashboard: z.boolean(),
+  score: z.number(),
+  blockers: z.array(z.string()).default([]),
+  warnings: z.array(z.string()).default([]),
+  suggestions: z.array(z.string()).default([]),
+  completedCategories: z.record(z.string(), z.number()).default({}),
+});

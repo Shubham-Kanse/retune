@@ -1,5 +1,4 @@
-import { computeCompletenessScore, db, profiles, users } from "@retune/db";
-import { eq } from "drizzle-orm";
+import { computeCompletenessScore } from "@retune/db";
 
 export type LooseProfile = Record<string, unknown>;
 
@@ -194,46 +193,4 @@ export function findMissingCoreFields(profile: LooseProfile): string[] {
   return missing;
 }
 
-export async function persistProfileAssembly(params: {
-  userId: string;
-  sessionEmail: string;
-  profile: LooseProfile;
-  now?: Date;
-  markOnboardingCompleted?: boolean;
-}) {
-  const now = params.now ?? new Date();
-  const assembled = assembleProfile(params.profile, { userEmail: params.sessionEmail, now });
 
-  await db.transaction(async (tx) => {
-    await tx
-      .insert(profiles)
-      .values({
-        userId: params.userId,
-        ...assembled.dbValues,
-      })
-      .onConflictDoUpdate({
-        target: profiles.userId,
-        set: assembled.dbValues,
-      });
-
-    if (params.markOnboardingCompleted !== false) {
-      await tx
-        .update(users)
-        .set({
-          onboardingCompleted: true,
-          fullName: assembled.normalized.fullName || undefined,
-          updatedAt: now,
-        })
-        .where(eq(users.id, params.userId));
-    }
-  });
-
-  return assembled;
-}
-
-export async function markOnboardingSkipped(userId: string, now: Date = new Date()) {
-  await db
-    .update(users)
-    .set({ onboardingCompleted: true, updatedAt: now })
-    .where(eq(users.id, userId));
-}

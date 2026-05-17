@@ -4,6 +4,7 @@ import { ensureGenerationPreflightsTable } from "@/lib/preflight-table";
 import { canonicalDisplay, canonicalizeSkill, skillMatch } from "@/lib/skill-ontology";
 import type { DriftAnswer, DriftLevel, PreflightDetectResponse, StructuredJd } from "@/lib/drift-preflight";
 import { AgentError, ValidationError } from "@/lib/errors";
+import { updateProfile } from "@/lib/profile-domain/repositories/profile-repository";
 import { assembleSystemPrompt, getModels, getProvider } from "@retune/agent/web";
 import { db, generationPreflights, profiles } from "@retune/db";
 import { eq } from "drizzle-orm";
@@ -348,14 +349,10 @@ export const PATCH = withAuth(async (request, session) => {
 
   const profileMarkdown = `${profile.profileMarkdown ?? ""}${driftBlock}`.slice(0, 20000);
 
-  await db
-    .update(profiles)
-    .set({
-      skillsTier2: JSON.stringify(nextTier2),
-      profileMarkdown,
-      updatedAt: new Date(),
-    })
-    .where(eq(profiles.userId, session.userId));
+  await updateProfile(session.userId, {
+    skillsTier2: JSON.stringify(nextTier2),
+    profileMarkdown,
+  });
 
   const [preflightRow] = await db
     .insert(generationPreflights)

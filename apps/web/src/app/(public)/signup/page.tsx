@@ -64,7 +64,8 @@ export default function SignupPage() {
         const d = await res.json();
         throw new Error(d.error ?? "Could not create account.");
       }
-      router.push("/onboarding");
+      const emailValue = (form.get("email") as string | null) ?? "";
+      router.push(`/verify-email?email=${encodeURIComponent(emailValue)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       emailRef.current?.focus();

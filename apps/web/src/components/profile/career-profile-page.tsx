@@ -10,6 +10,7 @@ import { RetuneLensPanel } from "@/components/retune-lens";
 import type { RetuneLensPreviewRequest, RetuneLensPreviewResponse } from "@/components/retune-lens";
 import { Button } from "@/components/ui/button";
 import { useRetuneLens } from "@/hooks/use-retune-lens";
+import { useUnderstandingFreshness } from "@/hooks/use-understanding-freshness";
 import type { CareerUnderstandingV1, UnderstandingScope } from "@/lib/career-understanding";
 import type { ProfileReadiness } from "@/lib/onboarding/types";
 import { Upload } from "lucide-react";
@@ -40,6 +41,12 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
   );
   const [stale, setStale] = React.useState(props.staleAtLoad);
   const [localStale, setLocalStale] = React.useState(false);
+
+  useUnderstandingFreshness({
+    initialRevision: props.initialUnderstanding?.revision ?? 0,
+    initialStaleSince: props.initialUnderstanding?.staleSince ?? null,
+    waitingForFirst: !props.understandingPersisted,
+  });
 
   const upload = useResumeUpload({
     onCommitted: (result) => {

@@ -1,32 +1,19 @@
 import { careerProfileFingerprint } from "@/lib/career-understanding/fingerprint";
+import { careerUnderstandingSchema } from "@/lib/career-understanding/schema";
 import {
   CAREER_PROFILE_VERSION,
+  careerProfileSchema,
   careerProfileToNormalized,
   isCareerProfileV1,
+  profileReadinessSchema,
 } from "@/lib/onboarding/career-profile.schema";
 import type { CareerProfileV1, ProfileReadiness } from "@/lib/onboarding/types";
-import { createClient } from "@/lib/supabase/server";
 import * as dbModule from "@retune/db";
 import { eq } from "drizzle-orm";
 import type { ProfileNormalized } from "../contracts";
 import { buildProfileMarkdown } from "../services/markdown";
 import { parseJsonSafe, stringifyJson } from "../utils/json";
 
-/**
- * Wipe every onboarding-derived row for a user so a fresh onboarding session
- * can run from scratch. Deliberately scoped to onboarding outputs:
- *   - profiles            (career profile + understanding live here)
- *   - resume_ingestions   (cached resume extraction; without this, re-uploading
- *                          the same file would short-circuit to the old cached
- *                          extraction instead of re-extracting)
- *   - users.onboarding_completed → false
- *
- * Kept on purpose:
- *   - onboarding_events   (telemetry / audit trail across attempts)
- *   - generations, applications, billing — NOT onboarding outputs.
- *
- * This is "reset onboarding", not "delete account".
- */
 export async function wipeUserOnboardingData(userId: string): Promise<void> {
   await dbModule.db.transaction(async (tx) => {
     await tx.delete(dbModule.profiles).where(eq(dbModule.profiles.userId, userId));
@@ -75,20 +62,40 @@ export async function getProfileByUserId(userId: string): Promise<Record<string,
     skillsTier2: parseJsonSafe<unknown[]>(row.skillsTier2, []),
     skillsTier3: parseJsonSafe<unknown[]>(row.skillsTier3, []),
     voiceNotes: row.voiceNotes,
-    careerProfile: (row as { careerProfile?: unknown }).careerProfile ?? null,
-    careerProfileVersion: (row as { careerProfileVersion?: unknown }).careerProfileVersion ?? null,
-    profileReadiness: (row as { profileReadiness?: unknown }).profileReadiness ?? null,
-    careerUnderstanding: (row as { careerUnderstanding?: unknown }).careerUnderstanding ?? null,
-    careerUnderstandingVersion:
-      (row as { careerUnderstandingVersion?: unknown }).careerUnderstandingVersion ?? null,
+    careerProfile: (() => {
+      const raw = (row as Record<string, unknown>).careerProfile ?? null;
+      const parsed = careerProfileSchema.safeParse(raw);
+      if (!parsed.success && raw != null) {
+        console.warn("[profile-repository] careerProfile schema mismatch", parsed.error.issues[0]?.message);
+      }
+      return parsed.success ? parsed.data : null;
+    })(),
+    careerProfileVersion: (row as Record<string, unknown>).careerProfileVersion ?? null,
+    profileReadiness: (() => {
+      const raw = (row as Record<string, unknown>).profileReadiness ?? null;
+      const parsed = profileReadinessSchema.safeParse(raw);
+      if (!parsed.success && raw != null) {
+        console.warn("[profile-repository] profileReadiness schema mismatch", parsed.error.issues[0]?.message);
+      }
+      return parsed.success ? parsed.data : null;
+    })(),
+    careerUnderstanding: (() => {
+      const raw = (row as Record<string, unknown>).careerUnderstanding ?? null;
+      const parsed = careerUnderstandingSchema.safeParse(raw);
+      if (!parsed.success && raw != null) {
+        console.warn("[profile-repository] careerUnderstanding schema mismatch", parsed.error.issues[0]?.message);
+      }
+      return parsed.success ? parsed.data : null;
+    })(),
+    careerUnderstandingVersion: (row as Record<string, unknown>).careerUnderstandingVersion ?? null,
     careerUnderstandingFingerprint:
-      (row as { careerUnderstandingFingerprint?: unknown }).careerUnderstandingFingerprint ?? null,
+      (row as Record<string, unknown>).careerUnderstandingFingerprint ?? null,
     careerUnderstandingRevision:
-      (row as { careerUnderstandingRevision?: unknown }).careerUnderstandingRevision ?? 0,
+      (row as Record<string, unknown>).careerUnderstandingRevision ?? 0,
     careerUnderstandingStaleSince:
-      (row as { careerUnderstandingStaleSince?: unknown }).careerUnderstandingStaleSince ?? null,
+      (row as Record<string, unknown>).careerUnderstandingStaleSince ?? null,
     careerUnderstandingUpdatedAt:
-      (row as { careerUnderstandingUpdatedAt?: unknown }).careerUnderstandingUpdatedAt ?? null,
+      (row as Record<string, unknown>).careerUnderstandingUpdatedAt ?? null,
   };
 }
 
@@ -107,96 +114,102 @@ export async function persistProfile(
     readiness?.score ?? dbModule.computeCompletenessScore({ ...normalized, profileMarkdown });
   const extra = normalized as ProfileNormalized & { deEmphasisAreas?: string[] };
 
-  const supabase = await createClient();
-
-  // 004 §6.3 — detect stale understanding when facts change. We do this
-  // BEFORE the upsert so the comparison is against the existing row, not
-  // the row we are about to write.
-  let staleSinceOverride: string | undefined;
-  if (careerProfile) {
-    const existing = await supabase
-      .from("profiles")
-      .select(
-        "career_understanding_fingerprint, career_understanding, career_understanding_stale_since",
-      )
-      .eq("user_id", opts.userId)
-      .maybeSingle();
-    const existingRow = existing.data as {
-      career_understanding_fingerprint: string | null;
-      career_understanding: unknown;
-      career_understanding_stale_since: string | null;
-    } | null;
-    if (existingRow) {
-      const hasNonEmptyUnderstanding =
-        existingRow.career_understanding != null &&
-        typeof existingRow.career_understanding === "object" &&
-        Object.keys(existingRow.career_understanding as Record<string, unknown>).length > 0;
-      if (hasNonEmptyUnderstanding && existingRow.career_understanding_fingerprint) {
-        const newFp = careerProfileFingerprint(careerProfile);
-        if (existingRow.career_understanding_fingerprint !== newFp) {
-          staleSinceOverride =
-            existingRow.career_understanding_stale_since ?? new Date().toISOString();
+  await dbModule.db.transaction(async (tx) => {
+    // Pre-read for fingerprint comparison inside the transaction.
+    let staleSince: Date | null = null;
+    if (careerProfile) {
+      const existing = await tx
+        .select({
+          careerUnderstandingFingerprint: dbModule.profiles.careerUnderstandingFingerprint,
+          careerUnderstanding: dbModule.profiles.careerUnderstanding,
+          careerUnderstandingStaleSince: dbModule.profiles.careerUnderstandingStaleSince,
+        })
+        .from(dbModule.profiles)
+        .where(eq(dbModule.profiles.userId, opts.userId))
+        .limit(1);
+      const row = existing[0];
+      if (row) {
+        const cu = row.careerUnderstanding as Record<string, unknown> | null;
+        const hasUnderstanding = cu != null && Object.keys(cu).length > 0;
+        if (hasUnderstanding && row.careerUnderstandingFingerprint) {
+          const newFp = careerProfileFingerprint(careerProfile);
+          if (row.careerUnderstandingFingerprint !== newFp) {
+            staleSince = row.careerUnderstandingStaleSince ?? new Date();
+          }
         }
       }
     }
-  }
 
-  // Only write columns that exist in the profiles table schema.
-  // Extra columns (linkedin_url, github_url, city, country, technical_skills,
-  // professional_skills, onboarding_profile, etc.) are omitted because they
-  // don't exist in the Drizzle schema and cause the upsert to fail silently.
-  const row: Record<string, unknown> = {
-    user_id: opts.userId,
-    full_name: normalized.fullName || opts.sessionFullName || "",
-    email: normalized.email || opts.sessionEmail,
-    phone: normalized.phone ?? null,
-    linkedin: normalized.linkedin ?? null,
-    location: normalized.location ?? "",
-    visa_status: normalized.visaStatus ?? null,
-    relocation_preferences: stringifyJson(normalized.relocationPreferences),
-    target_roles: stringifyJson(normalized.targetRoles),
-    experience_level: normalized.experienceLevel ?? null,
-    current_title: normalized.currentTitle ?? null,
-    experience: stringifyJson(normalized.experience),
-    education: stringifyJson(normalized.education),
-    certifications: stringifyJson(normalized.certifications),
-    projects: stringifyJson(normalized.projects),
-    skills_tier1: stringifyJson(normalized.skillsTier1),
-    skills_tier2: stringifyJson(normalized.skillsTier2),
-    skills_tier3: stringifyJson(normalized.skillsTier3),
-    voice_notes: normalized.voiceNotes ?? null,
-    de_emphasis_areas:
-      extra.deEmphasisAreas ?? careerProfile?.resumeWritingPreferences.deEmphasisAreas.value ?? [],
-    career_profile: careerProfile ?? {},
-    career_profile_version: CAREER_PROFILE_VERSION,
-    profile_readiness: readiness ?? {},
-    profile_markdown: profileMarkdown,
-    completeness_score: completenessScore,
-    ...(opts.markOnboardingCompleted ? { onboarding_completed_at: new Date().toISOString() } : {}),
-    updated_at: new Date().toISOString(),
-  };
-  if (staleSinceOverride) {
-    row.career_understanding_stale_since = staleSinceOverride;
-  }
+    const now = new Date();
+    const values = {
+      userId: opts.userId,
+      fullName: normalized.fullName || opts.sessionFullName || "",
+      email: normalized.email || opts.sessionEmail,
+      phone: normalized.phone ?? null,
+      linkedin: normalized.linkedin ?? null,
+      location: normalized.location ?? "",
+      visaStatus: normalized.visaStatus ?? null,
+      relocationPreferences: stringifyJson(normalized.relocationPreferences),
+      targetRoles: stringifyJson(normalized.targetRoles),
+      experienceLevel: normalized.experienceLevel ?? null,
+      currentTitle: normalized.currentTitle ?? null,
+      experience: stringifyJson(normalized.experience),
+      education: stringifyJson(normalized.education),
+      certifications: stringifyJson(normalized.certifications),
+      projects: stringifyJson(normalized.projects),
+      skillsTier1: stringifyJson(normalized.skillsTier1),
+      skillsTier2: stringifyJson(normalized.skillsTier2),
+      skillsTier3: stringifyJson(normalized.skillsTier3),
+      voiceNotes: normalized.voiceNotes ?? null,
+      deEmphasisAreas: JSON.stringify(
+        extra.deEmphasisAreas ??
+          careerProfile?.resumeWritingPreferences.deEmphasisAreas.value ??
+          [],
+      ),
+      careerProfile: (careerProfile ?? {}) as typeof dbModule.profiles.$inferInsert["careerProfile"],
+      careerProfileVersion: CAREER_PROFILE_VERSION,
+      profileReadiness: (readiness ?? {}) as typeof dbModule.profiles.$inferInsert["profileReadiness"],
+      profileMarkdown,
+      completenessScore,
+      ...(opts.markOnboardingCompleted ? { onboardingCompletedAt: now } : {}),
+      ...(staleSince ? { careerUnderstandingStaleSince: staleSince } : {}),
+      updatedAt: now,
+    };
 
-  const { error } = await supabase.from("profiles").upsert(row, { onConflict: "user_id" });
-  if (error) {
-    throw new Error(`[profile] Failed to persist profile: ${error.message}`);
-  }
+    await tx
+      .insert(dbModule.profiles)
+      .values(values)
+      .onConflictDoUpdate({
+        target: dbModule.profiles.userId,
+        set: values,
+      });
 
-  if (opts.markOnboardingCompleted) {
-    await supabase
-      .from("users")
-      .update({
-        onboarding_completed: true,
-        ...(opts.markOnboardingCompleted && "onboarding_completed_at" in row
-          ? { onboarding_completed_at: row.onboarding_completed_at as string }
-          : {}),
-        full_name: (row.full_name as string) || opts.sessionFullName,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", opts.userId);
-  }
+    if (opts.markOnboardingCompleted) {
+      await tx
+        .update(dbModule.users)
+        .set({
+          onboardingCompleted: true,
+          onboardingCompletedAt: now,
+          fullName: normalized.fullName || opts.sessionFullName || undefined,
+          updatedAt: now,
+        })
+        .where(eq(dbModule.users.id, opts.userId));
+    }
+  });
 
   return { completenessScore };
+}
+
+/**
+ * Partial update for ad-hoc profile column changes.
+ * All callers must go through here — never db.update(profiles) directly.
+ */
+export async function updateProfile(
+  userId: string,
+  patch: Partial<typeof dbModule.profiles.$inferInsert>,
+): Promise<void> {
+  await dbModule.db
+    .update(dbModule.profiles)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(eq(dbModule.profiles.userId, userId));
 }

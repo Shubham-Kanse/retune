@@ -10,7 +10,7 @@ export function createEmptyProfile(userId: string): UserCareerProfile {
   const now = new Date().toISOString();
   return {
     schemaVersion: CAREER_PROFILE_VERSION,
-    id: "",
+    id: crypto.randomUUID(),
     userId,
     identity: {
       fullName: emptyField(""),
@@ -191,7 +191,8 @@ function upgradeProfile(raw: Record<string, unknown>, userId: string): UserCaree
 function parseProfile(raw: unknown, userId: string): UserCareerProfile {
   if (!raw || typeof raw !== "object") return createEmptyProfile(userId);
   const obj = raw as Record<string, unknown>;
-  // Check if it's the new format (has identity.fullName as ProfileField)
+  // UserCareerProfile has identity.fullName as a ProfileField<string> with a .value property.
+  // careerProfileSchema validates CareerProfileV1 (the finalized format), not this in-session format.
   if (obj.identity && typeof obj.identity === "object" && (obj.identity as any).fullName?.value !== undefined) {
     return upgradeProfile(obj, userId);
   }

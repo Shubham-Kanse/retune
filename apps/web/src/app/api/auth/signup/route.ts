@@ -4,6 +4,14 @@ import { ValidationError } from "@/lib/errors";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+const consentSchema = z
+  .object({
+    anthropic: z.boolean().optional(),
+    openai: z.boolean().optional(),
+    retune: z.boolean().optional(),
+  })
+  .optional();
+
 const schema = z.object({
   email: z.string().email().max(254),
   password: z
@@ -14,6 +22,7 @@ const schema = z.object({
     .refine((v) => /[a-z]/.test(v), "Password must contain lowercase letter")
     .refine((v) => /[0-9]/.test(v), "Password must contain number"),
   fullName: z.string().max(100).optional(),
+  processorConsents: consentSchema,
 });
 
 export const POST = withErrorHandling(async (request) => {
@@ -22,6 +31,13 @@ export const POST = withErrorHandling(async (request) => {
   });
   const parsed = schema.safeParse(body);
   if (!parsed.success) throw new ValidationError(parsed.error.issues[0]?.message ?? "Invalid input");
+
+  // Require all three processor consents at API boundary (defence-in-depth;
+  // UI also enforces). This blocks raw API calls that bypass the form.
+  const c = parsed.data.processorConsents;
+  if (!c?.anthropic || !c?.openai || !c?.retune) {
+    throw new ValidationError("All processor consents are required to create an account");
+  }
 
   const identity = createIdentityModule();
   const result = await identity.signUp(parsed.data);

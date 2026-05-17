@@ -2,7 +2,8 @@ import { rmSync } from "node:fs";
 import { resolve } from "node:path";
 import { withAuth } from "@/lib/api-handler";
 import { ValidationError } from "@/lib/errors";
-import { db, profiles, users } from "@retune/db";
+import { updateProfile } from "@/lib/profile-domain/repositories/profile-repository";
+import { db, users } from "@retune/db";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -30,10 +31,7 @@ export const PATCH = withAuth(async (request, session) => {
     .set({ fullName, updatedAt: now })
     .where(eq(users.id, session.userId));
 
-  await db
-    .update(profiles)
-    .set({ fullName, updatedAt: now })
-    .where(eq(profiles.userId, session.userId));
+  await updateProfile(session.userId, { fullName });
 
   return NextResponse.json({ ok: true, fullName });
 });

@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { db, subscriptions, users } from "@retune/db";
+import { db, processorConsents, subscriptions, users } from "@retune/db";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
@@ -7,10 +7,13 @@ import { ConflictError, ValidationError } from "./errors";
 import type { Session } from "./session";
 import { createClient } from "./supabase/server";
 
+export type ProcessorKey = "anthropic" | "openai" | "retune";
+
 export interface SignUpInput {
   email: string;
   password: string;
   fullName?: string;
+  processorConsents?: Partial<Record<ProcessorKey, boolean>>;
 }
 
 export interface SignInInput {
@@ -64,6 +67,22 @@ export function createIdentityModule(): IdentityModule {
             status: "active",
           })
           .onConflictDoNothing();
+
+        // Persist GDPR-relevant processor consents alongside the user row.
+        // Without this the signup form's checkboxes are legally meaningless.
+        const consents = input.processorConsents ?? {};
+        const now = new Date();
+        const rows = (Object.keys(consents) as ProcessorKey[])
+          .filter((k) => consents[k] === true)
+          .map((processor) => ({
+            userId,
+            processor,
+            granted: true,
+            grantedAt: now,
+          }));
+        if (rows.length > 0) {
+          await db.insert(processorConsents).values(rows);
+        }
       }
 
       return { userId, emailVerificationSent: true };

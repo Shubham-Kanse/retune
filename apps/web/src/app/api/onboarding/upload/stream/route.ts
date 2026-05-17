@@ -19,6 +19,7 @@ import { getOrCreateSession, saveSession } from "@/lib/onboarding/session-store"
 import { calculateProfileReadiness } from "@/lib/onboarding/readiness";
 import { planNextQuestion } from "@/lib/onboarding/planner";
 import { sseEvent, SSE_HEADERS } from "@/lib/onboarding/sse";
+import { applyExtractedProfile, calculateParseQuality } from "@/lib/onboarding/apply-extracted-profile";
 import {
   computeContentHash,
   createIngestion,
@@ -165,8 +166,25 @@ export const POST = withAuth(async (request, session) => {
           });
         }
 
-        // Compute readiness
+        // Apply extracted profile to session and save — this is what populates
+        // profile.identity.fullName etc. so the chat route reads real data.
+        const parseQuality = calculateParseQuality(extracted, mediaType);
+        applyExtractedProfile(stored, extracted, parseQuality);
+        stored.meta.resumeUploaded = true;
+        stored.meta.resumeParsed = true;
+        stored.meta.extractionStatus = "done";
+        stored.meta.currentPhase = "resume_summary";
+        stored.meta.resumeFileHash = contentHash;
+        stored.status = "draft";
+        stored.resumeFileHash = contentHash;
+        stored.extractionStatus = "done";
+        stored.profile.onboarding.resumeUploaded = true;
+        stored.profile.onboarding.resumeParsed = true;
+        stored.profile.onboarding.parseQuality = parseQuality;
         const readiness = calculateProfileReadiness(stored.profile);
+        stored.profile.onboarding.readiness = readiness;
+        await saveSession(session.userId, stored);
+
         const nextQuestion = planNextQuestion(stored.profile, stored.meta);
 
         await logOnboardingEvent({

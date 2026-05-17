@@ -4,7 +4,7 @@ import { extractDocumentText } from "./document-text-extractor";
 import { validateExtractionOutput } from "./output-validator";
 
 const DEFAULT_MODEL = "gpt-4.1-nano";
-const DEFAULT_MAX_OUTPUT_TOKENS = 2400;
+const DEFAULT_MAX_OUTPUT_TOKENS = 8000;
 
 const EXTRACTION_PROMPT = `You are a resume extraction engine.
 Return a single JSON object matching the provided schema exactly.
@@ -24,7 +24,7 @@ Rules:
 - Infer experienceLevel as one of: entry, early, mid, senior, staff.
 - Always populate currentTitle if any job title appears anywhere on the resume — pick the most recent one.
 - Always populate phone if any phone number appears (with or without country code, in any format).
-- Infer targetRoles only when strongly implied by titles and skills.
+- Keep experience descriptions concise: max 5 achievement bullets per role. Always include ALL experience entries — never drop an entry to save tokens.
 - Do not infer career direction from the resume alone.
 
 SKILL CATEGORIZATION (each skill goes in EXACTLY ONE bucket — do not duplicate across buckets):
@@ -36,11 +36,6 @@ SKILL CATEGORIZATION (each skill goes in EXACTLY ONE bucket — do not duplicate
 - professionalSkills: business / role-specific skills (e.g. Stakeholder Management, Requirements Gathering).
 If a skill could fit two categories, pick the more specific one. NEVER list the same skill in two different skill arrays.
 
-ACHIEVEMENTS vs METRICS (per experience entry):
-- achievements[]: human-readable bullets describing accomplishments. Always include quantified bullets here as full sentences (e.g. "Reduced payment latency by 40% via event-driven migration").
-- metrics[]: structured numeric data extracted FROM the same achievements. Each metric has metric, value, context, direction. A quantified bullet should appear in BOTH arrays — once as an achievement string, once as a structured metric object.
-- Non-quantified bullets (e.g. "Mentored junior engineers") belong only in achievements[], not metrics[].
-
 EXAMPLE INPUT (resume excerpt):
 Alex Chen | alex.chen@email.com | +1 415-555-2031 | San Francisco, CA
 Senior Software Engineer at Stripe (Jan 2021 – Present)
@@ -51,7 +46,7 @@ B.S. Computer Science, UC Berkeley, 2017
 Skills: Python, Go, Kafka, PostgreSQL, AWS, Agile, Mentoring
 
 EXAMPLE OUTPUT (JSON):
-{"fullName":"Alex Chen","email":"alex.chen@email.com","phone":"+1 415-555-2031","linkedin":null,"github":null,"portfolio":null,"website":null,"location":"San Francisco, CA","visaStatus":null,"currentTitle":"Senior Software Engineer","yearsOfExperience":7,"experienceLevel":"senior","professionalSummary":null,"summarySignals":[],"domainExperience":["payments","fraud detection"],"careerHighlights":["Reduced payment pipeline latency by 40%","Led team of 5 on real-time fraud detection","Mentored 3 engineers to promotion"],"relocationPreferences":[],"targetRoles":[],"experience":[{"company":"Stripe","title":"Senior Software Engineer","titleForResume":null,"startDate":"January 2021","endDate":"","description":"Led migration of payment processing pipeline to event-driven architecture. Managed team of 5 engineers delivering real-time fraud detection system. Mentored 3 junior engineers through promotion.","metrics":[{"metric":"latency reduction","value":"40%","context":"payment processing pipeline migration","direction":"decrease"},{"metric":"transaction volume","value":"2M per day","context":"fraud detection system","direction":""},{"metric":"engineers mentored","value":"3","context":"promotion to mid-level","direction":""}],"tools":["Kafka","PostgreSQL","AWS"],"skills":["Python","Go"],"teamSize":5,"client":null,"industry":"fintech","domain":"payments","achievements":["Reduced payment pipeline latency by 40% via event-driven architecture migration","Led team of 5 engineers delivering real-time fraud detection processing 2M transactions/day","Mentored 3 junior engineers through promotion to mid-level"]}],"education":[{"degree":"B.S. Computer Science","institution":"UC Berkeley","startDate":"","endDate":"2017","status":"completed","coursework":[],"capstone":null,"fieldOfStudy":"Computer Science","grade":null}],"certifications":[],"projects":[],"languages":[],"awards":[],"publications":[],"volunteering":[],"technicalSkills":["Python","Go"],"tools":["Kafka","PostgreSQL","AWS"],"professionalSkills":[],"methodologies":["Agile"],"softSkills":["Mentoring"],"domainSkills":["payments","fraud detection"],"skillsTier1":[],"skillsTier2":[],"skillsTier3":[],"summary":null,"voiceNotes":null}`;
+{"fullName":"Alex Chen","email":"alex.chen@email.com","phone":"+1 415-555-2031","linkedin":null,"github":null,"portfolio":null,"website":null,"location":"San Francisco, CA","visaStatus":null,"currentTitle":"Senior Software Engineer","yearsOfExperience":7,"experienceLevel":"senior","professionalSummary":null,"summarySignals":[],"domainExperience":["payments","fraud detection"],"careerHighlights":["Reduced payment pipeline latency by 40%","Led team of 5 on real-time fraud detection","Mentored 3 engineers to promotion"],"relocationPreferences":[],"targetRoles":[],"experience":[{"company":"Stripe","title":"Senior Software Engineer","titleForResume":null,"startDate":"January 2021","endDate":"","description":"Led migration of payment processing pipeline to event-driven architecture. Managed team of 5 engineers delivering real-time fraud detection system. Mentored 3 junior engineers through promotion.","tools":["Kafka","PostgreSQL","AWS"],"skills":["Python","Go"],"teamSize":5,"client":null,"industry":"fintech","domain":"payments","achievements":["Reduced payment pipeline latency by 40% via event-driven architecture migration","Led team of 5 engineers delivering real-time fraud detection processing 2M transactions/day","Mentored 3 junior engineers through promotion to mid-level"]}],"education":[{"degree":"B.S. Computer Science","institution":"UC Berkeley","startDate":"","endDate":"2017","status":"completed","coursework":[],"capstone":null,"fieldOfStudy":"Computer Science","grade":null}],"certifications":[],"projects":[],"languages":[],"awards":[],"publications":[],"volunteering":[],"technicalSkills":["Python","Go"],"tools":["Kafka","PostgreSQL","AWS"],"professionalSkills":[],"methodologies":["Agile"],"softSkills":["Mentoring"],"domainSkills":["payments","fraud detection"],"skillsTier1":[],"skillsTier2":[],"skillsTier3":[],"summary":null,"voiceNotes":null}`;
 
 /**
  * Wraps raw resume text in unique random delimiters to prevent prompt injection
