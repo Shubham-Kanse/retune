@@ -2,7 +2,6 @@
 
 import { RetuneLensPanel } from "@/components/retune-lens";
 import { ColorOrb } from "@/components/retune-lens/color-orb";
-import { Button } from "@/components/ui/button";
 import type { RetuneLensPreviewRequest, RetuneLensPreviewResponse } from "@/components/retune-lens";
 import type { CareerUnderstandingV1 } from "@/lib/career-understanding";
 import { Check, Eye } from "lucide-react";
@@ -73,7 +72,7 @@ export function RetuneUnderstandingSection({
         <div className="flex items-baseline gap-3">
           <h2
             id="retune-understanding-heading"
-            className="text-base font-semibold tracking-tight text-foreground"
+            className="text-base font-semibold tracking-tight text-foreground mt-0"
           >
             Retune's Understanding
           </h2>
@@ -91,56 +90,21 @@ export function RetuneUnderstandingSection({
       <div className="flex items-baseline gap-3">
         <h2
           id="retune-understanding-heading"
-          className="text-base font-semibold tracking-tight text-foreground"
+          className="text-base font-semibold tracking-tight text-foreground mt-0"
         >
           Retune's Understanding
         </h2>
         {regenerateButton}
       </div>
 
-      <div className="rounded-xl border border-border bg-background p-5 space-y-4">
-        {/* Orb + summary */}
-        <div className="flex items-start gap-3">
-          <ColorOrb size={28} className="mt-0.5 shrink-0" />
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-medium text-foreground">
-              {understanding.summary.headline}
-            </p>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-              {understanding.summary.narrative}
-            </p>
-          </div>
-        </div>
+      <div className="rounded-xl border border-border bg-background p-5 space-y-5">
+        {/* Headline */}
+        <h3 className="text-base font-semibold text-foreground mt-0">
+          {understanding.summary.headline}
+        </h3>
 
-        {/* Actions */}
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onMarkAccurate}
-            aria-pressed={understanding.userFeedback.summary === "accurate"}
-            className={understanding.userFeedback.summary === "accurate" ? "border-foreground bg-accent" : ""}
-          >
-            <Check className="mr-1.5 size-3.5" />
-            {understanding.userFeedback.summary === "accurate" ? "Marked accurate" : "Accurate"}
-          </Button>
-
-          <RetuneLensPanel
-            label="Tune with AI"
-            section="summary"
-            defaultScope="summary"
-            availableScopes={["summary", "all_positioning", "everything_affected"]}
-            intents={["different_angle", "more_technical", "more_product_focused", "more_senior", "less_exaggerated"]}
-            stale={stale}
-            onPreview={(req) => onPreview(req, {})}
-            onApply={onApply}
-          />
-
-          <Button variant="ghost" size="sm" onClick={() => setShowWhy((s) => !s)}>
-            <Eye className="mr-1.5 size-3.5" />
-            {showWhy ? "Hide why" : "Show why"}
-          </Button>
-        </div>
+        {/* Structured narrative */}
+        <StructuredNarrative narrative={understanding.summary.narrative} />
 
         {/* Show why panel */}
         {showWhy && (
@@ -164,6 +128,141 @@ export function RetuneUnderstandingSection({
           </div>
         )}
       </div>
+
+      {/* Actions — outside the card */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onMarkAccurate}
+          aria-pressed={understanding.userFeedback.summary === "accurate"}
+          className={`inline-flex h-11 items-center gap-2 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent ${understanding.userFeedback.summary === "accurate" ? "border-foreground bg-accent" : ""}`}
+        >
+          <Check className="size-4" />
+          {understanding.userFeedback.summary === "accurate" ? "Marked accurate" : "Accurate"}
+        </button>
+
+        <RetuneLensPanel
+          label="Tune with AI"
+          section="summary"
+          defaultScope="summary"
+          availableScopes={["summary", "all_positioning", "everything_affected"]}
+          intents={["different_angle", "more_technical", "more_product_focused", "more_senior", "less_exaggerated"]}
+          stale={stale}
+          onPreview={(req) => onPreview(req, {})}
+          onApply={onApply}
+        />
+
+        <button
+          type="button"
+          onClick={() => setShowWhy((s) => !s)}
+          className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+        >
+          <Eye className="size-4" />
+          {showWhy ? "Hide why" : "Show why"}
+        </button>
+      </div>
     </section>
+  );
+}
+
+
+// ─── Structured narrative parser ────────────────────────────────────────────
+
+/**
+ * The understanding document is generated by the LLM with a fixed set of
+ * uppercase section headers (see UNDERSTANDING_GENERATION_SYSTEM_PROMPT in
+ * apps/web/src/lib/onboarding-v2/llm/prompts.ts). We parse those headers
+ * out of the prose and render each as its own block so the narrative is
+ * readable instead of a wall of text.
+ */
+const KNOWN_SECTIONS: Array<{ key: string; label: string; isList?: boolean }> = [
+  { key: "PROFESSIONAL IDENTITY", label: "Professional identity" },
+  { key: "CAREER NARRATIVE", label: "Career narrative" },
+  { key: "DISTINCTIVE STRENGTHS", label: "Distinctive strengths", isList: true },
+  { key: "POSITIONING STRATEGY", label: "Positioning strategy" },
+  { key: "VOICE INSTRUCTIONS", label: "Voice instructions" },
+  { key: "KNOWN GAPS AND SENSITIVITIES", label: "Known gaps & sensitivities", isList: true },
+  { key: "GENERATION DEFAULTS", label: "Generation defaults" },
+];
+
+interface ParsedSection {
+  label: string;
+  isList: boolean;
+  body: string;
+}
+
+function parseNarrative(narrative: string): ParsedSection[] | null {
+  if (!narrative) return null;
+  // Build a regex to split on any known header (case-insensitive, whole word)
+  const headers = KNOWN_SECTIONS.map((s) => s.key);
+  const pattern = new RegExp(`(${headers.join("|")})\\s*[:\\-]?\\s*`, "g");
+  const matches: Array<{ key: string; index: number; matchEnd: number }> = [];
+  let match: RegExpExecArray | null;
+  // biome-ignore lint/suspicious/noAssignInExpressions: standard regex iteration
+  while ((match = pattern.exec(narrative)) !== null) {
+    matches.push({ key: match[1]!.toUpperCase(), index: match.index, matchEnd: pattern.lastIndex });
+  }
+  if (matches.length === 0) return null;
+
+  const sections: ParsedSection[] = [];
+  for (let i = 0; i < matches.length; i++) {
+    const current = matches[i]!;
+    const next = matches[i + 1];
+    const body = narrative.slice(current.matchEnd, next ? next.index : undefined).trim();
+    const meta = KNOWN_SECTIONS.find((s) => s.key === current.key);
+    if (!meta) continue;
+    sections.push({ label: meta.label, isList: !!meta.isList, body });
+  }
+  return sections.length > 0 ? sections : null;
+}
+
+function StructuredNarrative({ narrative }: { narrative: string }) {
+  const sections = React.useMemo(() => parseNarrative(narrative), [narrative]);
+
+  // Fallback: render plain prose if we couldn't find any known headers
+  if (!sections) {
+    return (
+      <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
+        {narrative}
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {sections.map((section) => (
+        <div key={section.label} className="space-y-1.5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/70">
+            {section.label}
+          </p>
+          {section.isList ? (
+            <ListBody body={section.body} />
+          ) : (
+            <p className="text-sm leading-relaxed text-foreground/90">{section.body}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ListBody({ body }: { body: string }) {
+  // Split on bullet-like markers ("- ", "• ", or sentence-bullets " - ")
+  const items = body
+    .split(/(?:^|\s)[-•]\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (items.length <= 1) {
+    return <p className="text-sm leading-relaxed text-foreground/90">{body}</p>;
+  }
+  return (
+    <ul className="space-y-1.5 text-sm text-foreground/90">
+      {items.map((item, i) => (
+        <li key={i} className="flex gap-2">
+          <span aria-hidden className="mt-1 size-1 shrink-0 rounded-full bg-muted-foreground/60" />
+          <span className="leading-relaxed">{item}</span>
+        </li>
+      ))}
+    </ul>
   );
 }

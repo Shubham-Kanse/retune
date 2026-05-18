@@ -5,6 +5,11 @@ import { PositioningCardsSection } from "@/components/profile/positioning-cards-
 import { ProfileEditor, type ProfileEditorData, getApplyImportedProfile } from "@/components/profile/profile-editor";
 import { ResumeFuelSection } from "@/components/profile/resume-fuel-section";
 import { RetuneUnderstandingSection } from "@/components/profile/retune-understanding-section";
+import { VoiceSection } from "@/components/profile/voice-section";
+import { PreferencesSection } from "@/components/profile/preferences-section";
+import { ProfileHealthSection } from "@/components/profile/profile-health-section";
+import { EditVoiceModal } from "@/components/profile/edit-modals/edit-voice-modal";
+import { EditPreferencesModal, type PreferencesFormState } from "@/components/profile/edit-modals/edit-preferences-modal";
 import { PageShell } from "@/components/app/page-shell";
 import { RetuneLensPanel } from "@/components/retune-lens";
 import type { RetuneLensPreviewRequest, RetuneLensPreviewResponse } from "@/components/retune-lens";
@@ -13,7 +18,8 @@ import { useRetuneLens } from "@/hooks/use-retune-lens";
 import { useUnderstandingFreshness } from "@/hooks/use-understanding-freshness";
 import type { CareerUnderstandingV1, UnderstandingScope } from "@/lib/career-understanding";
 import type { ProfileReadiness } from "@/lib/onboarding/types";
-import { Upload } from "lucide-react";
+import type { V2ProfileSnapshot } from "@/lib/onboarding-v2/repository";
+import { Pencil, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
@@ -29,6 +35,7 @@ export interface CareerProfilePageProps {
   staleAtLoad: boolean;
   canGenerateUnderstanding: boolean;
   readiness: ProfileReadiness | null;
+  v2Profile?: V2ProfileSnapshot | null;
 }
 
 export function CareerProfilePage(props: CareerProfilePageProps) {
@@ -41,6 +48,22 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
   );
   const [stale, setStale] = React.useState(props.staleAtLoad);
   const [localStale, setLocalStale] = React.useState(false);
+  const [v2Modal, setV2Modal] = React.useState<"voice" | "preferences" | null>(null);
+
+  const saveV2Section = async (section: string, payload: unknown): Promise<void> => {
+    const res = await fetch("/api/profile-v2", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ section, payload }),
+    });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({ error: "Save failed" }));
+      toast.error(error || "Save failed");
+      throw new Error(error);
+    }
+    toast.success("Updated.");
+    router.refresh();
+  };
 
   useUnderstandingFreshness({
     initialRevision: props.initialUnderstanding?.revision ?? 0,
@@ -206,7 +229,19 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
         />
       )}
 
-      <div className="space-y-8">
+      <div className="space-y-8 [&_h2]:mt-0 [&_h3]:mt-0 [&_blockquote]:mt-0 [&_p+p]:mt-0">
+        {/* Profile Health (V2) — quality score and review flags at the top */}
+        {props.v2Profile && (
+          <ProfileHealthSection
+            qualityScore={props.v2Profile.profile.profile_quality_score}
+            completenessScore={props.v2Profile.profile.completeness_score}
+            completenessPath={props.v2Profile.profile.completeness_path}
+            needsReviewFields={props.v2Profile.metadata?.needs_review_fields ?? []}
+            correctionUnresolved={props.v2Profile.metadata?.correction_unresolved ?? false}
+            voiceProfileSource={props.v2Profile.voice?.voice_profile_source ?? null}
+          />
+        )}
+
         {/* Section 1: Retune Understanding */}
         <RetuneUnderstandingSection
           understanding={understanding}
@@ -243,9 +278,39 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
           onApply={lens.onApply}
         />
 
+        {/* Section 4: Your Writing Voice (V2) — sits between Evidence and Resume Fuel */}
+        {props.v2Profile?.voice && (
+          <>
+            <hr className="border-border/30" />
+            <section className="space-y-3">
+              <VoiceSection voice={props.v2Profile.voice} />
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setV2Modal("voice")}
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                >
+                  <Pencil className="size-4" />
+                  Edit
+                </button>
+                <RetuneLensPanel
+                  label="Tune with AI"
+                  section="summary"
+                  defaultScope="summary"
+                  availableScopes={["summary", "everything_affected"]}
+                  intents={["different_angle", "more_technical", "more_product_focused", "less_exaggerated"]}
+                  stale={showStaleBanner}
+                  onPreview={lens.onPreview}
+                  onApply={lens.onApply}
+                />
+              </div>
+            </section>
+          </>
+        )}
+
         <hr className="border-border/30" />
 
-        {/* Section 4: Resume Fuel */}
+        {/* Section 5: Resume Fuel */}
         <ResumeFuelSection
           understanding={understanding}
           understandingPersisted={understandingPersisted}
@@ -254,6 +319,48 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
           onApply={lens.onApply}
         />
 
+        {/* Section 6: Resume Generation Preferences (V2) — after Resume Fuel */}
+        {props.v2Profile && (
+          <>
+            <hr className="border-border/30" />
+            <section className="space-y-3">
+              <PreferencesSection
+                preferences={{
+                  target_role: props.v2Profile.profile.target_role,
+                  target_role_specificity: props.v2Profile.profile.target_role_specificity,
+                  resume_frame: props.v2Profile.profile.resume_frame,
+                  underrepresented_skills: props.v2Profile.profile.underrepresented_skills,
+                  deemphasis_preferences: props.v2Profile.profile.deemphasis_preferences,
+                  career_transition_framing: props.v2Profile.profile.career_transition_framing,
+                  gap_handling: props.v2Profile.profile.gap_handling,
+                  achievement_depth: props.v2Profile.profile.achievement_depth,
+                }}
+                fieldSources={props.v2Profile.metadata?.field_sources ?? {}}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setV2Modal("preferences")}
+                  className="inline-flex h-11 items-center gap-2 rounded-full border border-border bg-background px-3 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+                >
+                  <Pencil className="size-4" />
+                  Edit
+                </button>
+                <RetuneLensPanel
+                  label="Tune with AI"
+                  section="resume_fuel"
+                  defaultScope="resume_fuel"
+                  availableScopes={["resume_fuel", "everything_affected"]}
+                  intents={["re_read_profile", "more_senior", "more_technical"]}
+                  stale={showStaleBanner}
+                  onPreview={lens.onPreview}
+                  onApply={lens.onApply}
+                />
+              </div>
+            </section>
+          </>
+        )}
+
         <hr className="border-border/30" />
 
         {/* Stale banner (only when stale + persisted) */}
@@ -261,7 +368,7 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
           <ProfileStaleBanner onPreview={lens.onPreview} onApply={lens.onApply} stale />
         )}
 
-        {/* Section 5: Profile Details */}
+        {/* Section 7: Profile Details */}
         <ProfileDetailsSection
           profile={props.initialProfileData}
           onDirty={handleFactsDirty}
@@ -271,6 +378,50 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
           onApply={lens.onApply}
         />
       </div>
+
+      {/* V2 edit modals */}
+      {props.v2Profile && (
+        <>
+          <EditVoiceModal
+            open={v2Modal === "voice"}
+            onOpenChange={(o) => !o && setV2Modal(null)}
+            initial={{
+              natural_voice_sample: props.v2Profile.voice?.natural_voice_sample ?? "",
+              tone_preferences: Array.isArray(props.v2Profile.voice?.tone_preferences)
+                ? (props.v2Profile.voice.tone_preferences as string[])
+                : props.v2Profile.voice?.tone_preferences
+                  ? [props.v2Profile.voice.tone_preferences as string]
+                  : [],
+              tone_aversions: props.v2Profile.voice?.tone_aversions ?? [],
+            }}
+            onSave={(next) => saveV2Section("voice", next)}
+          />
+          <EditPreferencesModal
+            open={v2Modal === "preferences"}
+            onOpenChange={(o) => !o && setV2Modal(null)}
+            initial={
+              {
+                target_role: props.v2Profile.profile.target_role ?? "",
+                target_role_specificity: props.v2Profile.profile.target_role_specificity ?? "",
+                resume_frame: props.v2Profile.profile.resume_frame ?? "",
+                underrepresented_skills: Array.isArray(props.v2Profile.profile.underrepresented_skills)
+                  ? (props.v2Profile.profile.underrepresented_skills as string[])
+                  : [],
+                deemphasis_preferences: Array.isArray(props.v2Profile.profile.deemphasis_preferences)
+                  ? (props.v2Profile.profile.deemphasis_preferences as string[])
+                  : [],
+                career_transition_framing: props.v2Profile.profile.career_transition_framing ?? "",
+                gap_handling: props.v2Profile.profile.gap_handling ?? "",
+                achievement_depth:
+                  typeof props.v2Profile.profile.achievement_depth === "string"
+                    ? props.v2Profile.profile.achievement_depth
+                    : "",
+              } satisfies PreferencesFormState
+            }
+            onSave={(next) => saveV2Section("preferences", next)}
+          />
+        </>
+      )}
     </PageShell>
   );
 }
@@ -317,6 +468,13 @@ function ProfileStaleBanner({
   );
 }
 
+/** Internal state tokens that should never be shown to users. */
+const INTERNAL_STATE_VALUES = new Set(["confirmed", "skipped", "n/a", "none", "null", "undefined"]);
+
+function filterInternal(items: string[]): string[] {
+  return items.filter((v) => !INTERNAL_STATE_VALUES.has(v.trim().toLowerCase()));
+}
+
 function ProfileDetailsSection({
   profile,
   onDirty,
@@ -344,7 +502,7 @@ function ProfileDetailsSection({
   return (
     <section aria-labelledby="profile-details-heading" className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 id="profile-details-heading" className="text-base font-semibold tracking-tight text-foreground">
+        <h2 id="profile-details-heading" className="text-base font-semibold tracking-tight text-foreground mt-0">
           Profile Details
         </h2>
         <div className="flex items-center gap-2">
@@ -391,7 +549,7 @@ function ProfileDetailsSection({
               {profile.yearsOfExperience != null && (
                 <p className="text-xs text-muted-foreground">{profile.yearsOfExperience} years of experience</p>
               )}
-              {profile.professionalSummary && (
+              {profile.professionalSummary && !INTERNAL_STATE_VALUES.has(profile.professionalSummary.trim().toLowerCase()) && (
                 <p className="text-sm text-foreground/80 line-clamp-3">{profile.professionalSummary}</p>
               )}
               {profile.careerHighlights.length > 0 && (
@@ -557,23 +715,30 @@ function ProfileDetailsSection({
           )}
 
           {/* Extras */}
-          {(profile.languages.length > 0 || profile.awards.length > 0 || profile.publications.length > 0 || profile.volunteering.length > 0) && (
-            <div className="px-5 py-4 space-y-2">
-              <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/60">Extras</p>
-              {profile.languages.length > 0 && (
-                <p className="text-xs text-muted-foreground">Languages: <span className="text-foreground">{profile.languages.join(", ")}</span></p>
-              )}
-              {profile.awards.length > 0 && (
-                <p className="text-xs text-muted-foreground">Awards: <span className="text-foreground">{profile.awards.slice(0, 3).join("; ")}</span></p>
-              )}
-              {profile.publications.length > 0 && (
-                <p className="text-xs text-muted-foreground">Publications: <span className="text-foreground">{profile.publications.length}</span></p>
-              )}
-              {profile.volunteering.length > 0 && (
-                <p className="text-xs text-muted-foreground">Volunteering: <span className="text-foreground">{profile.volunteering.slice(0, 2).join("; ")}</span></p>
-              )}
-            </div>
-          )}
+          {(() => {
+            const langs = filterInternal(profile.languages);
+            const awds = filterInternal(profile.awards);
+            const pubs = filterInternal(profile.publications);
+            const vols = filterInternal(profile.volunteering);
+            if (langs.length === 0 && awds.length === 0 && pubs.length === 0 && vols.length === 0) return null;
+            return (
+              <div className="px-5 py-4 space-y-2">
+                <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground/60">Extras</p>
+                {langs.length > 0 && (
+                  <p className="text-xs text-muted-foreground">Languages: <span className="text-foreground">{langs.join(", ")}</span></p>
+                )}
+                {awds.length > 0 && (
+                  <p className="text-xs text-muted-foreground">Awards: <span className="text-foreground">{awds.slice(0, 3).join("; ")}</span></p>
+                )}
+                {pubs.length > 0 && (
+                  <p className="text-xs text-muted-foreground">Publications: <span className="text-foreground">{pubs.length}</span></p>
+                )}
+                {vols.length > 0 && (
+                  <p className="text-xs text-muted-foreground">Volunteering: <span className="text-foreground">{vols.slice(0, 2).join("; ")}</span></p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Target roles (legacy) */}
           {roles.length > 0 && (

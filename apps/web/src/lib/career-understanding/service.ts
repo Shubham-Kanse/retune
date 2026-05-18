@@ -286,7 +286,7 @@ async function callAi(params: { system: string; user: string }): Promise<string>
   const models = getModels();
   const response = await provider.createMessage("career-understanding", {
     model: models.smart,
-    maxTokens: 4096,
+    maxTokens: 8192,
     system: params.system,
     messages: [{ role: "user", content: params.user }],
   });

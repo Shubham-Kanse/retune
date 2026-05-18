@@ -6,9 +6,7 @@ import type { Sql } from "postgres";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-type MigratableClient =
-  | { kind: "pglite"; client: PGlite }
-  | { kind: "postgres"; sql: Sql };
+type MigratableClient = { kind: "pglite"; client: PGlite } | { kind: "postgres"; sql: Sql };
 
 function loadMigrations() {
   const load = (f: string) => readFileSync(resolve(__dirname, "migrations", f), "utf8");
@@ -25,6 +23,12 @@ function loadMigrations() {
     { name: "0006_created_at_compat", sql: load("0006_created_at_compat.sql") },
     { name: "0007_generation_requests", sql: load("0007_generation_requests.sql") },
     { name: "0008_career_understanding", sql: load("0008_career_understanding.sql") },
+    { name: "0009_resume_extraction_audit", sql: load("0009_resume_extraction_audit.sql") },
+    { name: "0010_onboarding_v2", sql: load("0010_onboarding_v2.sql") },
+    {
+      name: "0011_onboarding_v2_commit_rpc",
+      sql: load("0011_onboarding_v2_commit_rpc.sql"),
+    },
   ];
 }
 

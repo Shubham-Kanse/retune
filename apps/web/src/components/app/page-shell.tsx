@@ -23,17 +23,17 @@ export function PageShell({
       className={cn(
         "mx-auto w-full px-8 py-12 md:py-16",
         maxClass,
-        // editorial type rhythm — only targets raw semantic elements, not components
-        "[&_h1]:text-2xl [&_h1]:font-medium [&_h1]:tracking-tight [&_h1]:leading-tight [&_h1]:text-foreground",
-        "[&_h2]:text-base [&_h2]:font-medium [&_h2]:tracking-tight [&_h2]:text-foreground [&_h2]:mt-12 [&_h2]:mb-4",
-        "[&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-foreground [&_h3]:mt-8 [&_h3]:mb-2",
-        "[&_p]:text-sm [&_p]:leading-[1.75] [&_p]:text-muted-foreground",
-        "[&_p+p]:mt-4",
-        "[&_ul]:mt-3 [&_ul]:space-y-1 [&_ul]:pl-4 [&_ul]:list-disc [&_ul]:text-sm [&_ul]:leading-[1.75] [&_ul]:text-muted-foreground",
-        "[&_ol]:mt-3 [&_ol]:space-y-1 [&_ol]:pl-4 [&_ol]:list-decimal [&_ol]:text-sm [&_ol]:leading-[1.75] [&_ol]:text-muted-foreground",
-        "[&_hr]:my-10 [&_hr]:border-border/40",
-        "[&_code]:rounded-sm [&_code]:bg-muted/60 [&_code]:px-1 [&_code]:py-px [&_code]:font-mono [&_code]:text-[11px] [&_code]:text-foreground/80",
-        "[&_blockquote]:mt-6 [&_blockquote]:border-l [&_blockquote]:border-border/60 [&_blockquote]:pl-4 [&_blockquote]:text-sm [&_blockquote]:text-muted-foreground/80 [&_blockquote]:italic",
+        // editorial type rhythm — only targets direct semantic children, not nested components
+        "[&>h1]:text-2xl [&>h1]:font-medium [&>h1]:tracking-tight [&>h1]:leading-tight [&>h1]:text-foreground",
+        "[&>h2]:text-base [&>h2]:font-medium [&>h2]:tracking-tight [&>h2]:text-foreground [&>h2]:mt-12 [&>h2]:mb-4",
+        "[&>h3]:text-sm [&>h3]:font-medium [&>h3]:text-foreground [&>h3]:mt-8 [&>h3]:mb-2",
+        "[&>p]:text-sm [&>p]:leading-[1.75] [&>p]:text-muted-foreground",
+        "[&>p+p]:mt-4",
+        "[&>ul]:mt-3 [&>ul]:space-y-1 [&>ul]:pl-4 [&>ul]:list-disc [&>ul]:text-sm [&>ul]:leading-[1.75] [&>ul]:text-muted-foreground",
+        "[&>ol]:mt-3 [&>ol]:space-y-1 [&>ol]:pl-4 [&>ol]:list-decimal [&>ol]:text-sm [&>ol]:leading-[1.75] [&>ol]:text-muted-foreground",
+        "[&>hr]:my-10 [&>hr]:border-border/40",
+        "[&>code]:rounded-sm [&>code]:bg-muted/60 [&>code]:px-1 [&>code]:py-px [&>code]:font-mono [&>code]:text-[11px] [&>code]:text-foreground/80",
+        "[&>blockquote]:mt-6 [&>blockquote]:border-l [&>blockquote]:border-border/60 [&>blockquote]:pl-4 [&>blockquote]:text-sm [&>blockquote]:text-muted-foreground/80 [&>blockquote]:italic",
         className,
       )}
     >

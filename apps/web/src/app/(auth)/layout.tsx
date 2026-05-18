@@ -1,7 +1,7 @@
 import { AppSidebar } from "@/components/app/app-sidebar";
 import { AppTopbar } from "@/components/app/topbar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { getOnboardingStatus } from "@/lib/onboarding-gate";
+import { getOnboardingStatus, onboardingPath } from "@/lib/onboarding-gate";
 import { getSession } from "@/lib/session";
 import { redirect } from "next/navigation";
 
@@ -17,7 +17,7 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   if (!status.emailVerified) {
     redirect(`/verify-email?email=${encodeURIComponent(session.email)}`);
   }
-  if (!status.onboardingCompleted) redirect("/onboarding");
+  if (!status.onboardingCompleted) redirect(onboardingPath());
 
   return (
     <SidebarProvider>

@@ -255,6 +255,8 @@ function aiErrorToResponse(err: unknown): NextResponse {
     if (err.reason === "profile_too_thin") {
       return NextResponse.json({ error: err.reason, detail: err.detail ?? null }, { status: 422 });
     }
+    // eslint-disable-next-line no-console
+    console.error("[career-understanding] AI error", err.reason, err.detail);
     return NextResponse.json({ error: err.reason, detail: err.detail ?? null }, { status: 502 });
   }
   // eslint-disable-next-line no-console

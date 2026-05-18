@@ -38,7 +38,7 @@ export function PositioningCardsSection({
 
   return (
     <section aria-labelledby="best-angles-heading" className="space-y-3">
-      <h2 id="best-angles-heading" className="text-base font-semibold tracking-tight text-foreground">
+      <h2 id="best-angles-heading" className="text-base font-semibold tracking-tight text-foreground mt-0">
         Your Best Angles
       </h2>
 
@@ -109,7 +109,12 @@ function PopulatedCard({
       <div className="flex items-center gap-4 min-w-0">
         <span className="shrink-0 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 w-20">
           {option.kind}
-          {isSelected && <span className="block text-emerald-600 normal-case tracking-normal font-normal">default</span>}
+          {isSelected && (
+            <span className="mt-0.5 flex items-center gap-0.5 text-emerald-600 normal-case tracking-normal font-medium text-[10px]">
+              <svg aria-hidden className="size-2.5" viewBox="0 0 10 10" fill="none"><circle cx="5" cy="5" r="4.5" fill="currentColor" opacity=".15"/><path d="M3 5l1.5 1.5L7 3.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              Selected
+            </span>
+          )}
         </span>
         <div className="min-w-0">
           <p className="text-sm font-semibold text-foreground">{option.title}</p>

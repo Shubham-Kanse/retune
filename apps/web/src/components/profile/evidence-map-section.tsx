@@ -25,7 +25,7 @@ export function EvidenceMapSection({
   if (!understanding || !understandingPersisted) {
     return (
       <section aria-labelledby="evidence-heading" className="space-y-3">
-        <h2 id="evidence-heading" className="text-base font-semibold tracking-tight text-foreground">
+        <h2 id="evidence-heading" className="text-base font-semibold tracking-tight text-foreground mt-0">
           Evidence Retune Is Using
         </h2>
         <div className="grid gap-3 md:grid-cols-2">
@@ -65,7 +65,7 @@ export function EvidenceMapSection({
 
   return (
     <section aria-labelledby="evidence-heading" className="space-y-3">
-      <h2 id="evidence-heading" className="text-base font-semibold tracking-tight text-foreground">
+      <h2 id="evidence-heading" className="text-base font-semibold tracking-tight text-foreground mt-0">
         Evidence Retune Is Using
       </h2>
       <div className="grid gap-3 md:grid-cols-2">
@@ -117,12 +117,6 @@ function SignalGroup({
             <li key={sig.id} className="space-y-0.5">
               <p className="text-sm font-medium text-foreground">{sig.label}</p>
               <p className="text-xs text-muted-foreground">{sig.interpretation}</p>
-              {sig.sourceRefs.length > 0 && (
-                <p className="font-mono text-[10px] text-muted-foreground/70">
-                  Found in: {sig.sourceRefs.map((r) => r.profilePath).slice(0, 3).join(", ")}
-                  {sig.sourceRefs.length > 3 ? ` +${sig.sourceRefs.length - 3}` : ""}
-                </p>
-              )}
             </li>
           ))}
         </ul>

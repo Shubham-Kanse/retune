@@ -37,7 +37,7 @@ export default function LoginPage() {
       }
       const d = await res.json();
       router.refresh();
-      router.push(d.onboardingCompleted ? "/dashboard" : "/onboarding");
+      router.push(d.onboardingCompleted ? "/dashboard" : "/onboarding-v2");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
       emailRef.current?.focus();

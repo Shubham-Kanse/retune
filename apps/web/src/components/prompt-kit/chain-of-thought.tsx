@@ -26,6 +26,7 @@ export type ChainOfThoughtTriggerProps = React.ComponentProps<
 > & {
   leftIcon?: React.ReactNode
   swapIconOnHover?: boolean
+  hideChevron?: boolean
 }
 
 export const ChainOfThoughtTrigger = ({
@@ -33,6 +34,7 @@ export const ChainOfThoughtTrigger = ({
   className,
   leftIcon,
   swapIconOnHover = true,
+  hideChevron = false,
   ...props
 }: ChainOfThoughtTriggerProps) => (
   <CollapsibleTrigger
@@ -48,12 +50,12 @@ export const ChainOfThoughtTrigger = ({
           <span
             className={cn(
               "transition-opacity",
-              swapIconOnHover && "group-hover:opacity-0"
+              swapIconOnHover && !hideChevron && "group-hover:opacity-0"
             )}
           >
             {leftIcon}
           </span>
-          {swapIconOnHover && (
+          {swapIconOnHover && !hideChevron && (
             <ChevronDown className="absolute size-4 opacity-0 transition-opacity group-hover:opacity-100 group-data-[state=open]:rotate-180" />
           )}
         </span>
@@ -64,7 +66,7 @@ export const ChainOfThoughtTrigger = ({
       )}
       <span>{children}</span>
     </div>
-    {!leftIcon && (
+    {!leftIcon && !hideChevron && (
       <ChevronDown className="size-4 transition-transform group-data-[state=open]:rotate-180" />
     )}
   </CollapsibleTrigger>

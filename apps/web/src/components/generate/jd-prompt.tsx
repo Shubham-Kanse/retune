@@ -7,6 +7,7 @@ import {
   PromptInputTextarea,
 } from "@/components/prompt-kit/prompt-input";
 import { Button } from "@/components/ui/button";
+import { GlowingShadow } from "@/components/ui/glowing-shadow";
 import { ArrowRight, Link2, Type } from "lucide-react";
 import { useState } from "react";
 
@@ -46,71 +47,67 @@ export function JdPrompt({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-3xl border border-border bg-card/60 p-3 shadow-sm backdrop-blur-sm">
-        <PromptInput
-          value={value}
-          onValueChange={setValue}
-          onSubmit={fire}
-          isLoading={busy}
-          className="border-0 bg-transparent shadow-none"
-        >
-          <PromptInputTextarea
-            placeholder={mode === "url" ? placeholderUrl : placeholderText}
-            className={
-              mode === "url"
-                ? "min-h-[44px] font-mono text-sm"
-                : "min-h-[140px] text-base"
-            }
-            disableAutosize={mode === "text"}
-          />
-          <PromptInputActions className="flex-wrap justify-between gap-2 pt-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-full border border-border bg-background p-0.5">
-                {(["url", "text"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMode(m)}
-                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                      mode === m
-                        ? "bg-foreground/80 text-background"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {m === "url" ? <Link2 className="size-3" /> : <Type className="size-3" />}
-                    {m === "url" ? "URL" : "Text"}
-                  </button>
-                ))}
+      <GlowingShadow>
+        <div className="rounded-3xl p-3">
+          <PromptInput
+            value={value}
+            onValueChange={setValue}
+            onSubmit={fire}
+            isLoading={busy}
+            className="border-0 bg-transparent shadow-none"
+          >
+            <PromptInputTextarea
+              placeholder={mode === "url" ? placeholderUrl : placeholderText}
+              className={
+                mode === "url" ? "min-h-[44px] font-mono text-sm" : "min-h-[140px] text-base"
+              }
+              disableAutosize={mode === "text"}
+            />
+            <PromptInputActions className="flex-wrap justify-between gap-2 pt-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex rounded-full border border-border bg-background p-0.5">
+                  {(["url", "text"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setMode(m)}
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                        mode === m
+                          ? "bg-foreground/80 text-background"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {m === "url" ? <Link2 className="size-3" /> : <Type className="size-3" />}
+                      {m === "url" ? "URL" : "Text"}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex rounded-full border border-border bg-background p-0.5">
+                  {(["us", "uk"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setMarket(m)}
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
+                        market === m
+                          ? "bg-foreground/80 text-background"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {m === "us" ? "US resume" : "UK CV"}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex rounded-full border border-border bg-background p-0.5">
-                {(["us", "uk"] as const).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMarket(m)}
-                    className={`rounded-full px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider transition-colors ${
-                      market === m
-                        ? "bg-foreground/80 text-background"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {m === "us" ? "US resume" : "UK CV"}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <PromptInputAction tooltip="Tune">
-              <Button
-                className="rounded-full px-4 gap-1.5"
-                disabled={!canSubmit}
-                onClick={fire}
-              >
-                Tune <ArrowRight className="size-3.5" />
-              </Button>
-            </PromptInputAction>
-          </PromptInputActions>
-        </PromptInput>
-      </div>
+              <PromptInputAction tooltip="Tune">
+                <Button className="rounded-full px-4 gap-1.5" disabled={!canSubmit} onClick={fire}>
+                  Tune <ArrowRight className="size-3.5" />
+                </Button>
+              </PromptInputAction>
+            </PromptInputActions>
+          </PromptInput>
+        </div>
+      </GlowingShadow>
     </div>
   );
 }

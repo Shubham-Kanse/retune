@@ -25,7 +25,7 @@ export function ResumeFuelSection({
   if (!understanding || !understandingPersisted) {
     return (
       <section aria-labelledby="resume-fuel-heading" className="space-y-3">
-        <h2 id="resume-fuel-heading" className="text-base font-semibold tracking-tight text-foreground">
+        <h2 id="resume-fuel-heading" className="text-base font-semibold tracking-tight text-foreground mt-0">
           Resume Fuel
         </h2>
         <div className="grid gap-3 md:grid-cols-2">
@@ -67,7 +67,7 @@ export function ResumeFuelSection({
 
   return (
     <section aria-labelledby="resume-fuel-heading" className="space-y-3">
-      <h2 id="resume-fuel-heading" className="text-base font-semibold tracking-tight text-foreground">
+      <h2 id="resume-fuel-heading" className="text-base font-semibold tracking-tight text-foreground mt-0">
         Resume Fuel
       </h2>
       <div className="grid gap-3 md:grid-cols-2">

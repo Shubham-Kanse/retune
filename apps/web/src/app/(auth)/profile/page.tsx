@@ -5,11 +5,13 @@ import {
   isCareerUnderstandingV1,
   isUnderstandingStale,
 } from "@/lib/career-understanding";
+import { buildUnderstandingFromV2 } from "@/lib/career-understanding/build-from-v2";
 import { careerProfileFingerprint } from "@/lib/career-understanding/fingerprint";
 import { buildPlaceholderUnderstanding } from "@/lib/career-understanding/service";
 import { safeQuery } from "@/lib/errors";
 import { isCareerProfileV1 } from "@/lib/onboarding/career-profile.schema";
 import type { CareerProfileV1, ProfileReadiness } from "@/lib/onboarding/types";
+import { loadV2Profile } from "@/lib/onboarding-v2/repository";
 import { getSession } from "@/lib/session";
 import { db, profiles } from "@retune/db";
 import { eq } from "drizzle-orm";
@@ -39,10 +41,17 @@ export default async function ProfilePage() {
   const session = await getSession();
   if (!session) return null;
 
-  const profileRows = await safeQuery(
-    () => db.select().from(profiles).where(eq(profiles.userId, session.userId)).limit(1),
-    [] as Array<typeof profiles.$inferSelect>,
-  );
+  // Load both v1 and v2 data in parallel — v2 wins for the new sections,
+  // v1 still drives the existing "Best Angles" / "Evidence" / "Resume Fuel"
+  // surfaces until those are fully migrated.
+  const [profileRows, v2Profile] = await Promise.all([
+    safeQuery(
+      () => db.select().from(profiles).where(eq(profiles.userId, session.userId)).limit(1),
+      [] as Array<typeof profiles.$inferSelect>,
+    ),
+    loadV2Profile(session.userId),
+  ]);
+
   const profile = profileRows[0];
 
   const careerProfileRaw = (profile as { careerProfile?: unknown } | undefined)?.careerProfile;
@@ -73,9 +82,8 @@ export default async function ProfilePage() {
         voiceNotes: profile.voiceNotes ?? "",
         profileMarkdown: profile.profileMarkdown,
         completenessScore: profile.completenessScore,
-        // NEW fields — sourced from careerProfile JSONB when available
-        github: careerProfile?.identity.github.value ?? "",
-        portfolio: careerProfile?.identity.portfolio.value ?? "",
+        github: careerProfile?.identity.github.value ?? v2Profile?.profile.github_url ?? "",
+        portfolio: careerProfile?.identity.portfolio.value ?? v2Profile?.profile.portfolio_url ?? "",
         website: careerProfile?.identity.website.value ?? "",
         yearsOfExperience: careerProfile?.professionalProfile.yearsOfExperience.value ?? null,
         professionalSummary: (careerProfile?.professionalProfile.currentTitles.value ?? []).join(", "),
@@ -88,10 +96,11 @@ export default async function ProfilePage() {
         skillsMethodologies: careerProfile?.skills.methodologies.value ?? [],
         skillsSoft: careerProfile?.skills.softSkills.value ?? [],
         skillsDomain: careerProfile?.skills.domainSkills.value ?? [],
-        languages: careerProfile?.languages.value ?? [],
-        awards: careerProfile?.awards.value ?? [],
-        publications: careerProfile?.publications.value ?? [],
-        volunteering: careerProfile?.volunteering.value ?? [],
+        languages: careerProfile?.languages.value ?? v2Profile?.extras.languages ?? [],
+        awards: careerProfile?.awards.value ?? v2Profile?.extras.awards ?? [],
+        publications: careerProfile?.publications.value ?? v2Profile?.extras.publications ?? [],
+        volunteering:
+          careerProfile?.volunteering.value ?? v2Profile?.extras.volunteering ?? [],
         interestedRoles: careerProfile?.careerIntent.interestedRoles.value ?? [],
         careerDirection: careerProfile?.careerIntent.careerDirection.value ?? "",
         preferredMarkets: careerProfile?.careerIntent.preferredMarkets.value ?? [],
@@ -104,58 +113,7 @@ export default async function ProfilePage() {
         emphasisAreas: careerProfile?.resumeWritingPreferences.emphasisAreas.value ?? [],
         deEmphasisAreas: careerProfile?.resumeWritingPreferences.deEmphasisAreas.value ?? [],
       }
-    : {
-        fullName: session.fullName ?? "",
-        email: session.email,
-        phone: "",
-        linkedin: "",
-        location: "",
-        visaStatus: "",
-        relocationPreferences: [],
-        targetRoles: [],
-        currentTitle: "",
-        experienceLevel: "mid" as const,
-        experience: [],
-        education: [],
-        certifications: [],
-        projects: [],
-        skillsTier1: [],
-        skillsTier2: [],
-        skillsTier3: [],
-        tools: [],
-        voiceNotes: "",
-        profileMarkdown: "",
-        completenessScore: 0,
-        github: "",
-        portfolio: "",
-        website: "",
-        yearsOfExperience: null,
-        professionalSummary: "",
-        summarySignals: [],
-        domainExperience: [],
-        careerHighlights: [],
-        skillsTechnical: [],
-        skillsTools: [],
-        skillsBusiness: [],
-        skillsMethodologies: [],
-        skillsSoft: [],
-        skillsDomain: [],
-        languages: [],
-        awards: [],
-        publications: [],
-        volunteering: [],
-        interestedRoles: [],
-        careerDirection: "" as const,
-        preferredMarkets: [],
-        workPreference: "" as const,
-        seniorityComfort: [],
-        industriesOfInterest: [],
-        roleDealbreakers: [],
-        toneSignals: [],
-        styleConstraints: [],
-        emphasisAreas: [],
-        deEmphasisAreas: [],
-      };
+    : v2ProfileToEditorData(session, v2Profile);
 
   const readiness =
     ((profile as { profileReadiness?: ProfileReadiness | null } | undefined)
@@ -172,8 +130,11 @@ export default async function ProfilePage() {
     persistedUnderstanding ??
     (careerProfile
       ? buildPlaceholderUnderstanding({ userId: session.userId, profile: careerProfile })
-      : null);
-  const understandingPersisted = persistedUnderstanding !== null;
+      : v2Profile
+        ? buildUnderstandingFromV2(v2Profile, session.userId)
+        : null);
+  const understandingPersisted =
+    persistedUnderstanding !== null || (v2Profile !== null && !careerProfile);
 
   const profileFingerprint = careerProfile ? careerProfileFingerprint(careerProfile) : null;
   const staleAtLoad = careerProfile
@@ -181,7 +142,6 @@ export default async function ProfilePage() {
     : false;
 
   const canGenerateUnderstanding = (() => {
-    // Primary: check CareerProfileV1 structure
     if (careerProfile) {
       const hasIdentity = !!careerProfile.identity.fullName.value;
       const hasExperienceOrProjects =
@@ -195,10 +155,22 @@ export default async function ProfilePage() {
         0;
       return hasIdentity && hasExperienceOrProjects && hasSkills;
     }
-    // Fallback: check legacy profile columns
+    if (v2Profile) {
+      return Boolean(
+        v2Profile.profile.full_name &&
+          (v2Profile.experience.length > 0 || v2Profile.projects.length > 0) &&
+          v2Profile.skills.raw_list.length > 0,
+      );
+    }
     if (!profile) return false;
     const hasName = !!profile.fullName;
-    const hasExperience = (() => { try { return JSON.parse(profile.experience ?? "[]").length > 0; } catch { return false; } })();
+    const hasExperience = (() => {
+      try {
+        return JSON.parse(profile.experience ?? "[]").length > 0;
+      } catch {
+        return false;
+      }
+    })();
     const hasSkills = !!(profile.skillsTier1 || profile.skillsTier2 || profile.skillsTier3);
     return hasName && (hasExperience || hasSkills);
   })();
@@ -212,6 +184,136 @@ export default async function ProfilePage() {
       staleAtLoad={staleAtLoad}
       canGenerateUnderstanding={canGenerateUnderstanding}
       readiness={readiness}
+      v2Profile={v2Profile}
     />
   );
+}
+
+function v2ProfileToEditorData(
+  session: { fullName?: string | null; email: string },
+  v2: Awaited<ReturnType<typeof loadV2Profile>>,
+): ProfileEditorData {
+  if (!v2) {
+    return {
+      fullName: session.fullName ?? "",
+      email: session.email,
+      phone: "",
+      linkedin: "",
+      location: "",
+      visaStatus: "",
+      relocationPreferences: [],
+      targetRoles: [],
+      currentTitle: "",
+      experienceLevel: "mid",
+      experience: [],
+      education: [],
+      certifications: [],
+      projects: [],
+      skillsTier1: [],
+      skillsTier2: [],
+      skillsTier3: [],
+      tools: [],
+      voiceNotes: "",
+      profileMarkdown: "",
+      completenessScore: 0,
+      github: "",
+      portfolio: "",
+      website: "",
+      yearsOfExperience: null,
+      professionalSummary: "",
+      summarySignals: [],
+      domainExperience: [],
+      careerHighlights: [],
+      skillsTechnical: [],
+      skillsTools: [],
+      skillsBusiness: [],
+      skillsMethodologies: [],
+      skillsSoft: [],
+      skillsDomain: [],
+      languages: [],
+      awards: [],
+      publications: [],
+      volunteering: [],
+      interestedRoles: [],
+      careerDirection: "",
+      workPreference: "",
+      seniorityComfort: [],
+      industriesOfInterest: [],
+      roleDealbreakers: [],
+      toneSignals: [],
+      styleConstraints: [],
+      emphasisAreas: [],
+      deEmphasisAreas: [],
+      preferredMarkets: [],
+    };
+  }
+
+  return {
+    fullName: v2.profile.full_name ?? session.fullName ?? "",
+    email: v2.profile.email ?? session.email,
+    phone: v2.profile.phone ?? "",
+    linkedin: v2.profile.linkedin_url ?? "",
+    location: v2.profile.location ?? "",
+    visaStatus: "",
+    relocationPreferences: [],
+    targetRoles: v2.profile.target_role ? [v2.profile.target_role] : [],
+    currentTitle: v2.experience[0]?.title ?? "",
+    experienceLevel: "mid",
+    experience: v2.experience.map((e) => ({
+      title: e.title ?? "",
+      company: e.company ?? "",
+      startDate: e.start_date ?? "",
+      endDate: e.end_date ?? "",
+      bullets: e.bullets ?? [],
+    })),
+    education: v2.education.map((e) => ({
+      institution: e.institution ?? "",
+      degree: e.degree ?? "",
+      field: e.field ?? "",
+      startDate: e.start_date ?? "",
+      endDate: e.end_date ?? "",
+    })),
+    certifications: v2.certifications.map((c) => c.name ?? "").filter(Boolean),
+    projects: v2.projects.map((p) => ({
+      name: p.name ?? "",
+      description: p.description ?? "",
+      technologies: p.technologies,
+    })),
+    skillsTier1: v2.skills.raw_list.slice(0, 5).map((name) => ({ name, level: "expert" as const })),
+    skillsTier2: v2.skills.raw_list.slice(5, 12).map((name) => ({ name, level: "proficient" as const })),
+    skillsTier3: v2.skills.raw_list.slice(12).map((name) => ({ name, level: "familiar" as const })),
+    tools: [],
+    voiceNotes: v2.voice?.tone_calibration_summary ?? "",
+    profileMarkdown: "",
+    completenessScore: v2.profile.completeness_score ?? 0,
+    github: v2.profile.github_url ?? "",
+    portfolio: v2.profile.portfolio_url ?? "",
+    website: "",
+    yearsOfExperience: null,
+    professionalSummary: v2.profile.inferred_summary ?? "",
+    summarySignals: [],
+    domainExperience: v2.profile.confirmed_industry ? [v2.profile.confirmed_industry] : [],
+    careerHighlights: [],
+    skillsTechnical: v2.skills.grouped?.technical ?? [],
+    skillsTools: v2.skills.grouped?.tools ?? [],
+    skillsBusiness: v2.skills.grouped?.business ?? [],
+    skillsMethodologies: v2.skills.grouped?.methodologies ?? [],
+    skillsSoft: v2.skills.grouped?.soft_skills ?? [],
+    skillsDomain: v2.skills.grouped?.domain ?? [],
+    languages: v2.extras.languages,
+    awards: v2.extras.awards,
+    publications: v2.extras.publications,
+    volunteering: v2.extras.volunteering,
+    interestedRoles: v2.profile.target_role ? [v2.profile.target_role] : [],
+    careerDirection: "",
+    preferredMarkets: [],
+    workPreference: "",
+    seniorityComfort: v2.profile.confirmed_seniority ? [v2.profile.confirmed_seniority] : [],
+    industriesOfInterest: v2.profile.confirmed_industry ? [v2.profile.confirmed_industry] : [],
+    roleDealbreakers: [],
+    toneSignals: Array.isArray(v2.voice?.tone_preferences) ? (v2.voice.tone_preferences as string[]) : [],
+    styleConstraints: v2.voice?.tone_aversions ?? [],
+    emphasisAreas: [],
+    deEmphasisAreas: [],
+  };
 }

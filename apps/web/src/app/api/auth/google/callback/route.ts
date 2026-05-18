@@ -33,7 +33,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   if (existing[0]) {
     // Known user — go to the right place
     const done = existing[0].onboardingCompleted ?? false;
-    return NextResponse.redirect(new URL(done ? "/dashboard" : "/onboarding", origin));
+    return NextResponse.redirect(new URL(done ? "/dashboard" : "/onboarding-v2", origin));
   }
 
   // No row for this UUID. Check if email exists under a different UUID (account merge case).
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .where(eq(users.email, user.email!))
       .limit(1);
     const done = merged[0]?.onboardingCompleted ?? false;
-    return NextResponse.redirect(new URL(done ? "/dashboard" : "/onboarding", origin));
+    return NextResponse.redirect(new URL(done ? "/dashboard" : "/onboarding-v2", origin));
   }
 
   // Brand new user
@@ -76,5 +76,5 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     .values({ userId: user.id, plan: "free", status: "active" })
     .onConflictDoNothing();
 
-  return NextResponse.redirect(new URL("/onboarding", origin));
+  return NextResponse.redirect(new URL("/onboarding-v2", origin));
 }

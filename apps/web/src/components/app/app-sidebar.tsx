@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils";
 import {
   Brain,
   FileText,
+  LayoutDashboard,
   LogOut,
   Settings,
   Sparkles,
@@ -34,6 +35,7 @@ type RecentTuning = {
 };
 
 const workspaceItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/generate/new", label: "New tuning", icon: Sparkles, accent: true },
   { href: "/applications", label: "Applications", icon: FileText },
   { href: "/profile", label: "Career profile", icon: User },
