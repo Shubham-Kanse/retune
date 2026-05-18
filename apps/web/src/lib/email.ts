@@ -1,5 +1,16 @@
-const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const FROM_EMAIL = process.env.EMAIL_FROM ?? "noreply@retuned.cv";
+import * as nodemailer from "nodemailer";
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST ?? "mail.privateemail.com",
+  port: Number(process.env.SMTP_PORT ?? 465),
+  secure: true,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+const FROM_EMAIL = process.env.SMTP_FROM ?? "hello@retuned.cv";
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export async function sendEmail({
@@ -11,25 +22,12 @@ export async function sendEmail({
   subject: string;
   html: string;
 }): Promise<void> {
-  if (!RESEND_API_KEY) {
-    // Dev fallback: log to console
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
     console.log("[email:dev]", { to, subject, html });
     return;
   }
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ from: FROM_EMAIL, to, subject, html }),
-  });
-
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Resend API error ${res.status}: ${text}`);
-  }
+  await transporter.sendMail({ from: FROM_EMAIL, to, subject, html });
 }
 
 export async function sendVerificationEmail(

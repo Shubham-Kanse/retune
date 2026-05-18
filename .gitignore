@@ -15,6 +15,7 @@ out/
 # ─── Environment files (ALL .env variants) ───────────────────────────────────
 .env
 .env.*
+.env.vercel
 !.env.example
 
 # ─── Secrets & credentials ───────────────────────────────────────────────────
