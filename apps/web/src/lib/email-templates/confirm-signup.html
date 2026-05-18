@@ -21,11 +21,11 @@
               <p style="margin:0 0 24px;font-size:14px;color:#a3a3a3;line-height:1.6;">
                 Thanks for signing up for Retune. Click the button below to verify your email address and activate your account.
               </p>
-              <a href="{{ .ConfirmationURL }}" style="display:inline-block;background-color:#fafafa;color:#171717;font-size:14px;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:8px;">
+              <a href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=signup&callback=/login?verified=true" style="display:inline-block;background-color:#fafafa;color:#171717;font-size:14px;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:8px;">
                 Verify email
               </a>
               <p style="margin:24px 0 0;font-size:12px;color:#737373;">
-                Or copy this link: <a href="{{ .ConfirmationURL }}" style="color:#a3a3a3;word-break:break-all;">{{ .ConfirmationURL }}</a>
+                Or copy this link: <a href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=signup&callback=/login?verified=true" style="color:#a3a3a3;word-break:break-all;">{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=signup</a>
               </p>
             </td>
           </tr>

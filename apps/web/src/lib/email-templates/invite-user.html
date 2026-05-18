@@ -21,11 +21,11 @@
               <p style="margin:0 0 24px;font-size:14px;color:#a3a3a3;line-height:1.6;">
                 You've been invited to join Retune — the AI-powered platform that crafts tailored resumes and cover letters. Click below to accept and create your account.
               </p>
-              <a href="{{ .ConfirmationURL }}" style="display:inline-block;background-color:#fafafa;color:#171717;font-size:14px;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:8px;">
+              <a href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=invite&callback=/onboarding-v2" style="display:inline-block;background-color:#fafafa;color:#171717;font-size:14px;font-weight:600;text-decoration:none;padding:12px 24px;border-radius:8px;">
                 Accept invite
               </a>
               <p style="margin:24px 0 0;font-size:12px;color:#737373;">
-                Or copy this link: <a href="{{ .ConfirmationURL }}" style="color:#a3a3a3;word-break:break-all;">{{ .ConfirmationURL }}</a>
+                Or copy this link: <a href="{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=invite&callback=/onboarding-v2" style="color:#a3a3a3;word-break:break-all;">{{ .SiteURL }}/api/auth/confirm?token_hash={{ .TokenHash }}&type=invite</a>
               </p>
             </td>
           </tr>

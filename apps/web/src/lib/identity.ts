@@ -35,7 +35,10 @@ export function createIdentityModule(): IdentityModule {
       const { data, error } = await supabase.auth.signUp({
         email: input.email,
         password: input.password,
-        options: { data: { full_name: input.fullName ?? null } },
+        options: {
+          data: { full_name: input.fullName ?? null },
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+        },
       });
 
       if (error) {
@@ -59,14 +62,24 @@ export function createIdentityModule(): IdentityModule {
           })
           .onConflictDoNothing();
 
-        await db
-          .insert(subscriptions)
-          .values({
-            userId,
-            plan: "free",
-            status: "active",
-          })
-          .onConflictDoNothing();
+        // Only insert subscription if user row exists (handles conflict case
+        // where a different UUID owns this email)
+        const userRow = await db
+          .select({ id: users.id })
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+
+        if (userRow[0]) {
+          await db
+            .insert(subscriptions)
+            .values({
+              userId,
+              plan: "free",
+              status: "active",
+            })
+            .onConflictDoNothing();
+        }
 
         // Persist GDPR-relevant processor consents alongside the user row.
         // Without this the signup form's checkboxes are legally meaningless.

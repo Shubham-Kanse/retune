@@ -111,6 +111,7 @@ async function ensure_dev_user(db: PgDb): Promise<string> {
       market: "US",
       locale: "en-US",
     })
+    .onConflictDoNothing()
     .returning();
   return rows[0]?.id ?? "";
 }

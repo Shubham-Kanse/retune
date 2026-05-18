@@ -15,7 +15,14 @@ const PUBLIC_PATHS = new Set([
 ]);
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+
+  // Supabase email verification redirects to /?code=... — forward to callback handler
+  if (pathname === "/" && searchParams.has("code")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/api/auth/callback";
+    return NextResponse.redirect(url);
+  }
 
   // Security headers
   const allowSelfFrame = pathname === "/terms" || pathname === "/privacy";
