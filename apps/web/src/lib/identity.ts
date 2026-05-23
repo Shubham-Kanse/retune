@@ -129,11 +129,19 @@ export function createIdentityModule(): IdentityModule {
 
     async resolveSessionState() {
       const supabase = await createClient();
-      // Supabase logs "Invalid Refresh Token" to console.error when a
-      // stale auth cookie is present from a prior session. That's noisy
-      // but not actionable — we just want to know "is there a valid
-      // session?". Treat any thrown/auth error as "not signed in" and
-      // continue. The middleware/route guards will redirect if needed.
+      // Supabase's auth client logs "Invalid Refresh Token" via
+      // console.error from inside getUser() when the auth cookie is
+      // stale (common after sign-out, expired sessions, or local dev
+      // server restarts). The message can't be silenced via the SDK,
+      // so we filter it at the console boundary while we run getUser.
+      const originalError = console.error;
+      console.error = (...args: unknown[]) => {
+        const first = args[0];
+        const text =
+          typeof first === "string" ? first : first instanceof Error ? first.message : "";
+        if (/AuthApiError|refresh.?token|Refresh Token/i.test(text)) return;
+        originalError(...args);
+      };
       try {
         const {
           data: { user },
@@ -166,6 +174,8 @@ export function createIdentityModule(): IdentityModule {
         };
       } catch {
         return null;
+      } finally {
+        console.error = originalError;
       }
     },
   };

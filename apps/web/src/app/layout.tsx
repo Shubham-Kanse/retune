@@ -70,19 +70,21 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           disableTransitionOnChange
         >
           <TooltipProvider delayDuration={200}>
-            <ErrorBoundary>
-              <Suspense fallback={null}>
-                <PostHogProvider>
-                  <NavGuardProvider>{children}</NavGuardProvider>
-                </PostHogProvider>
-              </Suspense>
-            </ErrorBoundary>
-            <Toaster
-              position="bottom-right"
-              toastOptions={{
-                className: "border border-border bg-popover text-popover-foreground",
-              }}
-            />
+            <>
+              <ErrorBoundary>
+                <Suspense fallback={null}>
+                  <PostHogProvider>
+                    <NavGuardProvider>{children}</NavGuardProvider>
+                  </PostHogProvider>
+                </Suspense>
+              </ErrorBoundary>
+              <Toaster
+                position="bottom-right"
+                toastOptions={{
+                  className: "border border-border bg-popover text-popover-foreground",
+                }}
+              />
+            </>
           </TooltipProvider>
         </ThemeProvider>
       </body>
