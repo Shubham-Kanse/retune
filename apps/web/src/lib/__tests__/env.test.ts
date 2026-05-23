@@ -15,21 +15,25 @@ const ORIGINAL_ENV = { ...process.env };
 
 function resetEnv(values: Record<string, string | undefined>): void {
   // Wipe all keys we ever touch in tests, then apply the new values.
+  // Note: `delete` is required (assigning undefined turns into the
+  // string "undefined" which Zod treats as set-and-truthy). The
+  // biome rule warns about delete's perf impact; in test setup the
+  // overhead is negligible.
   for (const k of Object.keys(process.env)) {
     if (k.startsWith("RETUNE_") || k.startsWith("NEXT_PUBLIC_")) {
-      (process.env as Record<string, string | undefined>)[k] = undefined;
+      delete process.env[k];
     }
   }
-  (process.env as Record<string, string | undefined>).OPENAI_API_KEY = undefined;
-  (process.env as Record<string, string | undefined>).ANTHROPIC_API_KEY = undefined;
-  (process.env as Record<string, string | undefined>).JWT_SECRET = undefined;
-  (process.env as Record<string, string | undefined>).SUPABASE_SERVICE_ROLE_KEY = undefined;
-  (process.env as Record<string, string | undefined>).E2E_AUTH_BYPASS = undefined;
-  (process.env as Record<string, string | undefined>).AI_PROVIDER = undefined;
-  (process.env as Record<string, string | undefined>).NODE_ENV = undefined;
+  delete process.env.OPENAI_API_KEY;
+  delete process.env.ANTHROPIC_API_KEY;
+  delete process.env.JWT_SECRET;
+  delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+  delete process.env.E2E_AUTH_BYPASS;
+  delete process.env.AI_PROVIDER;
+  delete process.env.NODE_ENV;
   for (const [k, v] of Object.entries(values)) {
     if (v === undefined) {
-      (process.env as Record<string, string | undefined>)[k] = undefined;
+      delete process.env[k];
     } else process.env[k] = v;
   }
   _resetEnvCacheForTests();
@@ -52,7 +56,7 @@ afterEach(() => {
   // Restore the original env so other tests aren't affected.
   for (const k of Object.keys(process.env)) {
     if (!(k in ORIGINAL_ENV)) {
-      (process.env as Record<string, string | undefined>)[k] = undefined;
+      delete process.env[k];
     }
   }
   for (const [k, v] of Object.entries(ORIGINAL_ENV)) {

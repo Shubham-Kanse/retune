@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@retune/db": "workspace:*",
-    "drizzle-orm": "^0.38.3"
+    "drizzle-orm": "^0.38.3",
+    "stripe": "^22.1.1"
   },
   "devDependencies": {
     "@retune/tsconfig": "workspace:*",

@@ -68,7 +68,7 @@ test("openaiProvider.searchFiles returns null without responses API", async () =
     }
   } finally {
     if (original === undefined) {
-      (process.env as Record<string, string | undefined>).OPENAI_API_KEY = undefined;
+      delete process.env.OPENAI_API_KEY;
     } else process.env.OPENAI_API_KEY = original;
     _resetOpenAIClient();
   }

@@ -5,6 +5,7 @@ import { isCareerUnderstandingV1 } from "@/lib/career-understanding";
 import { verifyPreflightToken } from "@/lib/drift-preflight-token";
 import { isCareerProfileV1 } from "@/lib/onboarding/career-profile.schema";
 import { ensureGenerationPreflightsTable } from "@/lib/preflight-table";
+import { atomicCheckGeneration, recordUsage } from "@retune/billing";
 import { db } from "@retune/db";
 import { applications, generationPreflights, profiles } from "@retune/db/schema";
 import { and, eq, isNull } from "drizzle-orm";
@@ -42,6 +43,25 @@ export const POST = withAuth(async (request, session) => {
           "invalid_preflight_token: complete drift preflight again for this exact JD before generation.",
       },
       { status: 428 },
+    );
+  }
+
+  // Charter 03 Epic 01 — billing gate.
+  // Atomically reserve credits before kicking off the upstream cognitive
+  // run. If the user is over their plan limit, return 402 (Payment
+  // Required) with the structured reason so the UI can render an
+  // actionable upgrade CTA instead of a generic error.
+  const idemKey = body.idempotency_key ?? `${session.userId}:${suppliedHash}`;
+  const billingCheck = await atomicCheckGeneration(session.userId, idemKey);
+  if (!billingCheck.allowed) {
+    return NextResponse.json(
+      {
+        error: "billing_blocked",
+        reason: billingCheck.reason ?? "insufficient_credits",
+        creditsRemaining: billingCheck.creditsRemaining ?? 0,
+        creditsCost: billingCheck.creditsCost ?? 10,
+      },
+      { status: 402 },
     );
   }
 
@@ -197,6 +217,17 @@ export const POST = withAuth(async (request, session) => {
   } catch {
     // Non-fatal — generation proceeds even if the row insert fails
   }
+
+  // Charter 03 Epic 01 — billing audit trail. The credit reservation
+  // happened above via atomicCheckGeneration (which atomically
+  // increments subscriptions.credits_used). recordUsage writes the
+  // historical usage_records row keyed on (user, application) for
+  // debugging and operational reconciliation. Failure is non-fatal —
+  // the credit counter is the authoritative source of truth.
+  recordUsage(session.userId, "generation", data.generation_id).catch((err) => {
+    // eslint-disable-next-line no-console
+    console.warn("[generate] recordUsage failed (non-fatal)", err);
+  });
 
   return NextResponse.json(data, { status: res.status });
 });

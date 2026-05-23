@@ -24,5 +24,26 @@
   },
   "files": {
     "ignore": ["node_modules", ".next", "dist", ".turbo", "*.gen.ts"]
-  }
+  },
+  "overrides": [
+    {
+      "include": [
+        "**/__tests__/**",
+        "**/tests/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/vitest.setup.ts"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noExplicitAny": "off"
+          },
+          "performance": {
+            "noDelete": "off"
+          }
+        }
+      }
+    }
+  ]
 }

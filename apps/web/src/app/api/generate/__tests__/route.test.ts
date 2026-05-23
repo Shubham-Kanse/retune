@@ -42,6 +42,20 @@ vi.mock("@retune/db", () => ({
   },
 }));
 
+// Charter 03 Epic 01 — billing gate is wired in the route. Tests mock
+// it to always allow + no-op recordUsage so we don't pull in the real
+// drizzle transaction layer.
+vi.mock("@retune/billing", () => ({
+  atomicCheckGeneration: vi.fn(async () => ({
+    allowed: true,
+    creditsRemaining: 100,
+    creditsCost: 10,
+    remainingCreditsUsd: 10,
+    costUsd: 1,
+  })),
+  recordUsage: vi.fn(async () => undefined),
+}));
+
 vi.mock("@retune/db/schema", () => ({
   applications: {},
   generationPreflights: {
@@ -148,4 +162,3 @@ describe("POST /api/generate preflight consume semantics", () => {
     expect(insertMock).not.toHaveBeenCalled();
   });
 });
-

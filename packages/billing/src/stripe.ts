@@ -37,10 +37,9 @@ export async function getStripeClient(): Promise<unknown> {
   if (!stripeEnabled()) return null;
   if (_client) return _client;
   try {
-    // @ts-expect-error — optional dep until installed
     const Stripe = (await import("stripe")).default;
     _client = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-      apiVersion: "2025-09-30.clover",
+      apiVersion: "2026-04-22.dahlia",
       maxNetworkRetries: 3,
       timeout: 10_000,
       typescript: true,

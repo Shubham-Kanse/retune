@@ -9,9 +9,12 @@ import { serve } from "@hono/node-server";
 import { startCron } from "@retune/agent/cron";
 import { Hono } from "hono";
 import { logger, requestLoggerMiddleware } from "./lib/logger";
+import { metricsHandler, metricsMiddleware } from "./lib/metrics";
+import { mountOpenApi } from "./lib/openapi";
 import { initOTel, shutdownOTel } from "./lib/otel";
 import { initSentryNode } from "./lib/sentry";
-import { TraceBusRegistry } from "./lib/trace-bus";
+import type { TraceBusRegistry } from "./lib/trace-bus";
+import { buildTraceBusRegistry } from "./lib/trace-bus-redis";
 import { active_questions_routes } from "./routes/active-questions";
 import { applications_routes } from "./routes/applications";
 import { generate_routes } from "./routes/generate";
@@ -22,7 +25,11 @@ import { status_routes } from "./routes/status";
 import { stream_routes } from "./routes/stream";
 import { acquire_durability } from "./runtime/persistence-factory";
 
-const registry = new TraceBusRegistry();
+// Charter 04 Epic 04 — TraceBus durability. The factory returns the
+// in-process registry by default; wrapping behind RETUNE_TRACE_BUS=redis
+// turns on a Redis Streams adapter so SSE survives across multiple
+// API instances.
+const registry: TraceBusRegistry = buildTraceBusRegistry();
 
 const app = new Hono();
 
@@ -30,6 +37,15 @@ const app = new Hono();
 // must run before everything else so subsequent middleware/handlers
 // can use `c.var.logger` and the response carries `x-request-id`.
 app.use("*", requestLoggerMiddleware);
+
+// Charter 05 Epic 04 — Prometheus metrics. Records request count +
+// duration for every route. Place BEFORE the routes so middleware
+// runs the next() chain through them.
+app.use("*", metricsMiddleware);
+
+// Charter 05 Epic 04 — /metrics scrape endpoint (no auth — Prometheus
+// scrapes are typically gated at the network / load-balancer layer).
+app.get("/metrics", metricsHandler);
 
 // CORS — registered BEFORE routes so preflight + response headers apply
 // to every endpoint. The Next.js dev server (apps/web on :3000) needs
@@ -51,6 +67,10 @@ app.use("*", async (c, next) => {
 });
 
 app.route("/", health);
+
+// Charter 12 Epic 01 + Charter 17 Epic 03 — OpenAPI 3.1 spec + Swagger UI.
+// /openapi.json + /v1/openapi.json + /docs.
+mountOpenApi(app);
 
 // Charter 17 Epic 01 — API versioning.
 //
