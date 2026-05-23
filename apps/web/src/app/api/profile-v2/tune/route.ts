@@ -6,17 +6,12 @@
 //
 // Body: { section: "voice"|"preferences"|"positioning"|"experience"|"skills", message: string }
 
+import { withSupabaseAuth } from "@/lib/api-handler";
 import { callLLM } from "@/lib/onboarding-v2/llm/calls";
 import { safeParseLLMJson } from "@/lib/onboarding-v2/llm/guardrails";
 import { sanitizeUserInput } from "@/lib/onboarding-v2/validation";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-
-async function getAuthUserId(): Promise<string | null> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
 
 const SECTION_PROMPTS: Record<string, string> = {
   voice: `You are an assistant tuning the user's resume voice profile. They have a stored set of preferences (tone, aversions, voice sample). Read their natural-language message, decide which voice fields to adjust, and return a JSON patch.
@@ -58,10 +53,7 @@ Rules:
 - Return valid JSON only. No preamble.`,
 };
 
-export async function POST(req: Request) {
-  const userId = await getAuthUserId();
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
+export const POST = withSupabaseAuth(async (req, userId) => {
   const body = await req.json().catch(() => ({}));
   const section = body.section as string;
   const message = sanitizeUserInput(body.message ?? "");
@@ -101,7 +93,10 @@ export async function POST(req: Request) {
     patch: Record<string, unknown>;
     confirmation_message: string;
   }>(llmResult.content, (p) => ({
-    valid: !!p && typeof p === "object" && typeof (p as { understood?: unknown }).understood === "boolean",
+    valid:
+      !!p &&
+      typeof p === "object" &&
+      typeof (p as { understood?: unknown }).understood === "boolean",
     result: p as {
       understood: boolean;
       clarifying_question: string | null;
@@ -133,7 +128,7 @@ export async function POST(req: Request) {
     confirmationMessage: parsed.data.confirmation_message,
     patch: parsed.data.patch,
   });
-}
+});
 
 async function loadContext(userId: string, section: string): Promise<unknown> {
   const supabase = await createClient();
@@ -182,10 +177,7 @@ async function applyPatch(
       if (patch.natural_voice_sample) update.natural_voice_sample = patch.natural_voice_sample;
       if (patch.tone_preferences) update.tone_preferences = patch.tone_preferences;
       if (patch.tone_aversions) update.tone_aversions = patch.tone_aversions;
-      await supabase
-        .from("user_voice_profiles_v2")
-        .update(update)
-        .eq("user_id", userId);
+      await supabase.from("user_voice_profiles_v2").update(update).eq("user_id", userId);
       break;
     }
     case "preferences":
@@ -215,17 +207,15 @@ async function applyPatch(
       const next = new Set<string>((current?.raw_list as string[]) ?? []);
       for (const s of (patch.add as string[]) ?? []) next.add(s);
       for (const s of (patch.remove as string[]) ?? []) next.delete(s);
-      await supabase
-        .from("user_skills_v2")
-        .upsert(
-          {
-            user_id: userId,
-            raw_list: Array.from(next),
-            source: "user_supplied",
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id" },
-        );
+      await supabase.from("user_skills_v2").upsert(
+        {
+          user_id: userId,
+          raw_list: Array.from(next),
+          source: "user_supplied",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
       break;
     }
   }

@@ -512,4 +512,60 @@ export class PostgresPersistence implements TickPersistence, GenerationReplayLoa
       })
       .onConflictDoNothing();
   }
+
+  /**
+   * Charter 09 Epic 03 — persist model-call telemetry to
+   * `generation_model_calls`. Best-effort: failures are surfaced to
+   * the caller (which is `try/catch`'d in the orchestrator).
+   *
+   * Idempotent via the unique-call-site index
+   * `(generation_id, tick_seq, agent_name)`.
+   */
+  async record_model_calls(input: {
+    generation_id: string;
+    tick_seq: number;
+    specialist: string;
+    records: Array<{
+      agent: string;
+      provider: string;
+      model: string;
+      cognitive_function_id: string | null;
+      response_id: string | null;
+      input_tokens: number;
+      output_tokens: number;
+      cache_read_tokens: number;
+      cache_creation_tokens: number;
+      reasoning_tokens: number | null;
+      cost_usd: number;
+      latency_ms: number;
+      request_hash: string;
+      response_hash: string | null;
+    }>;
+  }): Promise<void> {
+    if (input.records.length === 0) return;
+    const { generation_model_calls } = await import("@retune/db/pg");
+    await this.db
+      .insert(generation_model_calls)
+      .values(
+        input.records.map((r) => ({
+          generation_id: input.generation_id,
+          tick_seq: input.tick_seq,
+          specialist: input.specialist,
+          agent_name: r.agent,
+          provider: r.provider,
+          model: r.model,
+          quality_mode: null,
+          prompt_tokens: r.input_tokens,
+          completion_tokens: r.output_tokens,
+          cached_tokens: r.cache_read_tokens,
+          cost_usd: r.cost_usd,
+          latency_ms: r.latency_ms,
+          cached: r.cache_read_tokens > 0,
+          error: null,
+          request_hash: r.request_hash,
+          response_hash: r.response_hash,
+        })),
+      )
+      .onConflictDoNothing();
+  }
 }

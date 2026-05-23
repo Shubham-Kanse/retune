@@ -14,6 +14,23 @@ const PUBLIC_PATHS = new Set([
   "/privacy",
 ]);
 
+/**
+ * Generate a cryptographically-strong nonce for inline scripts/styles.
+ * Edge runtime: uses Web Crypto.
+ *
+ * Charter 01 Epic 04 — nonce-based CSP. The nonce is added to
+ * `script-src 'nonce-${nonce}' 'strict-dynamic'` so only scripts
+ * carrying the nonce attribute can execute. Next.js automatically
+ * propagates the nonce to its own framework scripts when we set the
+ * `x-nonce` request header (read by `app/layout.tsx` and used by
+ * `unstable_after` / `headers()` based components).
+ */
+function generateNonce(): string {
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return btoa(String.fromCharCode(...bytes));
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
@@ -24,27 +41,69 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  const isProduction = process.env.NODE_ENV === "production";
+  const isDevelopment = process.env.NODE_ENV === "development";
+
+  // One nonce per request — used in CSP header and propagated via
+  // `x-nonce` header so server components can apply it to inline tags.
+  const nonce = generateNonce();
+
   // Security headers
   const allowSelfFrame = pathname === "/terms" || pathname === "/privacy";
-  const devSources =
-    process.env.NODE_ENV === "development" ? " http://localhost:* ws://localhost:*" : "";
+  const devSources = isDevelopment ? " http://localhost:* ws://localhost:*" : "";
 
   const applySecurityHeaders = (response: NextResponse) => {
     response.headers.set("X-Frame-Options", allowSelfFrame ? "SAMEORIGIN" : "DENY");
     response.headers.set("X-Content-Type-Options", "nosniff");
     response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    // Charter 01 Epic 04: HSTS. Two-year max-age with preload eligibility.
+    // Only set in production — local dev runs HTTP and would lock browsers
+    // to HTTPS-only for the dev domain otherwise.
+    if (isProduction) {
+      response.headers.set(
+        "Strict-Transport-Security",
+        "max-age=63072000; includeSubDomains; preload",
+      );
+    }
+
+    // Charter 01 Epic 04: nonce-based CSP.
+    //
+    // Production:
+    //   - script-src uses nonce + strict-dynamic. Any script that lacks
+    //     the nonce will not execute. `strict-dynamic` lets nonced
+    //     scripts dynamically load further scripts without each needing
+    //     its own nonce (required by Next.js framework chunks).
+    //   - NO 'unsafe-eval', NO 'unsafe-inline' in script-src.
+    //   - style-src keeps 'unsafe-inline' until Tailwind / styled-jsx
+    //     are migrated to nonce mode (tracked separately; their inline
+    //     CSS injection is structurally hard to nonce without a build
+    //     pipeline change).
+    //
+    // Development:
+    //   - Next.js dev server uses eval for Fast Refresh and inline
+    //     scripts for HMR. We keep 'unsafe-eval' and 'unsafe-inline'
+    //     in dev only so the dev experience isn't broken.
+    const scriptSrc = isDevelopment
+      ? `script-src 'self' 'unsafe-eval' 'unsafe-inline' 'nonce-${nonce}'`
+      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+
     response.headers.set(
       "Content-Security-Policy",
       [
         "default-src 'self'",
-        "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+        scriptSrc,
         "style-src 'self' 'unsafe-inline'",
         "style-src-elem 'self' 'unsafe-inline'",
         "font-src 'self'",
         "img-src 'self' data: https:",
         `connect-src 'self' https:${devSources}`,
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
         `frame-ancestors ${allowSelfFrame ? "'self'" : "'none'"}`,
+        // upgrade-insecure-requests is a no-op in dev; harmless to ship.
+        "upgrade-insecure-requests",
       ].join("; "),
     );
   };
@@ -56,7 +115,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/_next") ||
     /\.(ico|svg|txt|xml|json|mjs|webmanifest)$/.test(pathname)
   ) {
-    const response = NextResponse.next();
+    const response = NextResponse.next({
+      request: { headers: withNonce(request.headers, nonce) },
+    });
     applySecurityHeaders(response);
     return response;
   }
@@ -71,6 +132,7 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set("x-user-name", process.env.E2E_AUTH_NAME ?? "E2E User");
     requestHeaders.set("x-pathname", pathname);
     requestHeaders.set("x-url", request.nextUrl.toString());
+    requestHeaders.set("x-nonce", nonce);
     const response = NextResponse.next({ request: { headers: requestHeaders } });
     applySecurityHeaders(response);
     return response;
@@ -93,9 +155,16 @@ export async function middleware(request: NextRequest) {
   // Pass pathname and full URL so layouts can read query params (e.g. enhance=1)
   response.headers.set("x-pathname", pathname);
   response.headers.set("x-url", request.nextUrl.toString());
+  response.headers.set("x-nonce", nonce);
 
   applySecurityHeaders(response);
   return response;
+}
+
+function withNonce(headers: Headers, nonce: string): Headers {
+  const out = new Headers(headers);
+  out.set("x-nonce", nonce);
+  return out;
 }
 
 export const config = {

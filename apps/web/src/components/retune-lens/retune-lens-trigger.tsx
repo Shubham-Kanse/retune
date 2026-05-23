@@ -139,7 +139,10 @@ const RESUME_FUEL_PROMPTS: Partial<Record<UnderstandingIntentPreset, string>> = 
     "Regenerate resume fuel with more grounded language. Stay close to literal evidence.",
 };
 
-const SECTION_PROMPTS: Record<UnderstandingSection, Partial<Record<UnderstandingIntentPreset, string>>> = {
+const SECTION_PROMPTS: Record<
+  UnderstandingSection,
+  Partial<Record<UnderstandingIntentPreset, string>>
+> = {
   summary: SUMMARY_PROMPTS,
   positioning: POSITIONING_PROMPTS,
   evidence: EVIDENCE_PROMPTS,
@@ -148,7 +151,10 @@ const SECTION_PROMPTS: Record<UnderstandingSection, Partial<Record<Understanding
   resume_strategy: SUMMARY_PROMPTS,
 };
 
-function getIntentPrompt(section: UnderstandingSection | undefined, intent: UnderstandingIntentPreset): string {
+function getIntentPrompt(
+  section: UnderstandingSection | undefined,
+  intent: UnderstandingIntentPreset,
+): string {
   if (section) {
     const sectionMap = SECTION_PROMPTS[section];
     const prompt = sectionMap?.[intent];
@@ -162,7 +168,19 @@ const MAX_CHIPS = 3;
 
 export const RetuneLensTrigger = React.forwardRef<HTMLButtonElement, RetuneLensTriggerProps>(
   function RetuneLensTrigger(
-    { label, stale, className, ariaLabel, onSubmit, loading, defaultInstruction, intents, forceOpen, compact, section },
+    {
+      label,
+      stale,
+      className,
+      ariaLabel,
+      onSubmit,
+      loading,
+      defaultInstruction,
+      intents,
+      forceOpen,
+      compact,
+      section,
+    },
     _ref,
   ) {
     const wrapperRef = React.useRef<HTMLDivElement>(null);
@@ -172,7 +190,10 @@ export const RetuneLensTrigger = React.forwardRef<HTMLButtonElement, RetuneLensT
     const hasChips = intents && intents.length > 0;
 
     const triggerOpen = React.useCallback(() => {
-      if (defaultInstruction) { onSubmit(defaultInstruction); return; }
+      if (defaultInstruction) {
+        onSubmit(defaultInstruction);
+        return;
+      }
       setOpen(true);
       setTimeout(() => textareaRef.current?.focus(), 50);
     }, [defaultInstruction, onSubmit]);
@@ -198,13 +219,29 @@ export const RetuneLensTrigger = React.forwardRef<HTMLButtonElement, RetuneLensT
           if (value.trim().length === 0) triggerClose();
         }
       }
+      function escHandler(e: KeyboardEvent) {
+        if (e.key === "Escape") {
+          e.preventDefault();
+          triggerClose();
+        }
+      }
       document.addEventListener("mousedown", handler);
-      return () => document.removeEventListener("mousedown", handler);
+      document.addEventListener("keydown", escHandler);
+      return () => {
+        document.removeEventListener("mousedown", handler);
+        document.removeEventListener("keydown", escHandler);
+      };
     }, [open, value, triggerClose]);
 
     function handleKeys(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-      if (e.key === "Escape") { e.preventDefault(); triggerClose(); }
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmit(); }
+      if (e.key === "Escape") {
+        e.preventDefault();
+        triggerClose();
+      }
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit();
+      }
     }
 
     function handleSubmit() {
@@ -219,7 +256,10 @@ export const RetuneLensTrigger = React.forwardRef<HTMLButtonElement, RetuneLensT
     }
 
     return (
-      <div ref={wrapperRef} className={cn(compact ? "relative inline-flex items-center" : "relative", className)}>
+      <div
+        ref={wrapperRef}
+        className={cn(compact ? "relative inline-flex items-center" : "relative", className)}
+      >
         {/* Resting pill — always in normal flow, hidden when open */}
         {!open && (
           <button
@@ -234,7 +274,10 @@ export const RetuneLensTrigger = React.forwardRef<HTMLButtonElement, RetuneLensT
             <ColorOrb size={compact ? 14 : 20} />
             {label}
             {stale && (
-              <span aria-label="needs re-read" className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+              <span
+                aria-label="needs re-read"
+                className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500"
+              />
             )}
           </button>
         )}
@@ -271,8 +314,10 @@ export const RetuneLensTrigger = React.forwardRef<HTMLButtonElement, RetuneLensT
                       strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
-                      aria-hidden
+                      role="img"
+                      aria-hidden="true"
                     >
+                      <title>Close</title>
                       <line x1="18" y1="6" x2="6" y2="18" />
                       <line x1="6" y1="6" x2="18" y2="18" />
                     </svg>

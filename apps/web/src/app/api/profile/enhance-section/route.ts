@@ -183,7 +183,11 @@ Patch fields by section:
   }
 
   if (
-    violatesFactualConstraints(section, body.profile as Record<string, unknown>, validated.data)
+    violatesFactualConstraints(
+      section,
+      body.profile as Record<string, unknown>,
+      validated.data as Record<string, unknown>,
+    )
   ) {
     return NextResponse.json(
       { error: "AI patch introduced unsupported entities" },

@@ -46,6 +46,52 @@ export function rehydrate_substrate(input: {
   registry: SpecialistRegistry;
   scheduler: AttentionScheduler;
   persistence: TickPersistence;
+  /**
+   * Charter 08-Data-Integrity Epic 02 — extended persistence (GDPR
+   * packets + conflicts). Pass when the caller has a full
+   * PostgresPersistence instance (e.g. from Temporal substrate); leave
+   * undefined for in-memory dev replays where these tables don't exist.
+   */
+  extended_persistence?: {
+    record_gdpr_packet(input: {
+      generation_id: string;
+      user_id: string;
+      verdict: string;
+      packet: Record<string, unknown>;
+    }): Promise<void>;
+    record_conflict(input: {
+      generation_id: string;
+      conflict: {
+        id: string;
+        monitor: string;
+        severity: string;
+        payload: Record<string, unknown>;
+        resolved_by?: string | null;
+        resolved_at?: string | null;
+      };
+    }): Promise<void>;
+    record_model_calls?(input: {
+      generation_id: string;
+      tick_seq: number;
+      specialist: string;
+      records: Array<{
+        agent: string;
+        provider: string;
+        model: string;
+        cognitive_function_id: string | null;
+        response_id: string | null;
+        input_tokens: number;
+        output_tokens: number;
+        cache_read_tokens: number;
+        cache_creation_tokens: number;
+        reasoning_tokens: number | null;
+        cost_usd: number;
+        latency_ms: number;
+        request_hash: string;
+        response_hash: string | null;
+      }>;
+    }): Promise<void>;
+  };
 }): RehydratedSubstrate {
   const trigger_bus = new TriggerBus();
   const blackboard = new BlackboardStore(input.replayed.blackboard, trigger_bus);
@@ -66,6 +112,7 @@ export function rehydrate_substrate(input: {
     audit_trail,
     budget,
     persistence: input.persistence,
+    extended_persistence: input.extended_persistence,
   });
 
   return {

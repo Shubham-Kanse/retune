@@ -1,0 +1,11 @@
+# gitleaks ignore file (Charter 01 Epic 02 / 06).
+#
+# Each line is a match-id (gitleaks --report-format json gives the IDs).
+# Adding an entry here is a CONSCIOUS DECISION — every line MUST have
+# a comment above it explaining why the apparent secret is safe.
+#
+# DO NOT add lines for live secrets you "want to keep around."
+# Live secrets must be rotated and removed from history.
+
+# Test fixtures (safe — known-bad keys used in unit tests):
+# (no entries yet — add as needed)

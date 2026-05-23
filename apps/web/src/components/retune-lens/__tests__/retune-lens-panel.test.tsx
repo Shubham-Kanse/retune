@@ -99,7 +99,7 @@ describe("RetuneLensPanel", () => {
     expect(trigger?.textContent).toContain("Tune this read");
   });
 
-  it("opens the panel and focuses the textarea when clicked", () => {
+  it("opens the panel and focuses the textarea when clicked", async () => {
     renderPanel();
     const trigger = container.querySelector("button") as HTMLButtonElement;
     act(() => {
@@ -107,11 +107,14 @@ describe("RetuneLensPanel", () => {
     });
     const textarea = container.querySelector("textarea");
     expect(textarea).not.toBeNull();
-    // Allow microtasks for focus effect.
+    // Component focuses via setTimeout(focus, 50). Drain timers + microtasks.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 80));
+    });
     expect(document.activeElement?.tagName.toLowerCase()).toBe("textarea");
   });
 
-  it("calls onPreview when the user clicks Preview changes", async () => {
+  it("calls onPreview when the user clicks Tune", async () => {
     const { onPreview } = renderPanel();
     const trigger = container.querySelector("button") as HTMLButtonElement;
     act(() => {
@@ -122,10 +125,10 @@ describe("RetuneLensPanel", () => {
       setControlledValue(textarea, "More technical please.");
     });
     const buttons = Array.from(container.querySelectorAll("button"));
-    const preview = buttons.find((b) => b.textContent?.includes("Preview changes"));
-    expect(preview).not.toBeUndefined();
+    const tune = buttons.find((b) => b.textContent?.includes("Tune") && !b.disabled);
+    expect(tune).not.toBeUndefined();
     await act(async () => {
-      preview?.click();
+      tune?.click();
     });
     expect(onPreview).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -141,7 +144,7 @@ describe("RetuneLensPanel", () => {
     renderPanel({ onPreview });
 
     let buttons = Array.from(container.querySelectorAll("button"));
-    expect(buttons.find((b) => b.textContent === "Apply")).toBeUndefined();
+    expect(buttons.find((b) => b.textContent?.includes("Apply"))).toBeUndefined();
 
     act(() => {
       (container.querySelector("button") as HTMLButtonElement).click();
@@ -150,20 +153,20 @@ describe("RetuneLensPanel", () => {
     act(() => {
       setControlledValue(textarea, "Make it sharper.");
     });
-    const previewBtn = Array.from(container.querySelectorAll("button")).find((b) =>
-      b.textContent?.includes("Preview changes"),
+    const tuneBtn = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent?.includes("Tune") && !b.disabled,
     ) as HTMLButtonElement | undefined;
     await act(async () => {
-      previewBtn?.click();
+      tuneBtn?.click();
     });
     // Drain microtasks until React commits the post-await state.
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 8; i++) {
       await act(async () => {
         await Promise.resolve();
       });
     }
     buttons = Array.from(container.querySelectorAll("button"));
-    expect(buttons.find((b) => b.textContent === "Apply")).toBeDefined();
+    expect(buttons.find((b) => b.textContent?.includes("Apply"))).toBeDefined();
   });
 
   it("calls onApply when the user clicks Apply", async () => {
@@ -178,25 +181,25 @@ describe("RetuneLensPanel", () => {
     act(() => {
       setControlledValue(textarea, "Sharpen.");
     });
-    const previewBtn = Array.from(container.querySelectorAll("button")).find((b) =>
-      b.textContent?.includes("Preview changes"),
+    const tuneBtn = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent?.includes("Tune") && !b.disabled,
     ) as HTMLButtonElement | undefined;
     await act(async () => {
-      previewBtn?.click();
+      tuneBtn?.click();
     });
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 8; i++) {
       await act(async () => {
         await Promise.resolve();
       });
     }
-    const applyBtn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent === "Apply",
+    const applyBtn = Array.from(container.querySelectorAll("button")).find((b) =>
+      b.textContent?.includes("Apply"),
     ) as HTMLButtonElement | undefined;
     expect(applyBtn).toBeDefined();
     await act(async () => {
       applyBtn?.click();
     });
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 8; i++) {
       await act(async () => {
         await Promise.resolve();
       });
@@ -211,7 +214,7 @@ describe("RetuneLensPanel", () => {
     expect(dot).not.toBeNull();
   });
 
-  it("Escape key closes the panel", () => {
+  it("Escape key closes the panel", async () => {
     renderPanel();
     act(() => {
       (container.querySelector("button") as HTMLButtonElement).click();
@@ -219,6 +222,10 @@ describe("RetuneLensPanel", () => {
     expect(container.querySelector("textarea")).not.toBeNull();
     act(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    // Allow AnimatePresence exit animation to complete + commit unmount.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 250));
     });
     expect(container.querySelector("textarea")).toBeNull();
   });

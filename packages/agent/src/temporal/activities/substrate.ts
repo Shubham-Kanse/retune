@@ -252,6 +252,16 @@ export function build_fresh_substrate(input: {
     budget,
     persistence: input.deps.persistence,
     conflict_staging,
+    // Charter 08-Data-Integrity Epic 02 — wire extended_persistence so
+    // GDPR packets and conflicts persist in Temporal mode (production
+    // target). Without this, gdpr_packets writes are silently dropped
+    // on the Temporal path. Mirrors the wiring in
+    // `apps/api/src/runtime/workbench-runtime.ts`.
+    extended_persistence: {
+      record_gdpr_packet: (inp) => input.deps.persistence.record_gdpr_packet(inp),
+      record_conflict: (inp) => input.deps.persistence.record_conflict(inp),
+      record_model_calls: (inp) => input.deps.persistence.record_model_calls(inp),
+    },
   });
   return { orchestrator, goal_stack, blackboard };
 }
@@ -271,5 +281,13 @@ export async function build_resumed_substrate(input: {
     registry,
     scheduler: new AttentionScheduler(),
     persistence: input.deps.persistence,
+    // Charter 08-Data-Integrity Epic 02 — preserve extended persistence
+    // wiring across rehydration so a resumed generation also writes
+    // GDPR packets + conflicts to durable storage.
+    extended_persistence: {
+      record_gdpr_packet: (inp) => input.deps.persistence.record_gdpr_packet(inp),
+      record_conflict: (inp) => input.deps.persistence.record_conflict(inp),
+      record_model_calls: (inp) => input.deps.persistence.record_model_calls(inp),
+    },
   });
 }

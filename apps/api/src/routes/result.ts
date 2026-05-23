@@ -20,9 +20,9 @@ import {
   readBytes,
   renderDocument,
 } from "../lib/docx-renderer";
+import { verifyGenerationAccessToken } from "../lib/generation-access-token";
 import { renderResult } from "../lib/result-renderer";
 import type { TraceBusRegistry } from "../lib/trace-bus";
-import { verifyGenerationAccessToken } from "../lib/generation-access-token";
 import { acquire_durability } from "../runtime/persistence-factory";
 
 async function loadBlackboard(id: string, registry: TraceBusRegistry): Promise<Blackboard | null> {
@@ -46,6 +46,7 @@ async function loadBlackboard(id: string, registry: TraceBusRegistry): Promise<B
 export function result_routes(registry: TraceBusRegistry) {
   const app = new Hono();
 
+  // biome-ignore lint/suspicious/noExplicitAny: Hono context is generic; the route handler shape varies per route
   async function authorize(c: any, id: string) {
     const token = c.req.header("x-retune-generation-access");
     const claims = verifyGenerationAccessToken(token, id);
@@ -168,17 +169,35 @@ export function result_routes(registry: TraceBusRegistry) {
           format: fmt as DocumentFormat,
         });
         if (!result.ok || !result.filepath) {
-          // 501 distinguishes "we can't render that" (e.g. cover letter
-          // not yet generated, python not installed, PDF unsupported on
-          // host) from a true 404 (generation not found).
+          // Charter 02-Core-Features Epic 06 — document download SLA.
+          // Distinguish:
+          //   - Content not yet generated      → 422 unprocessable
+          //   - Python/render infra unavailable → 503 service unavailable
+          //   - Render execution failed         → 500 with detail
+          // (Never 501 — that means "feature not implemented" which is
+          // never the truth for a route that exists in the registry.)
+          const error = result.error ?? "render_failed";
+          let status: 422 | 500 | 503 = 500;
+          if (error === "cover_letter_not_generated" || error === "resume_not_available") {
+            status = 422;
+          } else if (error === "render_script_missing" || error === "pdf_render_unavailable") {
+            status = 503;
+          }
           return c.json(
             {
-              error: result.error ?? "render_failed",
+              error,
               generation_id: id,
               kind: slug,
               format: fmt,
+              ...(status === 503
+                ? {
+                    message:
+                      "Document rendering temporarily unavailable. Try again shortly or contact support if it persists.",
+                    retry_after_seconds: 30,
+                  }
+                : {}),
             },
-            501,
+            status,
           );
         }
         const bytes = readBytes(result.filepath);

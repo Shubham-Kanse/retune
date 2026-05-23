@@ -21,7 +21,7 @@ const CREDIT_COSTS = {
 const REFINEMENT_LIMITS: Record<PlanTier, number> = {
   free: 3,
   pro: 10,
-  max: Infinity,
+  max: Number.POSITIVE_INFINITY,
 };
 
 const REFINE_ATTEMPT_TYPE = "refinement_attempt";
@@ -83,6 +83,14 @@ function getActionCost(type: "generation" | "refinement"): number {
   return CREDIT_COSTS[type];
 }
 
+/**
+ * Compute the historical credit usage by SUM-scanning usage_records.
+ * Charter 03 Epic 01 replaced this hot-path read with the
+ * `subscriptions.credits_used` counter; this helper is retained for
+ * reconciliation tooling (admin scripts that detect counter drift) and
+ * disaster recovery when the counter is suspect.
+ */
+// biome-ignore lint/correctness/noUnusedVariables: kept for reconciliation tooling; see comment above
 async function getUsedCredits(userId: string): Promise<number> {
   const rows = await db
     .select({ total: sql<number>`COALESCE(SUM(${usageRecords.costUsd}), 0)` })
@@ -91,8 +99,8 @@ async function getUsedCredits(userId: string): Promise<number> {
       and(
         eq(usageRecords.userId, userId),
         sql`${usageRecords.costUsd} IS NOT NULL`,
-        sql`${usageRecords.type} IN ('generation', 'refinement')` // Exclude refinement_attempt
-      )
+        sql`${usageRecords.type} IN ('generation', 'refinement')`, // Exclude refinement_attempt
+      ),
     );
   return Math.round(Number(rows[0]?.total ?? 0));
 }
@@ -111,7 +119,7 @@ export async function getSubscription(userId: string): Promise<SubscriptionInfo>
   const sub = subRows[0];
   const plan = (sub?.plan ?? "free") as PlanTier;
   const creditsLimit = getPlanCredits(plan);
-  
+
   // Read from cached counter instead of expensive SUM query
   const creditsUsed = sub?.creditsUsed ?? 0;
   const creditsRemaining = Math.max(creditsLimit - creditsUsed, 0);
@@ -158,6 +166,21 @@ export async function canGenerate(userId: string): Promise<UsageCheck> {
   };
 }
 
+/**
+ * Atomically check + claim credits for a generation.
+ *
+ * Charter 03 Epic 01 — billing integrity.
+ *
+ * Uses the denormalised `subscriptions.credits_used` counter (added in
+ * migration 0012) instead of running `COALESCE(SUM(usage_records.cost_usd))`
+ * on every check. The counter is incremented inside the same
+ * transaction with `SELECT ... FOR UPDATE`, making the check + claim
+ * race-free across concurrent generation attempts on the same user.
+ *
+ * `applicationId` is reserved for future per-application idempotency
+ * — the actual usage row is written by `recordUsage` after the
+ * generation completes; this function only RESERVES credits.
+ */
 export async function atomicCheckGeneration(
   userId: string,
   _applicationId: string,
@@ -165,17 +188,22 @@ export async function atomicCheckGeneration(
   cacheDel(`subscription:${userId}`);
 
   return await db.transaction(async (tx) => {
-    const subRows = await tx
-      .select()
-      .from(subscriptions)
-      .where(eq(subscriptions.userId, userId))
-      .limit(1);
-    const plan = (subRows[0]?.plan ?? "free") as PlanTier;
-    const usageRows = await tx
-      .select({ total: sql<number>`COALESCE(SUM(${usageRecords.costUsd}), 0)` })
-      .from(usageRecords)
-      .where(and(eq(usageRecords.userId, userId), sql`${usageRecords.costUsd} IS NOT NULL`));
-    const creditsUsed = Math.round(Number(usageRows[0]?.total ?? 0));
+    // Lock the subscription row for the duration of this transaction so
+    // a concurrent claim cannot overspend the user's quota.
+    const subRows = await tx.execute(sql`
+      SELECT plan, credits_used
+      FROM ${subscriptions}
+      WHERE ${subscriptions.userId} = ${userId}
+      LIMIT 1
+      FOR UPDATE
+    `);
+    type SubRow = { plan: string | null; credits_used: number | null };
+    const sub =
+      (subRows as unknown as { rows?: SubRow[] }).rows?.[0] ??
+      (Array.isArray(subRows) ? (subRows as unknown as SubRow[])[0] : undefined);
+
+    const plan = (sub?.plan ?? "free") as PlanTier;
+    const creditsUsed = Math.max(Number(sub?.credits_used ?? 0), 0);
     const creditsLimit = getPlanCredits(plan);
     const cost = getActionCost("generation");
     const creditsRemaining = Math.max(creditsLimit - creditsUsed, 0);
@@ -190,6 +218,16 @@ export async function atomicCheckGeneration(
         costUsd: cost / 10,
       };
     }
+
+    // Reserve the credits — increment the counter inside the same
+    // transaction so concurrent attempts see the updated value.
+    await tx
+      .update(subscriptions)
+      .set({
+        creditsUsed: creditsUsed + cost,
+        updatedAt: new Date(),
+      })
+      .where(eq(subscriptions.userId, userId));
 
     return {
       allowed: true,
@@ -285,7 +323,12 @@ export async function claimRefinementAttempt(
     const usedBurst = burstRows[0]?.count ?? 0;
 
     if (usedWindow >= REFINE_ATTEMPT_LIMIT || usedBurst >= REFINE_ATTEMPT_BURST_LIMIT) {
-      return { allowed: false, reason: "refinement_rate_limited", creditsRemaining: 0, remainingCreditsUsd: 0 };
+      return {
+        allowed: false,
+        reason: "refinement_rate_limited",
+        creditsRemaining: 0,
+        remainingCreditsUsd: 0,
+      };
     }
 
     await tx.insert(usageRecords).values({

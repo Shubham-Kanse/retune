@@ -1,0 +1,103 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    ":semanticCommits",
+    ":dependencyDashboard",
+    "group:monorepos",
+    "group:recommended",
+    ":maintainLockFilesWeekly",
+    "schedule:weekly"
+  ],
+  "timezone": "Europe/London",
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 5am on Monday"]
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "schedule": ["at any time"],
+    "automerge": false
+  },
+  "packageRules": [
+    {
+      "description": "Patch + minor non-major: automerge after CI passes",
+      "matchUpdateTypes": ["patch", "pin", "digest"],
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Minor for non-pre-1.0 packages: automerge",
+      "matchUpdateTypes": ["minor"],
+      "matchCurrentVersion": "/^[1-9]\\d*\\..*$/",
+      "automerge": true,
+      "automergeType": "pr",
+      "platformAutomerge": true
+    },
+    {
+      "description": "Group internal Retune workspace deps (no churn from these)",
+      "matchPackagePatterns": ["^@retune/"],
+      "enabled": false
+    },
+    {
+      "description": "Group all React updates so they ship together",
+      "groupName": "react",
+      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"]
+    },
+    {
+      "description": "Group Tailwind v4 packages",
+      "groupName": "tailwind",
+      "matchPackagePatterns": ["^@tailwindcss/", "^tailwind"]
+    },
+    {
+      "description": "Group Drizzle (we pin via pnpm overrides)",
+      "groupName": "drizzle",
+      "matchPackageNames": ["drizzle-orm", "drizzle-kit"]
+    },
+    {
+      "description": "Group Temporal SDKs — they must move together",
+      "groupName": "temporal",
+      "matchPackagePatterns": ["^@temporalio/"]
+    },
+    {
+      "description": "Group Radix UI primitives",
+      "groupName": "radix-ui",
+      "matchPackagePatterns": ["^@radix-ui/"]
+    },
+    {
+      "description": "Group Anthropic + OpenAI SDKs (provider parity matters)",
+      "groupName": "ai-providers",
+      "matchPackageNames": ["@anthropic-ai/sdk", "openai"]
+    },
+    {
+      "description": "Group Supabase (auth + DB drivers in lockstep)",
+      "groupName": "supabase",
+      "matchPackagePatterns": ["^@supabase/"]
+    },
+    {
+      "description": "Major upgrades: stay in PR review, no automerge",
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "addLabels": ["major-upgrade"]
+    },
+    {
+      "description": "Pin GitHub Actions to commit SHAs (security best practice)",
+      "matchManagers": ["github-actions"],
+      "pinDigests": true
+    },
+    {
+      "description": "Node major LTS only (Retune targets Node 22)",
+      "matchPackageNames": ["node"],
+      "allowedVersions": "/^22\\./"
+    }
+  ],
+  "ignoreDeps": [],
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 8,
+  "rebaseWhen": "behind-base-branch",
+  "platformAutomerge": true,
+  "postUpdateOptions": ["pnpmDedupe"]
+}

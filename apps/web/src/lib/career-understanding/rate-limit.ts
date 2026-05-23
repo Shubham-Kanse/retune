@@ -1,17 +1,19 @@
 /**
- * Per-user, per-route rate limiter used by the career-understanding routes.
+ * Career-understanding rate-limit adapter.
  *
- * The default `rateLimit` helper keys by IP + path which is fine for most
- * routes but lets a single shared NAT exhaust the budget for everyone
- * behind it. For AI-cost-bearing routes we need a per-user budget.
+ * Charter 01 Epic 03 (architect addendum): we consolidated all
+ * rate-limit logic into `@/lib/rate-limit`. This file is now a thin
+ * adapter so the existing call sites in:
+ *   - apps/web/src/app/api/profile/understanding/apply/route.ts
+ *   - apps/web/src/app/api/profile/understanding/feedback/route.ts
+ *   - apps/web/src/app/api/profile/understanding/preview/route.ts
+ * keep their named-params signature and `resetMs` return field.
+ *
+ * Do not add new rate-limit primitives here. New routes should import
+ * `userRateLimit` directly from `@/lib/rate-limit`.
  */
 
-interface Bucket {
-  count: number;
-  resetTime: number;
-}
-
-const store: Record<string, Bucket> = {};
+import { _resetRateLimitForTests, userRateLimit as canonicalUserRateLimit } from "../rate-limit";
 
 export function userRateLimit(params: {
   userId: string;
@@ -19,25 +21,14 @@ export function userRateLimit(params: {
   limit: number;
   windowMs: number;
 }): { success: boolean; remaining: number; resetMs: number } {
-  const key = `${params.userId}:${params.route}`;
+  const result = canonicalUserRateLimit(params.userId, params.route, params.limit, params.windowMs);
   const now = Date.now();
-  const bucket = store[key];
-  if (bucket && now > bucket.resetTime) {
-    delete store[key];
-  }
-  const cur = store[key];
-  if (!cur) {
-    store[key] = { count: 1, resetTime: now + params.windowMs };
-    return { success: true, remaining: params.limit - 1, resetMs: params.windowMs };
-  }
-  if (cur.count >= params.limit) {
-    return { success: false, remaining: 0, resetMs: cur.resetTime - now };
-  }
-  cur.count++;
-  return { success: true, remaining: params.limit - cur.count, resetMs: cur.resetTime - now };
+  return {
+    success: result.success,
+    remaining: result.remaining,
+    resetMs: Math.max(0, result.resetAt - now),
+  };
 }
 
-/** Test-only — flush the in-memory store. */
-export function _resetUserRateLimit(): void {
-  for (const k of Object.keys(store)) delete store[k];
-}
+/** Test helper alias — clears the canonical store. */
+export const _resetUserRateLimit = _resetRateLimitForTests;

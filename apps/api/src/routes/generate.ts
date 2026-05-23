@@ -22,6 +22,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { renderGdprPacketAsText } from "../lib/gdpr-pdf-renderer";
 import { resolveAuthenticatedIdentity } from "../lib/internal-auth";
+import { recordSecurityEvent } from "../lib/security-audit";
 import type { TraceBusRegistry } from "../lib/trace-bus";
 import { createAndStartGeneration } from "../runtime/generation-lifecycle";
 import { acquire_durability } from "../runtime/persistence-factory";
@@ -140,6 +141,15 @@ export function generate_routes(registry: TraceBusRegistry) {
     const auth = resolveAuthenticatedIdentity(c.req.raw.headers, default_user_id);
     if ("error" in auth) {
       log("warn", "POST /generate", `auth rejected: ${auth.error}`);
+      void recordSecurityEvent({
+        event_type: "api.auth.rejected",
+        actor_kind: "anonymous",
+        request_id: c.var.requestId,
+        ip: c.req.header("x-forwarded-for") ?? null,
+        user_agent: c.req.header("user-agent") ?? null,
+        outcome: "denied",
+        metadata: { route: "POST /generate", error: auth.error },
+      });
       return c.json({ error: auth.error }, auth.status as 401 | 400);
     }
 
@@ -182,7 +192,18 @@ export function generate_routes(registry: TraceBusRegistry) {
     const durability = await acquire_durability();
     const default_user_id = durability?.default_user_id ?? "00000000-0000-4000-8000-000000000000";
     const auth = resolveAuthenticatedIdentity(c.req.raw.headers, default_user_id);
-    if ("error" in auth) return c.json({ error: auth.error }, auth.status as 401 | 400);
+    if ("error" in auth) {
+      void recordSecurityEvent({
+        event_type: "api.auth.rejected",
+        actor_kind: "anonymous",
+        request_id: c.var.requestId,
+        ip: c.req.header("x-forwarded-for") ?? null,
+        user_agent: c.req.header("user-agent") ?? null,
+        outcome: "denied",
+        metadata: { route: "DELETE /generate/:id", generation_id: id, error: auth.error },
+      });
+      return c.json({ error: auth.error }, auth.status as 401 | 400);
+    }
 
     // Try aborting in-flight first
     const aborted = registry.abort(id);
@@ -225,7 +246,18 @@ export function generate_routes(registry: TraceBusRegistry) {
     // 003 §12 — ownership gate.
     const default_user_id = durability.default_user_id;
     const auth = resolveAuthenticatedIdentity(c.req.raw.headers, default_user_id);
-    if ("error" in auth) return c.json({ error: auth.error }, auth.status as 401 | 400);
+    if ("error" in auth) {
+      void recordSecurityEvent({
+        event_type: "api.auth.rejected",
+        actor_kind: "anonymous",
+        request_id: c.var.requestId,
+        ip: c.req.header("x-forwarded-for") ?? null,
+        user_agent: c.req.header("user-agent") ?? null,
+        outcome: "denied",
+        metadata: { route: "GET /generate/:id/gdpr", error: auth.error },
+      });
+      return c.json({ error: auth.error }, auth.status as 401 | 400);
+    }
 
     const { gdpr_packets } = await import("@retune/db/pg");
     const row = await durability.db

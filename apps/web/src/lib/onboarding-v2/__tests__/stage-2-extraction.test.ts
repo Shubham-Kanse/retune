@@ -6,6 +6,10 @@ import { clearLLMMocks, mockCallLLM, nextLLMResponse } from "./llm-mock";
 vi.mock("@/lib/onboarding-v2/llm/calls", () => ({
   callLLM: vi.fn(async () => nextLLMResponse()),
   callLLMWithRetry: vi.fn(async () => nextLLMResponse()),
+  callLLMStructured: vi.fn(async () => {
+    const next = nextLLMResponse();
+    return JSON.parse(next.content);
+  }),
   getSessionStats: () => ({ calls: 0, costUsd: 0 }),
   resetSessionLimits: () => {},
 }));

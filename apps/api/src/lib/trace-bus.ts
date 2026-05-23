@@ -110,10 +110,23 @@ export class TraceBus {
     }
   }
 
-  async *subscribe(): AsyncGenerator<TraceFrame> {
+  /**
+   * Subscribe to frames from this bus.
+   *
+   * Charter 04 Epic 02 — `fromSeq` lets a reconnecting client pass the
+   * `Last-Event-ID` header so the replay log is filtered to only events
+   * with `event.seq > fromSeq`. Without this, every reconnect re-emits
+   * every prior tick from seq=0, which was the silent double-delivery
+   * bug noted in the architect addendum.
+   */
+  async *subscribe(fromSeq = -1): AsyncGenerator<TraceFrame> {
     // Snapshot the replay log before installing the inbox so a publish
-    // that happens between snapshot + install can't be missed.
-    const replay = [...this.replay_log];
+    // that happens between snapshot + install can't be missed. Filter
+    // out trace frames that the client has already seen.
+    const replay = this.replay_log.filter((f) => {
+      if (f.kind !== "trace") return true; // always replay done/error sentinels
+      return f.event.seq > fromSeq;
+    });
     const inbox: Inbox = { buffer: [], waiter: null, closed: false };
     this.inboxes.add(inbox);
     try {

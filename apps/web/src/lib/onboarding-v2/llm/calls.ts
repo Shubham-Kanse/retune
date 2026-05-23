@@ -1,6 +1,6 @@
 // Onboarding V2 — LLM Call Wrapper with Retry & Cost Tracking
 
-import OpenAI from "openai";
+import { getModels, getProvider } from "@retune/agent/web";
 import {
   LLM_CALL_TIMEOUT_MS,
   MAX_CALLS_PER_MINUTE,
@@ -65,27 +65,40 @@ function recordCall(cost: number) {
   minuteWindow.push(Date.now());
 }
 
+/**
+ * Charter 09 AI/ML — every onboarding-v2 LLM call goes through the
+ * shared agent provider (`@retune/agent/web`). This means:
+ *   - One source of truth for which model implements "smart" / "fast".
+ *   - Concurrency gating (5 global / 2 per agent) shared with all other
+ *     specialists.
+ *   - Provider switching (anthropic <-> openai) is centralised.
+ *   - Telemetry capture per agent rolls up under
+ *     `onboarding-v2:{stage}:{callName}` instead of bypassing the
+ *     instrumentation by going direct to OpenAI/Anthropic SDKs.
+ */
 export async function callLLM(options: LLMCallOptions): Promise<LLMCallResult> {
   checkRateLimits(0.01);
 
-  const modelId = options.model === "smart"
-    ? (process.env.AGENT_MODEL ?? "gpt-4.1")
-    : (process.env.AGENT_MODEL_FAST ?? "gpt-4.1-mini");
+  const provider = getProvider();
+  const models = getModels();
+  const modelId = options.model === "smart" ? models.smart : models.fast;
+  const agent = `onboarding-v2:${options.stage}:${options.callName}`;
 
   try {
-    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: LLM_CALL_TIMEOUT_MS, maxRetries: 1 });
-    const response = await openai.chat.completions.create({
+    const response = await provider.createMessage(agent, {
       model: modelId,
-      max_tokens: options.maxTokens ?? 4096,
-      messages: [
-        { role: "system", content: options.systemPrompt },
-        { role: "user", content: options.userMessage },
-      ],
+      maxTokens: options.maxTokens ?? 4096,
+      system: options.systemPrompt,
+      messages: [{ role: "user", content: options.userMessage }],
     });
 
-    const content = response.choices[0]?.message?.content ?? "";
-    const inputTokens = response.usage?.prompt_tokens ?? 0;
-    const outputTokens = response.usage?.completion_tokens ?? 0;
+    // The provider returns a normalised `AIResponse`. Extract the first
+    // text content block; the agent provider already canonicalises this
+    // across openai vs anthropic shapes.
+    const firstContent = response.content?.[0];
+    const content = firstContent && firstContent.type === "text" ? firstContent.text : "";
+    const inputTokens = response.usage?.inputTokens ?? 0;
+    const outputTokens = response.usage?.outputTokens ?? 0;
     const costUsd = estimateCost(modelId, inputTokens, outputTokens);
     recordCall(costUsd);
     return { content, inputTokens, outputTokens, costUsd };
@@ -95,18 +108,31 @@ export async function callLLM(options: LLMCallOptions): Promise<LLMCallResult> {
 }
 
 /**
- * Structured output variant — enforces exact JSON schema via OpenAI's
- * response_format. Eliminates all field-name guessing and regex parsing.
- * Use for any call where the output shape must be exact.
+ * Structured output variant — uses the provider's structured-output
+ * surface (which falls back to forced-tool-use when the underlying
+ * model doesn't support strict JSON schemas natively).
+ *
+ * NOTE: kept temporarily on the OpenAI direct path until the provider's
+ * `createStructuredOutput` accepts a raw JSON schema (today it requires
+ * a Zod schema). Tracked as Charter 09 Epic 02 follow-up.
  */
-export async function callLLMStructured<T>(options: LLMCallOptions & { schema: Record<string, unknown>; schemaName: string }): Promise<T> {
+export async function callLLMStructured<T>(
+  options: LLMCallOptions & { schema: Record<string, unknown>; schemaName: string },
+): Promise<T> {
   checkRateLimits(0.01);
 
-  const modelId = options.model === "smart"
-    ? (process.env.AGENT_MODEL ?? "gpt-4.1")
-    : (process.env.AGENT_MODEL_FAST ?? "gpt-4.1-mini");
+  // Dynamic import keeps the OpenAI SDK out of the bundle when this
+  // function isn't called.
+  const { default: OpenAI } = await import("openai");
 
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY, timeout: LLM_CALL_TIMEOUT_MS, maxRetries: 1 });
+  const models = getModels();
+  const modelId = options.model === "smart" ? models.smart : models.fast;
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+    timeout: LLM_CALL_TIMEOUT_MS,
+    maxRetries: 1,
+  });
   const response = await openai.chat.completions.create({
     model: modelId,
     max_tokens: options.maxTokens ?? 8192,

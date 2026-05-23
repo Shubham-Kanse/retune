@@ -1,0 +1,134 @@
+# Charter 01 Epic 06 — dependency vulnerability scanning + secret scan.
+#
+# Runs on every PR to main and on every push to main. Two independent
+# jobs so a failure in one doesn't mask the other.
+#
+# What blocks PRs:
+#   - critical-severity npm advisories (`pnpm audit --audit-level=critical`)
+#   - any new secret detected by gitleaks (entries in .gitleaksignore are
+#     allowed but each requires a justification comment per Charter 01 E2)
+#
+# What does NOT block:
+#   - high/moderate/low advisories — surfaced in CI logs only, addressed
+#     via the Renovate dashboard.
+#
+# Renovate (.github/renovate.json) handles the proactive side of this:
+#   weekly minor/patch automerge + immediate vulnerability alerts.
+
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Nightly so we catch new advisories against the current main even
+    # if no PRs are flowing.
+    - cron: "0 7 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PNPM_VERSION: '10.30.3'
+  NODE_VERSION: '22'
+
+jobs:
+  npm-audit:
+    name: pnpm audit (critical)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install (offline-friendly, no scripts)
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # `pnpm audit --audit-level=critical` exits non-zero only on
+      # critical advisories. Anything below critical is logged but
+      # doesn't block the merge — Renovate handles the rest.
+      - name: Critical advisory scan
+        run: pnpm audit --audit-level=critical
+
+      # Informational: full audit JSON for the dashboard.
+      - name: Full advisory inventory (informational)
+        if: always()
+        run: pnpm audit --json > pnpm-audit.json || true
+
+      - name: Upload audit JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pnpm-audit
+          path: pnpm-audit.json
+          retention-days: 14
+
+  gitleaks:
+    name: gitleaks (secret scan)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need full history for delta scans on PRs.
+          fetch-depth: 0
+
+      - name: Run gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Use the repo's .gitleaksignore (entries require justification
+          # comments per Charter 01 Epic 02).
+          config-path: ${{ github.workspace }}/.gitleaks.toml
+          # Allow the action to use the default ruleset when our
+          # .gitleaks.toml is absent (safe fallback).
+          fail: true
+
+  sbom:
+    name: SBOM (CycloneDX)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Generates a CycloneDX SBOM as a build artifact. Useful for
+      # supply-chain attestation and SBOM-required compliance.
+      - name: Generate CycloneDX SBOM
+        run: |
+          npx --yes @cyclonedx/cyclonedx-npm \
+            --output-file sbom.cyclonedx.json \
+            --output-format JSON \
+            --short-PURLs
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.cyclonedx.json
+          retention-days: 90

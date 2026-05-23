@@ -4,6 +4,8 @@
   "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev": "turbo dev",
+    "setup": "bash scripts/setup.sh",
+    "verify:env": "node -e \"require('./apps/web/src/lib/env').env(); console.log('env OK')\"",
     "dev:all": "concurrently -n web,api,worker -c blue,green,yellow \"pnpm --filter @retune/web dev\" \"pnpm --filter @retune/api dev\" \"pnpm --filter @retune/worker dev\"",
     "dev:lite": "turbo dev --filter @retune/api --filter @retune/web",
     "dev:infra": "docker compose -f infra/compose/dev.yml up",
@@ -23,24 +25,27 @@
     "db:studio": "pnpm --filter @retune/db db:studio",
     "understand:analyze": "node tools/understand-anything/generate-graph.mjs",
     "understand:check": "node tools/understand-anything/check-setup.mjs",
-    "understand:dashboard": "GRAPH_DIR=\"$PWD\" /bin/zsh -lc 'cd \"$HOME/.understand-anything-plugin/packages/dashboard\" && (pnpm install --frozen-lockfile 2>/dev/null || pnpm install) && cd \"$HOME/.understand-anything-plugin\" && pnpm --filter @understand-anything/core build && cd \"$HOME/.understand-anything-plugin/packages/dashboard\" && npx vite --host 127.0.0.1'"
+    "understand:dashboard": "GRAPH_DIR=\"$PWD\" /bin/zsh -lc 'cd \"$HOME/.understand-anything-plugin/packages/dashboard\" && (pnpm install --frozen-lockfile 2>/dev/null || pnpm install) && cd \"$HOME/.understand-anything-plugin\" && pnpm --filter @understand-anything/core build && cd \"$HOME/.understand-anything-plugin/packages/dashboard\" && npx vite --host 127.0.0.1'",
+    "charters:generate": "node tools/charters/generate-charters.mjs",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md,mjs,cjs}": ["biome check --write --no-errors-on-unmatched"]
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
     "concurrently": "^9.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.5",
     "tsx": "^4.21.0",
     "turbo": "^2.3.3",
     "typescript": "^5.7.3"
   },
   "pnpm": {
-    "onlyBuiltDependencies": [
-      "better-sqlite3",
-      "@biomejs/biome",
-      "esbuild",
-      "sharp"
-    ],
+    "onlyBuiltDependencies": ["better-sqlite3", "@biomejs/biome", "esbuild", "sharp"],
     "overrides": {
-      "drizzle-orm": "0.38.4"
+      "drizzle-orm": "0.38.4",
+      "@opentelemetry/api": "1.9.1"
     }
   }
 }

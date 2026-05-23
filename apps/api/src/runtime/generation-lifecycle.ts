@@ -322,7 +322,7 @@ export async function createAndStartGeneration(params: {
       });
     });
 
-  registry.delete_after(generation_id, 10 * 60 * 1000);
+  registry.delete_after(generation_id, busRetentionMs(durability !== null));
 
   return {
     generation_id,
@@ -330,6 +330,38 @@ export async function createAndStartGeneration(params: {
     runtime: "in_memory",
     idempotent_replay: false,
   };
+}
+
+/**
+ * Charter 02-Core-Features Epic 05 — result hydration contract.
+ *
+ * The TraceBus is process-local and lost on restart. The
+ * `delete_after` TTL controls how long the in-memory bus + replay log
+ * stick around for late SSE reconnects.
+ *
+ * Two modes:
+ *   1. **Persistence on (postgres / pglite)**: the final blackboard is
+ *      written to `generations.current_blackboard` JSONB at
+ *      orchestrator-return, so result hydration falls back to the DB
+ *      indefinitely. Bus is just a hot cache. 10 min TTL is plenty.
+ *   2. **Persistence off**: the bus is the *only* place the result
+ *      lives. We extend the TTL to 24 hours so a user finishing a
+ *      generation can come back later in the day to download
+ *      documents. Beyond that, no recovery — so "persist=off" is
+ *      explicitly a dev-only mode (see `assertProductionRuntime` in
+ *      `apps/api/src/main.ts`).
+ *
+ * Production contract: with `RETUNE_PERSIST=postgres`, results survive
+ * at least 30 days (governed by GDPR retention policy in Charter 08
+ * Epic 02, not by this in-memory cache).
+ */
+function busRetentionMs(persistenceEnabled: boolean): number {
+  // Override via env for ops emergencies (dump/keep all buses for debugging).
+  const override = Number(process.env.RETUNE_BUS_RETENTION_MS);
+  if (Number.isFinite(override) && override > 0) return Math.floor(override);
+  return persistenceEnabled
+    ? 10 * 60 * 1000 // 10 min — DB is authoritative
+    : 24 * 60 * 60 * 1000; // 24 h — bus is the only copy
 }
 
 function sha256(text: string): string {

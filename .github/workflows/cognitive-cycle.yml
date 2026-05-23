@@ -308,6 +308,55 @@ jobs:
           JWT_SECRET: dummy-jwt-secret-thirty-two-chars-min
         run: pnpm --filter @retune/web build
 
+  # Charter 06 Epic 02 — Playwright E2E in CI.
+  # The 13 specs in apps/web/e2e/ cover auth flows, onboarding-v2,
+  # pipeline controls, results download, and middleware guards. Runs
+  # against the production build with E2E_AUTH_BYPASS=1 to skip real
+  # Supabase auth.
+  test-e2e:
+    name: e2e (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [test-web]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: install Playwright browsers
+        run: pnpm --filter @retune/web exec playwright install --with-deps chromium
+      - name: build web
+        env:
+          ANTHROPIC_API_KEY: dummy
+          JWT_SECRET: dummy-jwt-secret-thirty-two-chars-min
+          NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key-with-padding-to-pass-min-len
+          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key-with-padding-to-pass
+        run: pnpm --filter @retune/web build
+      - name: run Playwright E2E
+        env:
+          ANTHROPIC_API_KEY: dummy
+          JWT_SECRET: dummy-jwt-secret-thirty-two-chars-min
+          NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key-with-padding-to-pass-min-len
+          SUPABASE_SERVICE_ROLE_KEY: test-service-role-key-with-padding-to-pass
+          E2E_AUTH_BYPASS: '1'
+          E2E_AUTH_USER_ID: '00000000-0000-0000-0000-000000000001'
+          E2E_AUTH_EMAIL: 'e2e@retune.local'
+        run: pnpm --filter @retune/web test:e2e
+      - name: upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
   # v2.0 §20 — Lighthouse performance + accessibility gating.
   # Runs against the production build. Enforces:
   #   - Performance >= 90, Accessibility >= 90
@@ -332,10 +381,10 @@ jobs:
           ANTHROPIC_API_KEY: dummy
           JWT_SECRET: dummy-jwt-secret-thirty-two-chars-min
         run: pnpm --filter @retune/web build
-      - name: run Lighthouse CI
-        run: |
-          npx @lhci/cli@0.14.x autorun --config=lighthouserc.json || true
-          echo "✓ Lighthouse assertions evaluated (failures are warnings until baseline is established)"
+      - name: run Lighthouse CI (BLOCKING — Charter 11 Epic 03 + Charter 14)
+        # Thresholds in lighthouserc.json: perf >= 0.9, a11y >= 0.9, LCP < 2.5s.
+        # `|| true` removed 2026-05-22: regressions now fail the workflow.
+        run: npx @lhci/cli@0.14.x autorun --config=lighthouserc.json
 
   # v2.0 §14 — mock-mode eval runs the full agent against a fixture cache.
   # Fast (< 30 s on the canonical set) and deterministic; should always be
@@ -483,3 +532,45 @@ jobs:
             exit 1
           fi
           echo "✓ generated stubs in sync"
+
+  # Charter 01 Epic 06 — Dependency vulnerability audit.
+  # Replaces the legacy `npm audit` step from the deleted ci-cd.yml.
+  # Blocks merge on critical CVEs; high are reported but non-blocking
+  # until baseline is clean (then promote to blocking).
+  dependency-audit:
+    name: dependency audit (pnpm)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+      - run: pnpm install --frozen-lockfile
+      - name: pnpm audit (block on critical)
+        run: pnpm audit --audit-level=critical --prod
+      - name: pnpm audit (report high, non-blocking)
+        run: pnpm audit --audit-level=high --prod || echo "::warning::high-severity advisories present"
+
+  # Charter 01 Epic 02 — Secret-leak detection on full git history.
+  # Pre-commit catches new leaks; this CI job catches anything that
+  # bypasses the hook. Currently informational because the existing
+  # repo state has known committed secrets pending rotation; promote
+  # to blocking after Phase −1 secret rotation completes.
+  gitleaks-history:
+    name: gitleaks (full history scan)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true  # promote to blocking post-rotation

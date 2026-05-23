@@ -5,11 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-import {
-  AlertTriangle,
-  ChevronRight,
-  LogOut,
-} from "lucide-react";
+import { AlertTriangle, ChevronRight, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -28,8 +24,16 @@ interface Sub {
 
 const sections = [
   { href: "/profile", label: "Career profile", sub: "Details, experience, skills, voice." },
-  { href: "/settings/voice", label: "Voice & style", sub: "How Retuned sounds when writing as you." },
-  { href: "/settings/honesty", label: "Honesty calibration", sub: "Claim ownership aggressiveness." },
+  {
+    href: "/settings/voice",
+    label: "Voice & style",
+    sub: "How Retuned sounds when writing as you.",
+  },
+  {
+    href: "/settings/honesty",
+    label: "Honesty calibration",
+    sub: "Claim ownership aggressiveness.",
+  },
   { href: "/settings/culture", label: "Culture & values", sub: "Signals reflected in tunings." },
   { href: "/settings/data", label: "Privacy & data", sub: "Export or delete stored data." },
 ];
@@ -109,6 +113,36 @@ export function SettingsClient({
           {subscription.plan !== "max" && (
             <Button asChild size="sm" variant="ghost">
               <Link href="/settings/data#billing">Upgrade</Link>
+            </Button>
+          )}
+          {subscription.plan !== "free" && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={async () => {
+                // Charter 03 Epic 05 — billing portal UI. Hits the
+                // signed Stripe Customer Portal session creator and
+                // redirects on success.
+                try {
+                  const res = await fetch("/api/billing/portal", { method: "POST" });
+                  if (res.ok) {
+                    const { url } = (await res.json()) as { url?: string };
+                    if (url) window.location.assign(url);
+                    return;
+                  }
+                  if (res.status === 503) {
+                    alert(
+                      "Billing portal is not configured yet. Contact support@retuned.cv if you need to update your subscription.",
+                    );
+                    return;
+                  }
+                  alert("Could not open the billing portal. Please try again.");
+                } catch {
+                  alert("Network error. Please try again.");
+                }
+              }}
+            >
+              Manage billing
             </Button>
           )}
         </div>

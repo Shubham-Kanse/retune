@@ -21,6 +21,7 @@ import {
   BoilerplateStripper,
   BudgetController,
   CandidateMemoryHydrator,
+  CircuitBreaker,
   ClaimLedgerLocker,
   CompanyContextResearcher,
   CompanySchemaRetriever,
@@ -71,6 +72,7 @@ import {
 } from "@retune/agent";
 import type { Blackboard } from "@retune/types";
 import { dualWriteJobDescription } from "../lib/optimized-dual-write";
+import { recordSecurityEvent } from "../lib/security-audit";
 import { validateExternalUrl } from "../lib/ssrf-guard";
 import type { TraceBus } from "../lib/trace-bus";
 import { acquire_durability } from "./persistence-factory";
@@ -227,6 +229,21 @@ const log = (level: "info" | "warn" | "error", id: string, msg: string, meta?: u
   else console.log(line);
 };
 
+/**
+ * Charter 04 Epic 03 — Jina circuit breaker.
+ *
+ * Tighter thresholds than the ML breaker because Jina is cheaper to
+ * skip (we can fall back to title-only generation) and tends to flap
+ * under their own rate limits.
+ *
+ * 3 failures → OPEN for 30s → 2 successes to close.
+ */
+const jinaBreaker = new CircuitBreaker({
+  failureThreshold: 3,
+  successThreshold: 2,
+  timeoutMs: 30_000,
+});
+
 export async function run_generation(input: {
   generation_id: string;
   payload: GenerateInput & { jd_url?: string };
@@ -260,15 +277,30 @@ export async function run_generation(input: {
     const validation = validateExternalUrl(payload.jd_url);
     if (!validation.ok || !validation.sanitised) {
       log("warn", generation_id, "JD URL rejected by SSRF guard", { reason: validation.reason });
+      void recordSecurityEvent({
+        event_type: "api.ssrf.rejected",
+        actor_kind: input.user_id ? "user" : "anonymous",
+        user_id: input.user_id ?? null,
+        target_kind: "jd_url",
+        target_id: payload.jd_url,
+        outcome: "denied",
+        metadata: { reason: validation.reason, generation_id },
+      });
       // Continue without JD text — the cycle still runs based on jd_title/company.
     } else {
       const safe_url = validation.sanitised.toString();
       log("info", generation_id, `fetching JD from URL: ${safe_url}`);
       try {
-        const jinaRes = await fetch(`https://r.jina.ai/${encodeURIComponent(safe_url)}`, {
-          headers: { Accept: "text/markdown", "X-No-Cache": "true" },
-          signal: AbortSignal.timeout(15_000),
-        });
+        // Charter 04 Epic 03 — circuit breaker around Jina. After 3
+        // failures in a row the breaker opens for 30s, failing fast and
+        // letting downstream specialists work with the partial payload
+        // rather than blocking on a flapping upstream.
+        const jinaRes = await jinaBreaker.execute(() =>
+          fetch(`https://r.jina.ai/${encodeURIComponent(safe_url)}`, {
+            headers: { Accept: "text/markdown", "X-No-Cache": "true" },
+            signal: AbortSignal.timeout(15_000),
+          }),
+        );
         if (jinaRes.ok) {
           const md = await jinaRes.text();
           if (md.length >= 50) {
@@ -519,6 +551,8 @@ export async function run_generation(input: {
             (durability.persistence as PostgresPersistence).record_gdpr_packet(inp),
           record_conflict: (inp) =>
             (durability.persistence as PostgresPersistence).record_conflict(inp),
+          record_model_calls: (inp) =>
+            (durability.persistence as PostgresPersistence).record_model_calls(inp),
         }
       : undefined,
   });

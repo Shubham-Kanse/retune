@@ -859,6 +859,107 @@ export const resume_extraction_audit = pgTable(
   }),
 );
 
+// ─────────────── Charter additions (2026-05-22) ───────────────
+
+/**
+ * Per-LLM-call cost telemetry (Charter 09 Epic 03).
+ * Drained from `provider-shared.ts` ModelCallTelemetry buffer per tick.
+ */
+export const generation_model_calls = pgTable(
+  "generation_model_calls",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    generation_id: uuid("generation_id").notNull(),
+    tick_seq: integer("tick_seq").notNull(),
+    specialist: text("specialist").notNull(),
+    agent_name: text("agent_name").notNull(),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    quality_mode: text("quality_mode"),
+    prompt_tokens: integer("prompt_tokens").notNull().default(0),
+    completion_tokens: integer("completion_tokens").notNull().default(0),
+    cached_tokens: integer("cached_tokens").notNull().default(0),
+    cost_usd: doublePrecision("cost_usd").notNull().default(0),
+    latency_ms: integer("latency_ms").notNull().default(0),
+    cached: boolean("cached").notNull().default(false),
+    error: text("error"),
+    request_hash: text("request_hash"),
+    response_hash: text("response_hash"),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    call_site_uniq: uniqueIndex("idx_gmc_call_site").on(
+      t.generation_id,
+      t.tick_seq,
+      t.specialist,
+      t.agent_name,
+    ),
+    by_generation: index("idx_gmc_generation_created").on(t.generation_id, t.created_at),
+    by_provider_model: index("idx_gmc_provider_model").on(t.provider, t.model, t.created_at),
+  }),
+);
+
+/**
+ * Stripe webhook idempotency + 7-year retention (Charter 03 Epic 03 + 06).
+ * Every webhook event is persisted by Stripe's `event.id` BEFORE the
+ * billing handler runs. The `id` PK uniqueness is the idempotency lock.
+ */
+export const stripe_events = pgTable(
+  "stripe_events",
+  {
+    id: text("id").primaryKey(), // Stripe event id (evt_…)
+    event_type: text("event_type").notNull(),
+    api_version: text("api_version"),
+    livemode: boolean("livemode").notNull(),
+    payload: jsonb("payload").notNull(),
+    user_id: uuid("user_id"),
+    customer_id: text("customer_id"),
+    subscription_id: text("subscription_id"),
+    status: text("status").notNull().default("received"),
+    processing_error: text("processing_error"),
+    processed_at: timestamp("processed_at", { withTimezone: true }),
+    retry_count: integer("retry_count").notNull().default(0),
+    signature: text("signature"),
+    received_at: timestamp("received_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    by_user: index("idx_stripe_events_user").on(t.user_id, t.received_at),
+    by_customer: index("idx_stripe_events_customer").on(t.customer_id, t.received_at),
+    by_subscription: index("idx_stripe_events_subscription").on(t.subscription_id, t.received_at),
+    by_type: index("idx_stripe_events_type").on(t.event_type, t.received_at),
+    by_status: index("idx_stripe_events_status").on(t.status, t.received_at),
+  }),
+);
+
+/**
+ * Security audit log (Charter 01 Epic 07). Per-HTTP-request and
+ * per-administrative-action. Distinct from `audit_entries` which is
+ * per-orchestrator-tick.
+ */
+export const security_audit_log = pgTable(
+  "security_audit_log",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    event_type: text("event_type").notNull(),
+    user_id: uuid("user_id"),
+    actor_kind: text("actor_kind").notNull(), // user | service_role | anonymous | system
+    target_kind: text("target_kind"),
+    target_id: text("target_id"),
+    request_id: text("request_id"),
+    ip: text("ip"),
+    user_agent: text("user_agent"),
+    outcome: text("outcome").notNull().default("success"), // success | denied | error
+    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    by_user: index("idx_sec_audit_user_time").on(t.user_id, t.created_at),
+    by_type: index("idx_sec_audit_type_time").on(t.event_type, t.created_at),
+    by_outcome: index("idx_sec_audit_outcome_time").on(t.outcome, t.created_at),
+    by_ip: index("idx_sec_audit_ip_time").on(t.ip, t.created_at),
+  }),
+);
+
 // ─────────────── Exports grouped for easy consumption ───────────────
 
 export const pg_schema = {
@@ -885,6 +986,10 @@ export const pg_schema = {
   case_base_entries,
   ontology_versions,
   resume_extraction_audit,
+  // Charter additions (2026-05-22)
+  generation_model_calls,
+  stripe_events,
+  security_audit_log,
   // Legacy v1 product tables
   profiles,
   onboardingSessions,

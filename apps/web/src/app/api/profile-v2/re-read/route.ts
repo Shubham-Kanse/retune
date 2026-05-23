@@ -5,6 +5,7 @@
 //
 // Action `apply` then commits the diffed changes to the v2 tables.
 
+import { withSupabaseAuth } from "@/lib/api-handler";
 import { loadSession, updateSession } from "@/lib/onboarding-v2/session";
 import { runDualExtraction } from "@/lib/onboarding-v2/stages/stage-2-extraction";
 import type {
@@ -15,12 +16,6 @@ import type {
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
 
-async function getAuthUserId(): Promise<string | null> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
-
 interface DiffEntry {
   field: string;
   before: unknown;
@@ -28,10 +23,7 @@ interface DiffEntry {
   kind: "added" | "removed" | "changed";
 }
 
-export async function POST(req: Request) {
-  const userId = await getAuthUserId();
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
+export const POST = withSupabaseAuth(async (req, userId) => {
   const body = await req.json().catch(() => ({}));
   const action = body.action as "preview" | "apply" | undefined;
 
@@ -94,7 +86,7 @@ export async function POST(req: Request) {
 
   // Default: preview
   return NextResponse.json({ diff, fresh: fresh.pureExtraction });
-}
+});
 
 function computeDiff(
   fresh: ExtractionSchema,
@@ -111,8 +103,7 @@ function computeDiff(
   if (fresh.identity) {
     for (const key of Object.keys(fresh.identity) as Array<keyof typeof fresh.identity>) {
       const after = fresh.identity[key];
-      const before =
-        (current.identity[mapIdentityKey(key)] as string | null | undefined) ?? null;
+      const before = (current.identity[mapIdentityKey(key)] as string | null | undefined) ?? null;
       if ((after ?? null) !== (before ?? null)) {
         diffs.push({
           field: `identity.${key}`,
@@ -237,18 +228,16 @@ async function applyDiff(userId: string, fresh: ExtractionSchema): Promise<void>
 
   // Skills
   if (fresh.skills) {
-    await supabase
-      .from("user_skills_v2")
-      .upsert(
-        {
-          user_id: userId,
-          raw_list: fresh.skills.raw_list,
-          grouped: fresh.skills.grouped ?? {},
-          source: "extracted",
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" },
-      );
+    await supabase.from("user_skills_v2").upsert(
+      {
+        user_id: userId,
+        raw_list: fresh.skills.raw_list,
+        grouped: fresh.skills.grouped ?? {},
+        source: "extracted",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "user_id" },
+    );
   }
 
   // Reset the session's dual_extraction so subsequent re-reads compare against the fresh state

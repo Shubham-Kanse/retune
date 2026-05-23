@@ -1,0 +1,20 @@
+# Charter 01 Epic 02 / Charter 20 Epic 03 — pre-commit guard.
+# Runs biome on staged files and gitleaks for secrets.
+# Bypass with --no-verify ONLY for emergency hotfixes.
+
+# 1. Biome on staged files via lint-staged
+pnpm exec lint-staged
+
+# 2. Gitleaks on staged content (best effort; install via `brew install gitleaks`)
+if command -v gitleaks > /dev/null 2>&1; then
+  gitleaks protect --staged --redact --no-banner || {
+    echo ""
+    echo "[pre-commit] Secret detected in staged changes."
+    echo "Resolve by removing the secret OR by adding it to .gitleaksignore"
+    echo "with a justification comment if it's a documented test fixture."
+    exit 1
+  }
+else
+  echo "[pre-commit] gitleaks not installed — skipping secret scan."
+  echo "  install: brew install gitleaks"
+fi

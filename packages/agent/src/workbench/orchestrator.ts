@@ -17,6 +17,7 @@
  */
 
 import type { ConflictRecord } from "@retune/types";
+import { drainTelemetry } from "../lib/provider-shared";
 import type { TickPersistence } from "../persistence/types";
 import type { SpecialistRegistry } from "../specialists/registry";
 import type { AttentionScheduler } from "./attention-scheduler";
@@ -73,6 +74,33 @@ export interface OrchestratorDeps {
         resolved_by?: string | null;
         resolved_at?: string | null;
       };
+    }): Promise<void>;
+    /**
+     * Charter 09 Epic 03 — persist model-call telemetry into
+     * `generation_model_calls`. Called after each tick to drain the
+     * provider buffers and attribute records to (generation, tick).
+     * Best-effort: a failure here MUST NOT abort the generation.
+     */
+    record_model_calls?(input: {
+      generation_id: string;
+      tick_seq: number;
+      specialist: string;
+      records: Array<{
+        agent: string;
+        provider: string;
+        model: string;
+        cognitive_function_id: string | null;
+        response_id: string | null;
+        input_tokens: number;
+        output_tokens: number;
+        cache_read_tokens: number;
+        cache_creation_tokens: number;
+        reasoning_tokens: number | null;
+        cost_usd: number;
+        latency_ms: number;
+        request_hash: string;
+        response_hash: string | null;
+      }>;
     }): Promise<void>;
   };
 }
@@ -222,7 +250,8 @@ export class Orchestrator {
         // If pending goals exist but are all blocked on prerequisites,
         // surface that as a non-error termination so the API/UI can
         // explain the situation rather than reporting "no_open_work".
-        const blocked = this.deps.goal_stack.pending_blocked_by_prerequisites?.(blackboard_reader) ?? [];
+        const blocked =
+          this.deps.goal_stack.pending_blocked_by_prerequisites?.(blackboard_reader) ?? [];
         if (blocked.length > 0) {
           for (const g of blocked) {
             this.deps.goal_stack.mark_blocked_on_prerequisites?.(
@@ -327,6 +356,51 @@ export class Orchestrator {
           goals: this.deps.goal_stack.snapshot(),
           budget: this.deps.budget.snapshot(),
         });
+
+        // Charter 09 Epic 03 — drain model-call telemetry buffered by
+        // the provider during this tick and persist to
+        // generation_model_calls. Best-effort: failure must not abort
+        // the generation. Records are attributed to the specialist
+        // that just executed; the drain happens immediately after the
+        // tick so concurrent generations on the same process don't
+        // cross-pollute (orchestrator runs ticks sequentially per gen).
+        if (this.deps.extended_persistence?.record_model_calls) {
+          const records = [...drainTelemetry("openai"), ...drainTelemetry("anthropic")].map(
+            (r) => ({
+              agent: r.agent,
+              provider: r.provider,
+              model: r.model,
+              cognitive_function_id: r.cognitiveFunctionId,
+              response_id: r.responseId,
+              input_tokens: r.inputTokens,
+              output_tokens: r.outputTokens,
+              cache_read_tokens: r.cacheReadTokens,
+              cache_creation_tokens: r.cacheCreationTokens,
+              reasoning_tokens: r.reasoningTokens,
+              cost_usd: r.costUsd,
+              latency_ms: r.latencyMs,
+              request_hash: r.requestHash,
+              response_hash: r.responseHash,
+            }),
+          );
+          if (records.length > 0) {
+            try {
+              await this.deps.extended_persistence.record_model_calls({
+                generation_id: snap.generation_id,
+                tick_seq: audit_entry.seq,
+                specialist: specialist.id,
+                records,
+              });
+            } catch (err) {
+              // Swallow — observability is non-blocking.
+              // eslint-disable-next-line no-console
+              console.warn(
+                "[orchestrator] record_model_calls failed",
+                err instanceof Error ? err.message : err,
+              );
+            }
+          }
+        }
       }
 
       // Surface the trace event.

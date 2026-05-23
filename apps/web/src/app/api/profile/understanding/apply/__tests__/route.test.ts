@@ -4,7 +4,17 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/session", () => ({ getApiSession: vi.fn() }));
-vi.mock("@/lib/rate-limit", () => ({ rateLimit: vi.fn(() => ({ success: true })) }));
+vi.mock("@/lib/rate-limit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/rate-limit")>();
+  return {
+    ...actual,
+    // Stub IP-level rate limiting in tests so unrelated traffic doesn't 429.
+    // userRateLimit + _resetRateLimitForTests use the real implementation
+    // so per-user rate-limit tests still exercise the real bucket.
+    rateLimit: vi.fn(() => ({ success: true, remaining: 100 })),
+    authRateLimit: vi.fn(() => ({ success: true })),
+  };
+});
 
 const dbSelectMock = vi.hoisted(() => vi.fn());
 vi.mock("@retune/db", () => ({
@@ -139,8 +149,7 @@ describe("POST /api/profile/understanding/apply", () => {
     const { getApiSession } = await import("@/lib/session");
     vi.mocked(getApiSession).mockResolvedValue(session());
     const profile = richProfile();
-    const { issuePreviewToken } =
-      await import("@/lib/career-understanding/preview-token");
+    const { issuePreviewToken } = await import("@/lib/career-understanding/preview-token");
     const { careerProfileFingerprint } = await import("@/lib/career-understanding/fingerprint");
     const { buildPlaceholderUnderstanding } = await import("@/lib/career-understanding/service");
     const fp = careerProfileFingerprint(profile);
@@ -176,8 +185,7 @@ describe("POST /api/profile/understanding/apply", () => {
     const { getApiSession } = await import("@/lib/session");
     vi.mocked(getApiSession).mockResolvedValue(session());
     const profile = richProfile();
-    const { issuePreviewToken } =
-      await import("@/lib/career-understanding/preview-token");
+    const { issuePreviewToken } = await import("@/lib/career-understanding/preview-token");
     const { careerProfileFingerprint } = await import("@/lib/career-understanding/fingerprint");
     const { buildPlaceholderUnderstanding } = await import("@/lib/career-understanding/service");
     const fp = careerProfileFingerprint(profile);

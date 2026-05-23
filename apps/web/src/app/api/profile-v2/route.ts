@@ -5,7 +5,11 @@
 //
 // For voice edits we re-run the voice-extraction LLM call so the
 // tone_calibration_summary is updated.
+//
+// Charter 02-Core-Features Epic 03 — migrated to `withSupabaseAuth`
+// 2026-05-22 to add rate limiting + standard error envelope.
 
+import { withSupabaseAuth } from "@/lib/api-handler";
 import { trackOnboardingEvent } from "@/lib/onboarding-v2/analytics";
 import { callLLM } from "@/lib/onboarding-v2/llm/calls";
 import { safeParseLLMJson } from "@/lib/onboarding-v2/llm/guardrails";
@@ -13,14 +17,6 @@ import { VOICE_EXTRACTION_SYSTEM_PROMPT } from "@/lib/onboarding-v2/llm/prompts"
 import type { ExtractionEducation, ExtractionExperience } from "@/lib/onboarding-v2/types";
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-
-async function getAuthUserId(): Promise<string | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
 
 const REGEN_TRIGGER_FIELDS = new Set([
   "target_role",
@@ -30,10 +26,7 @@ const REGEN_TRIGGER_FIELDS = new Set([
   "confirmed_industry",
 ]);
 
-export async function PATCH(req: Request) {
-  const userId = await getAuthUserId();
-  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-
+export const PATCH = withSupabaseAuth(async (req, userId) => {
   const body = await req.json().catch(() => ({}));
   const section = body.section as string;
   const payload = body.payload;
@@ -131,7 +124,7 @@ export async function PATCH(req: Request) {
     default:
       return NextResponse.json({ error: "invalid_section" }, { status: 400 });
   }
-}
+});
 
 async function loadExperience(userId: string): Promise<ExtractionExperience[]> {
   const supabase = await createClient();

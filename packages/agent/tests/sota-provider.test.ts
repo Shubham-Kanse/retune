@@ -10,14 +10,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { z } from "zod";
 import { _resetProvider, getProvider } from "../src/lib/provider";
-import {
-  _resetAnthropicClient,
-  anthropicProvider,
-} from "../src/lib/providers/anthropic";
-import {
-  _resetOpenAIClient,
-  openaiProvider,
-} from "../src/lib/providers/openai";
+import { _resetAnthropicClient, anthropicProvider } from "../src/lib/providers/anthropic";
+import { _resetOpenAIClient, openaiProvider } from "../src/lib/providers/openai";
 
 // Tests run a tiny FakeOpenAI / FakeAnthropic via globalThis interception
 // pattern documented in tests/provider-auth.test.ts. Here we focus on
@@ -40,14 +34,20 @@ test("anthropicProvider exposes 003 capabilities flags", () => {
 });
 
 test("getProvider() returns the AI_PROVIDER-selected instance", () => {
+  // Note: getProvider() wraps the underlying provider with a
+  // concurrency manager (Charter 09 Epic 02 / 11 Epic 01) so the
+  // returned object is no longer reference-identical to the
+  // openai/anthropic exports. We verify selection via the
+  // `capabilities` object, which is preserved by reference through
+  // the wrapping spread.
   _resetProvider();
   process.env.AI_PROVIDER = "openai";
   const p = getProvider();
-  assert.ok(p === openaiProvider);
+  assert.ok(p.capabilities === openaiProvider.capabilities);
   _resetProvider();
   process.env.AI_PROVIDER = "anthropic";
   const a = getProvider();
-  assert.ok(a === anthropicProvider);
+  assert.ok(a.capabilities === anthropicProvider.capabilities);
   _resetProvider();
 });
 
@@ -67,8 +67,9 @@ test("openaiProvider.searchFiles returns null without responses API", async () =
       assert.ok(Array.isArray(r.hits));
     }
   } finally {
-    if (original === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = original;
+    if (original === undefined) {
+      (process.env as Record<string, string | undefined>).OPENAI_API_KEY = undefined;
+    } else process.env.OPENAI_API_KEY = original;
     _resetOpenAIClient();
   }
 });
@@ -122,7 +123,9 @@ test("createStructuredOutput rejects schemas with no properties (zod runtime che
   // We monkey-patch `createMessageWithTool` to return invalid data.
   const provider = anthropicProvider;
   const original = provider.createMessageWithTool.bind(provider);
-  (provider as unknown as { createMessageWithTool: (...args: unknown[]) => Promise<unknown> }).createMessageWithTool = async () => ({ wrong: true });
+  (
+    provider as unknown as { createMessageWithTool: (...args: unknown[]) => Promise<unknown> }
+  ).createMessageWithTool = async () => ({ wrong: true });
   try {
     const schema = z.object({ ok: z.boolean() });
     await assert.rejects(
@@ -136,14 +139,17 @@ test("createStructuredOutput rejects schemas with no properties (zod runtime che
       }),
     );
   } finally {
-    (provider as unknown as { createMessageWithTool: typeof original }).createMessageWithTool = original;
+    (provider as unknown as { createMessageWithTool: typeof original }).createMessageWithTool =
+      original;
   }
 });
 
 test("createStructuredOutput parses valid forced-tool-use response", async () => {
   const provider = anthropicProvider;
   const original = provider.createMessageWithTool.bind(provider);
-  (provider as unknown as { createMessageWithTool: (...args: unknown[]) => Promise<unknown> }).createMessageWithTool = async () => ({ ok: true });
+  (
+    provider as unknown as { createMessageWithTool: (...args: unknown[]) => Promise<unknown> }
+  ).createMessageWithTool = async () => ({ ok: true });
   try {
     const schema = z.object({ ok: z.boolean() });
     const result = await provider.createStructuredOutput("test", {
@@ -156,7 +162,8 @@ test("createStructuredOutput parses valid forced-tool-use response", async () =>
     });
     assert.deepEqual(result, { ok: true });
   } finally {
-    (provider as unknown as { createMessageWithTool: typeof original }).createMessageWithTool = original;
+    (provider as unknown as { createMessageWithTool: typeof original }).createMessageWithTool =
+      original;
   }
 });
 

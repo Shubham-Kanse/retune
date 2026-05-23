@@ -48,6 +48,15 @@ export function pglite_drizzle(client: PGlite): PgliteDatabase<typeof pg_schema>
 /**
  * Build a postgres-js drizzle client from a connection string.
  * Returns both so the caller can `sql.end()` on shutdown.
+ *
+ * Architect note (Charter 11 Epic 01): `prepare: false` is REQUIRED when
+ * the connection points at the Supabase transaction pooler (port 6543).
+ * The pooler does not maintain per-client prepared-statement state, so
+ * any cached preparation triggers `prepared statement … already exists`
+ * errors under concurrent load. Setting `prepare: false` forces every
+ * query to be sent as simple SQL, which the pooler handles correctly.
+ * Direct (session-mode, port 5432) connections work either way, so this
+ * flag is safe to leave on for both paths.
  */
 export function postgres_drizzle(connection_url: string): {
   db: PostgresJsDatabase<typeof pg_schema>;
@@ -58,6 +67,9 @@ export function postgres_drizzle(connection_url: string): {
     max: 10,
     idle_timeout: 30,
     connect_timeout: 10,
+    // Required for Supabase transaction pooler (port 6543); harmless
+    // for direct connections. See Charter 11 Epic 01 architect addendum.
+    prepare: false,
   });
   const db = drizzlePostgresJs(sql, { schema: pg_schema });
   return { db, sql };
