@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
@@ -30,6 +31,7 @@ function strength(pw: string) {
 }
 
 export default function SignupPage() {
+  const t = useTranslations("auth.signup");
   const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -77,13 +79,13 @@ export default function SignupPage() {
 
   return (
     <AuthShell
-      title="Create your account."
-      subtitle="Three free applications, no card required. Cancel anything."
+      title={t("title")}
+      subtitle={t("subtitle")}
       footer={
         <>
-          Already a member?{" "}
+          {t("footer_prompt")}{" "}
           <Link href="/login" className="text-foreground underline-offset-4 hover:underline">
-            Sign in
+            {t("footer_link")}
           </Link>
         </>
       }
@@ -207,7 +209,7 @@ export default function SignupPage() {
             "Creating account…"
           ) : (
             <>
-              Create account <ArrowRight className="ml-2 size-4" />
+              {t("submit")} <ArrowRight className="ml-2 size-4" />
             </>
           )}
         </Button>

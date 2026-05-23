@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowRight, Eye, EyeOff } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
 
 function LoginContent() {
+  const t = useTranslations("auth.login");
   const router = useRouter();
   const params = useSearchParams();
   const verified = params?.get("verified") === "true";
@@ -51,13 +53,13 @@ function LoginContent() {
 
   return (
     <AuthShell
-      title="Welcome back."
-      subtitle="Sign in to pick up where you left off."
+      title={t("title")}
+      subtitle={t("subtitle")}
       footer={
         <>
-          New here?{" "}
+          {t("footer_prompt")}{" "}
           <Link href="/signup" className="text-foreground underline-offset-4 hover:underline">
-            Create an account
+            {t("footer_link")}
           </Link>
         </>
       }
@@ -127,7 +129,7 @@ function LoginContent() {
             "Signing in…"
           ) : (
             <>
-              Sign in <ArrowRight className="ml-2 size-4" />
+              {t("submit")} <ArrowRight className="ml-2 size-4" />
             </>
           )}
         </Button>

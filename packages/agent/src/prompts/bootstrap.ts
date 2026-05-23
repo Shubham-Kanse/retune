@@ -36,6 +36,7 @@ const EXTRACTED_PROMPT_FILES = [
   "ats-patch-loop.system.md",
   "bullet-composer.system.md",
   "cover-letter-composer.draft.md",
+  "cover-letter-composer.system.md",
   "critic-ensemble.hiring-manager.md",
   "critic-ensemble.recruiter.md",
   "critic-ensemble.self-image.md",
