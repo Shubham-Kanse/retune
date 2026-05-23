@@ -34,9 +34,14 @@ export function MobileNav() {
           <span className="text-base font-semibold">Retuned</span>
         </MobileLink>
         <ScrollArea className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
-          <div className="flex flex-col space-y-3">
+          <div className="flex flex-col">
             {mainLinks.map((l) => (
-              <MobileLink key={l.href} href={l.href} onOpenChange={setOpen}>
+              <MobileLink
+                key={l.href}
+                href={l.href}
+                onOpenChange={setOpen}
+                className="-ml-2 flex min-h-[44px] items-center px-2 text-base"
+              >
                 {l.title}
               </MobileLink>
             ))}

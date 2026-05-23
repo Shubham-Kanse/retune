@@ -42,7 +42,25 @@ import { randomUUID } from "node:crypto";
 import type { Goal, GoalKind } from "@retune/types";
 import { compute_fingerprint, voice_drift_cosine } from "../comprehension/voice/fingerprint";
 import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { loadPromptFile } from "../prompts/loader";
+import { register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
+
+// Register this specialist's prompt at module load so callers that
+// import the specialist directly (e.g. provider-parity tests) don't
+// need to also import the global bootstrap.
+try {
+  const loaded = loadPromptFile("bullet-composer.system.md");
+  register({
+    name: loaded.name,
+    version: Math.max(loaded.version, 2),
+    model_hint: loaded.model_hint,
+    body: loaded.body,
+  });
+} catch {
+  // Best-effort: if the file is missing in some build context, the
+  // global bootstrap or a fallback elsewhere will handle it.
+}
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 import type { BulletPlan, SolverSolution } from "./evidence-solver";
 
@@ -435,7 +453,7 @@ export class SequentialBulletComposer implements Specialist {
   // ──────────── Stage 3: Verb chooser ────────────
 
   private choose_verb(quality_floor: string, used: Set<string>, role_level: string): string {
-    const tier_verbs = VERBS_BY_TIER[quality_floor] ?? VERBS_BY_TIER.standard!;
+    const tier_verbs = VERBS_BY_TIER[quality_floor] ?? VERBS_BY_TIER.standard ?? [];
     const seniority = SENIORITY_MODIFIERS[role_level];
     const avoid_set = new Set(seniority?.avoid ?? []);
 
@@ -446,7 +464,7 @@ export class SequentialBulletComposer implements Specialist {
 
     // Fallback: try lower tier
     const fallback_tier = quality_floor === "elite" ? "strong" : "standard";
-    const fallback_verbs = VERBS_BY_TIER[fallback_tier] ?? VERBS_BY_TIER.standard!;
+    const fallback_verbs = VERBS_BY_TIER[fallback_tier] ?? VERBS_BY_TIER.standard ?? [];
     for (const v of fallback_verbs) {
       if (!used.has(v) && !avoid_set.has(v)) return v;
     }
@@ -496,9 +514,7 @@ export class SequentialBulletComposer implements Specialist {
     // Fabrication check: only block metrics when there is truly zero evidence.
     // Real candidate metrics ("40% latency reduction") must pass even when the
     // JD requirement text ("Experience with Node.js") contains no digits.
-    const has_any_evidence = plan.assignments.some(
-      (a) => (a.assigned_span_ids?.length ?? 0) > 0,
-    );
+    const has_any_evidence = plan.assignments.some((a) => (a.assigned_span_ids?.length ?? 0) > 0);
     if (!has_any_evidence) {
       // No evidence spans at all — reject suspiciously precise fabricated claims.
       const looks_fabricated =
@@ -526,8 +542,8 @@ export class SequentialBulletComposer implements Specialist {
     if (words.length < 3) return { passed: false, reason: "bullet too short" };
 
     // First word should be the intended verb (or close)
-    const first = words[0]!;
-    if (first[0] !== first[0]!.toUpperCase()) {
+    const first = words[0] ?? "";
+    if (!first || first[0] !== first[0]?.toUpperCase()) {
       return { passed: false, reason: "first word not capitalized (action verb expected)" };
     }
     // Verify the LLM used the verb we asked for (case-insensitive stem match)
@@ -612,19 +628,11 @@ export class SequentialBulletComposer implements Specialist {
 
   private bullet_system_prompt(role_level: string): string {
     const seniority = SENIORITY_MODIFIERS[role_level];
-    return `You are an expert resume writer. Generate a single bullet point for a ${role_level}-level candidate.
-
-EMPHASIS: ${seniority?.emphasis ?? "balanced delivery and impact"}
-AVOID starting with: ${seniority?.avoid?.join(", ") || "none"}
-
-RULES:
-- 25–45 words (1–2 lines on a standard resume)
-- Start with a strong past-tense action verb
-- Include at least one quantified result OR measurable scope
-- No "Responsible for," "Helped," "Assisted," "Worked on"
-- No generic superlatives ("exceptional," "outstanding," "passionate")
-- Every claim must be grounded in the evidence provided
-- If exact metrics aren't in the evidence, use approximate language (~, nearly, across N+ teams)`;
+    return renderPrompt("bullet-composer.system", {
+      role_level,
+      emphasis: seniority?.emphasis ?? "balanced delivery and impact",
+      avoid: seniority?.avoid?.join(", ") || "none",
+    });
   }
 
   private build_bullet_prompt(
@@ -690,11 +698,12 @@ ${evidence}
 
     // Group bullets by section_hint
     for (let i = 0; i < plans.length && i < bullet_ids.length; i++) {
-      const hint = plans[i]!.section_hint;
+      const hint = plans[i]?.section_hint;
       if (!sections[hint]) {
         sections[hint] = { id: hint, kind: hint, bullet_ids: [] };
       }
-      sections[hint]!.bullet_ids.push(bullet_ids[i]!);
+      const bid = bullet_ids[i];
+      if (bid) sections[hint]?.bullet_ids.push(bid);
     }
 
     return sections;

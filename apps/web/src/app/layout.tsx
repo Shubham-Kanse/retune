@@ -2,6 +2,7 @@ import "@/styles/globals.css";
 
 import { NavGuardProvider } from "@/components/layout/nav-guard-provider";
 import { PostHogProvider } from "@/components/posthog-provider";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -84,6 +85,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   className: "border border-border bg-popover text-popover-foreground",
                 }}
               />
+              <ServiceWorkerRegister />
             </>
           </TooltipProvider>
         </ThemeProvider>

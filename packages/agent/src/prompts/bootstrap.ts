@@ -21,11 +21,24 @@
  * to a real LLM until the body is extracted.
  */
 
+import { loadPromptFile } from "./loader";
 import { register } from "./registry";
 
 const PLACEHOLDER = "[[ unmigrated — see docs/charters/09-ai-ml/prompt-extraction-playbook.md ]]";
 
+/**
+ * Prompts that have been fully extracted from inline template literals
+ * into versioned .md files at `packages/agent/src/specialists/prompts/`.
+ * These are loaded at bootstrap with their real bodies.
+ */
+const EXTRACTED_PROMPT_FILES = [
+  "bullet-composer.system.md",
+  "cover-letter-composer.draft.md",
+  "refuse-or-ship.gate.md",
+];
+
 const SPECIALIST_PROMPTS: Array<{ name: string; model_hint: "smart" | "fast" | "frontier" }> = [
+  { name: "bullet-composer.system", model_hint: "smart" },
   { name: "bullet-composer.refine", model_hint: "smart" },
   { name: "bullet-composer.compose", model_hint: "smart" },
   { name: "gap-mapper.detect", model_hint: "smart" },
@@ -56,6 +69,9 @@ let _bootstrapped = false;
  */
 export function bootstrapSpecialistPrompts(): void {
   if (_bootstrapped) return;
+
+  // First, register placeholder entries for every known specialist
+  // prompt slot so observability tooling sees the full canonical list.
   for (const spec of SPECIALIST_PROMPTS) {
     register({
       name: spec.name,
@@ -64,6 +80,31 @@ export function bootstrapSpecialistPrompts(): void {
       body: PLACEHOLDER,
     });
   }
+
+  // Then overwrite with real bodies for prompts that have been
+  // extracted. The registry treats higher versions as preferred, so we
+  // bump the version so the real body wins over the v1 placeholder
+  // when callers don't pin a version.
+  for (const file of EXTRACTED_PROMPT_FILES) {
+    try {
+      const loaded = loadPromptFile(file);
+      register({
+        name: loaded.name,
+        version: Math.max(loaded.version, 2), // ensure > placeholder
+        model_hint: loaded.model_hint,
+        body: loaded.body,
+      });
+    } catch (err) {
+      // Don't crash module init if a file is missing — log and
+      // continue with the placeholder.
+      // eslint-disable-next-line no-console
+      console.warn(
+        `[prompt-bootstrap] failed to load ${file}:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
+  }
+
   _bootstrapped = true;
 }
 
