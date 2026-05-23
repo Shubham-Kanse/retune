@@ -6,8 +6,10 @@ import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { ThemeProvider } from "@/components/theme/theme-provider";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { getActiveMessages } from "@/i18n/messages";
 import { logWebStartupDiagnostics, resolveAppUrl } from "@/lib/startup-diagnostics";
 import type { Metadata, Viewport } from "next";
+import { NextIntlClientProvider } from "next-intl";
 import { Geist_Mono, Inter } from "next/font/google";
 import { Suspense } from "react";
 import { Toaster } from "sonner";
@@ -54,9 +56,14 @@ export const metadata: Metadata = {
 
 logWebStartupDiagnostics();
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const { locale, messages } = await getActiveMessages();
   return (
-    <html lang="en" className={`${inter.variable} ${geistMono.variable}`} suppressHydrationWarning>
+    <html
+      lang={locale}
+      className={`${inter.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
       <body className="min-h-screen bg-background font-sans text-foreground antialiased">
         <a
           href="#main-content"
@@ -64,31 +71,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to main content
         </a>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <TooltipProvider delayDuration={200}>
-            <>
-              <ErrorBoundary>
-                <Suspense fallback={null}>
-                  <PostHogProvider>
-                    <NavGuardProvider>{children}</NavGuardProvider>
-                  </PostHogProvider>
-                </Suspense>
-              </ErrorBoundary>
-              <Toaster
-                position="bottom-right"
-                toastOptions={{
-                  className: "border border-border bg-popover text-popover-foreground",
-                }}
-              />
-              <ServiceWorkerRegister />
-            </>
-          </TooltipProvider>
-        </ThemeProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <TooltipProvider delayDuration={200}>
+              <>
+                <ErrorBoundary>
+                  <Suspense fallback={null}>
+                    <PostHogProvider>
+                      <NavGuardProvider>{children}</NavGuardProvider>
+                    </PostHogProvider>
+                  </Suspense>
+                </ErrorBoundary>
+                <Toaster
+                  position="bottom-right"
+                  toastOptions={{
+                    className: "border border-border bg-popover text-popover-foreground",
+                  }}
+                />
+                <ServiceWorkerRegister />
+              </>
+            </TooltipProvider>
+          </ThemeProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

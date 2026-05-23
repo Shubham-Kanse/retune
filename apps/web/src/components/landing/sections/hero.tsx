@@ -1,11 +1,13 @@
 "use client";
 
 import { ArrowRight } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 export function Hero() {
+  const t = useTranslations("hero");
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -49,12 +51,15 @@ export function Hero() {
                 boxShadow: "0 2px 12px rgba(0,0,0,0.06)",
               }}
             >
-              AI-powered job applications, perfected
+              {t("tagline")}
             </span>
           </div>
 
           <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-normal tracking-tight leading-[1.1]">
-            Your career, <span className="bg-[#d4f5e0] rounded-lg px-3 text-brand">retuned.</span>
+            {t("headline_prefix")}{" "}
+            <span className="bg-[#d4f5e0] rounded-lg px-3 text-brand">
+              {t("headline_emphasis")}
+            </span>
           </h1>
 
           <p
@@ -65,8 +70,7 @@ export function Hero() {
               transition: "opacity 0.7s ease 0.5s, transform 0.7s cubic-bezier(0.16,1,0.3,1) 0.5s",
             }}
           >
-            Paste a job. We'll write a resume and cover letter that earn the interview — every claim
-            backed by evidence from your career.
+            {t("subhead")}
           </p>
 
           <div
@@ -74,7 +78,7 @@ export function Hero() {
             style={{ opacity: visible ? 1 : 0, transition: "opacity 0.6s ease 0.65s" }}
           >
             <Link href="/signup" className="rt-btn text-base px-8 py-4">
-              Get started <ArrowRight className="w-4 h-4" />
+              {t("cta")} <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>

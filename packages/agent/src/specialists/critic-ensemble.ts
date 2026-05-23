@@ -411,7 +411,7 @@ export class CriticEnsemble implements Specialist {
       const weighted = [recruiter, hiring_manager, self_image].sort(
         (a, b) => b.confidence * b.score - a.confidence * a.score,
       );
-      consensus_arc = weighted[0]?.preferred_arc;
+      consensus_arc = weighted[0]?.preferred_arc ?? recruiter.preferred_arc;
     }
 
     // Detect divergence: professional critics vs self-image

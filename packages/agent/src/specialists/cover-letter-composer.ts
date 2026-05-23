@@ -1,8 +1,23 @@
 import type { Goal, GoalKind, NarrativeArcCandidate } from "@retune/types";
 import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { loadPromptFile } from "../prompts/loader";
+import { register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 import type { GapMap } from "./gap-mapper";
+
+// Charter 09 Epic 01 — module-level registration.
+try {
+  const loaded = loadPromptFile("cover-letter-composer.system.md");
+  register({
+    name: loaded.name,
+    version: Math.max(loaded.version, 2),
+    model_hint: loaded.model_hint,
+    body: loaded.body,
+  });
+} catch {
+  // best-effort
+}
 
 const HANDLES: readonly GoalKind[] = ["compose_cover_letter"];
 
@@ -57,31 +72,7 @@ type CoverLetterOutput = {
 function build_system(market: "US" | "UK"): string {
   const lang = market === "UK" ? "British English" : "American English";
   const words = market === "UK" ? "300–400" : "250–350";
-  return `You are a senior career strategist writing cover letters that get interviews.
-
-COVER LETTER STRUCTURE (3 parts, ${words} words in ${lang}):
-
-1. HOOK (1 paragraph)
-   Open with a specific, compelling reason you want THIS company — not generic passion.
-   Reference something concrete about them (culture, mission, recent product, market position).
-   Bridge to the candidate's single strongest relevant achievement in one sentence.
-   NEVER start with "I".
-
-2. VALUE BRIDGE (2 paragraphs)
-   Para 1 — Top achievement cluster with a quantified metric. Prove you can do the specific job.
-   Para 2 — What you uniquely bring that the JD implies but does not say explicitly
-            (cross-functional strength, domain context, cultural alignment).
-
-3. CLOSE (1 paragraph)
-   Confident, specific ask that names the role. No "I look forward to hearing from you."
-   Short — 2 sentences maximum.
-
-VOICE RULES:
-- Mirror the candidate's vocabulary level and sentence length from their bullets
-- Match company tone: startup = punchy + direct; enterprise = measured + strategic; technical = precise
-- No passive voice
-- No "I am writing to express my interest" — delete on sight
-- Every factual claim must be grounded in the evidence provided`;
+  return renderPrompt("cover-letter-composer.system", { lang, words });
 }
 
 function build_user(
@@ -171,10 +162,10 @@ export class CoverLetterComposer implements Specialist {
     const cv = hypotheses.cultural_vector;
     let cultural_tone = "professional";
     if (cv) {
-      if (cv[7]! > 0.6) cultural_tone = "mission-driven";
-      else if (cv[4]! > 0.6) cultural_tone = "technical";
-      else if (cv[0]! > 0.6) cultural_tone = "startup";
-      else if (cv[2]! > 0.6) cultural_tone = "enterprise";
+      if ((cv[7] ?? 0) > 0.6) cultural_tone = "mission-driven";
+      else if ((cv[4] ?? 0) > 0.6) cultural_tone = "technical";
+      else if ((cv[0] ?? 0) > 0.6) cultural_tone = "startup";
+      else if ((cv[2] ?? 0) > 0.6) cultural_tone = "enterprise";
     }
 
     // Top bullets for voice reference (up to 5 strongest)
