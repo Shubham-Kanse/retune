@@ -54,6 +54,7 @@ export function LanguageCard({ activeLocale }: { activeLocale: Locale }) {
         value={activeLocale}
         onChange={(e) => void handleChange(e.target.value)}
         disabled={pending}
+        aria-label="Active language"
         className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
       >
         {LOCALES.map((tag) => (

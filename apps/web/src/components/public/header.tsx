@@ -3,10 +3,11 @@ import { MobileNav } from "@/components/public/mobile-nav";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/session";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
 export async function PublicHeader() {
-  const session = await getSession();
+  const [session, t] = await Promise.all([getSession(), getTranslations("nav")]);
 
   return (
     <header className="sticky top-0 left-0 z-50 w-full border-b bg-background/80 px-0 py-3 backdrop-blur-md md:px-6">
@@ -18,15 +19,15 @@ export async function PublicHeader() {
         <div className="flex items-center gap-1.5">
           {session ? (
             <Button asChild size="sm">
-              <Link href="/dashboard">Go to Dashboard</Link>
+              <Link href="/dashboard">{t("go_to_dashboard")}</Link>
             </Button>
           ) : (
             <>
               <Button asChild variant="ghost" size="sm" className="hidden md:inline-flex">
-                <Link href="/login">Sign in</Link>
+                <Link href="/login">{t("sign_in")}</Link>
               </Button>
               <Button asChild size="sm">
-                <Link href="/signup">Get started</Link>
+                <Link href="/signup">{t("get_started")}</Link>
               </Button>
             </>
           )}

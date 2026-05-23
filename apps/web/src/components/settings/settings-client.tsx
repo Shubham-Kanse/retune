@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import type { Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, ChevronRight, LogOut } from "lucide-react";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -54,6 +55,7 @@ export function SettingsClient({
   memberSince: string | null;
   activeLocale: Locale;
 }) {
+  const t = useTranslations("settings");
   const router = useRouter();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
@@ -152,7 +154,7 @@ export function SettingsClient({
                 }
               }}
             >
-              Manage billing
+              {t("billing_button")}
             </Button>
           )}
         </div>

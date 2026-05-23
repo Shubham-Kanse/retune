@@ -1,4 +1,9 @@
 {
+  "nav": {
+    "sign_in": "Sign in",
+    "get_started": "Get started",
+    "go_to_dashboard": "Go to Dashboard"
+  },
   "hero": {
     "tagline": "AI-powered job applications, perfected",
     "headline_prefix": "Your career,",
