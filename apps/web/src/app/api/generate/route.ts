@@ -3,6 +3,7 @@ import { apiUrl } from "@/lib/api-config";
 import { withAuth } from "@/lib/api-handler";
 import { isCareerUnderstandingV1 } from "@/lib/career-understanding";
 import { verifyPreflightToken } from "@/lib/drift-preflight-token";
+import { captureFunnelEvent } from "@/lib/funnel-events";
 import { isCareerProfileV1 } from "@/lib/onboarding/career-profile.schema";
 import { ensureGenerationPreflightsTable } from "@/lib/preflight-table";
 import { atomicCheckGeneration, recordUsage } from "@retune/billing";
@@ -54,6 +55,10 @@ export const POST = withAuth(async (request, session) => {
   const idemKey = body.idempotency_key ?? `${session.userId}:${suppliedHash}`;
   const billingCheck = await atomicCheckGeneration(session.userId, idemKey);
   if (!billingCheck.allowed) {
+    void captureFunnelEvent(session.userId, "billing_blocked", {
+      reason: billingCheck.reason ?? "insufficient_credits",
+      credits_remaining: billingCheck.creditsRemaining ?? 0,
+    });
     return NextResponse.json(
       {
         error: "billing_blocked",
@@ -227,6 +232,12 @@ export const POST = withAuth(async (request, session) => {
   recordUsage(session.userId, "generation", data.generation_id).catch((err) => {
     // eslint-disable-next-line no-console
     console.warn("[generate] recordUsage failed (non-fatal)", err);
+  });
+
+  // Charter 25 Epic 02 — activation funnel: first_generation_started.
+  void captureFunnelEvent(session.userId, "first_generation_started", {
+    jd_source: body.jd_url ? "url" : "paste",
+    market: (body.market ?? "US").toLowerCase(),
   });
 
   return NextResponse.json(data, { status: res.status });

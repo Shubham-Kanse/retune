@@ -65,8 +65,8 @@ export function Hero() {
               transition: "opacity 0.7s ease 0.5s, transform 0.7s cubic-bezier(0.16,1,0.3,1) 0.5s",
             }}
           >
-            Paste a job description. Get a tailored resume, cover letter, and application strategy
-            in under 3 minutes.
+            Paste a job. We'll write a resume and cover letter that earn the interview — every claim
+            backed by evidence from your career.
           </p>
 
           <div

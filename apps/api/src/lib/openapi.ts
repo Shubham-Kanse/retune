@@ -141,10 +141,10 @@ function buildRegistry(): OpenAPIRegistry {
       "Shared secret between apps/web and apps/api. Required for every state-mutating route in production.",
   });
 
-  // ── /v1/health ──
+  // ── /health ── (intentionally unprefixed; internal/infra route)
   r.registerPath({
     method: "get",
-    path: "/v1/health",
+    path: "/health",
     summary: "Health check",
     description: "Returns 200 + persist/temporal flags when the API is alive and configured.",
     tags: ["meta"],
@@ -295,7 +295,7 @@ function buildRegistry(): OpenAPIRegistry {
   // ── /v1/outcome ──
   r.registerPath({
     method: "post",
-    path: "/v1/outcome",
+    path: "/v1/generate/{id}/outcome",
     summary: "Record application outcome",
     tags: ["applications"],
     security: [{ InternalKey: [] }],

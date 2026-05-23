@@ -41,6 +41,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -960,6 +961,50 @@ export const security_audit_log = pgTable(
   }),
 );
 
+/**
+ * Charter 19 — multi-tenant scaffolding. Mirrors the SQL in
+ * 0017_organisations.sql + 0017_organisations.down.sql.
+ */
+export const organisations = pgTable(
+  "organisations",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    kind: text("kind").notNull().default("team"), // 'personal' | 'team'
+    metadata: jsonb("metadata").notNull().default(sql`'{}'::jsonb`),
+    deleted_at: timestamp("deleted_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    by_kind: index("idx_organisations_kind").on(t.kind),
+  }),
+);
+
+export const organisation_memberships = pgTable(
+  "organisation_memberships",
+  {
+    organisation_id: uuid("organisation_id")
+      .notNull()
+      .references(() => organisations.id, { onDelete: "cascade" }),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: text("role").notNull().default("member"), // owner | admin | member | viewer
+    invited_by: uuid("invited_by").references(() => users.id, { onDelete: "set null" }),
+    invited_at: timestamp("invited_at", { withTimezone: true }).notNull().defaultNow(),
+    accepted_at: timestamp("accepted_at", { withTimezone: true }),
+    created_at: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updated_at: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    pk: primaryKey({ columns: [t.organisation_id, t.user_id] }),
+    by_user: index("idx_org_memberships_user").on(t.user_id),
+    by_role: index("idx_org_memberships_role").on(t.organisation_id, t.role),
+  }),
+);
+
 // ─────────────── Exports grouped for easy consumption ───────────────
 
 export const pg_schema = {
@@ -990,6 +1035,9 @@ export const pg_schema = {
   generation_model_calls,
   stripe_events,
   security_audit_log,
+  // Charter 19 — multi-tenant scaffolding
+  organisations,
+  organisation_memberships,
   // Legacy v1 product tables
   profiles,
   onboardingSessions,

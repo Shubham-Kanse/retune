@@ -42,14 +42,13 @@ export async function getServerPostHog(): Promise<typeof _serverClient> {
   if (!KEY) return null;
   if (_serverClient) return _serverClient;
   try {
-    // @ts-expect-error — optional dep
     const { PostHog } = await import("posthog-node");
     const client = new PostHog(KEY, {
       host: HOST,
       flushAt: 1,
       flushInterval: 1000,
     });
-    _serverClient = client as typeof _serverClient;
+    _serverClient = client as unknown as typeof _serverClient;
     return _serverClient;
   } catch (err) {
     // eslint-disable-next-line no-console

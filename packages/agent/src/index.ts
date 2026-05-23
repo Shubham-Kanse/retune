@@ -6,6 +6,27 @@ export * from "./pipeline/schemas";
 export { authenticateVoice } from "./pipeline/enforcement/voice-authenticator";
 export * from "./sota-exports";
 
+// Charter 09 Epic 01 — Prompt registry (entry points + bootstrap).
+import { bootstrapSpecialistPrompts } from "./prompts/bootstrap";
+export {
+  register as registerPrompt,
+  getPrompt,
+  renderPrompt,
+  listPrompts,
+} from "./prompts/registry";
+export { bootstrapSpecialistPrompts } from "./prompts/bootstrap";
+bootstrapSpecialistPrompts();
+
+// Charter 26 Epic 01 — Refusal taxonomy.
+export {
+  type RefusalReason,
+  type NextAction,
+  type RefusalMetadata,
+  ALL_REFUSAL_REASONS,
+  getRefusalMetadata,
+  coerceHistoricalRefusal,
+} from "./specialists/refusal-taxonomy";
+
 // 003 SOTA generation module (additive, off the legacy pipeline).
 export * from "./generation-sota";
 

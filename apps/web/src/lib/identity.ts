@@ -1,8 +1,6 @@
-import { createServerClient } from "@supabase/ssr";
 import { db, processorConsents, subscriptions, users } from "@retune/db";
 import { eq } from "drizzle-orm";
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { cookies } from "next/headers";
 import { ConflictError, ValidationError } from "./errors";
 import type { Session } from "./session";
 import { createClient } from "./supabase/server";
@@ -131,19 +129,44 @@ export function createIdentityModule(): IdentityModule {
 
     async resolveSessionState() {
       const supabase = await createClient();
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-
-      if (error || !user) return null;
-      return {
-        userId: user.id,
-        email: user.email ?? "",
-        fullName: (user.user_metadata?.full_name as string | null) ?? null,
-        expiresAt: 0,
-      };
+      // Supabase logs "Invalid Refresh Token" to console.error when a
+      // stale auth cookie is present from a prior session. That's noisy
+      // but not actionable — we just want to know "is there a valid
+      // session?". Treat any thrown/auth error as "not signed in" and
+      // continue. The middleware/route guards will redirect if needed.
+      try {
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
+        if (error) {
+          // Stale refresh token — clear the cookies so subsequent
+          // requests don't re-trigger the same error log every render.
+          if (/refresh.*token/i.test(error.message)) {
+            try {
+              const store = await cookies();
+              for (const c of store.getAll()) {
+                if (c.name.startsWith("sb-") && c.name.includes("auth-token")) {
+                  store.delete(c.name);
+                }
+              }
+            } catch {
+              // best-effort: server components can't always mutate
+              // cookies. Middleware will tidy up on next request.
+            }
+          }
+          return null;
+        }
+        if (!user) return null;
+        return {
+          userId: user.id,
+          email: user.email ?? "",
+          fullName: (user.user_metadata?.full_name as string | null) ?? null,
+          expiresAt: 0,
+        };
+      } catch {
+        return null;
+      }
     },
   };
 }
-

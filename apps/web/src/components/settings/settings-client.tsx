@@ -1,6 +1,7 @@
 "use client";
 
 import { PageHeader, PageShell } from "@/components/app/page-shell";
+import { OrganizationsCard } from "@/components/settings/organizations-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,6 +161,11 @@ export function SettingsClient({
             />
           </div>
         </div>
+      </div>
+
+      {/* Charter 19 — Workspaces (multi-tenant scaffolding) */}
+      <div className="mt-8">
+        <OrganizationsCard />
       </div>
 
       {/* Account info */}

@@ -14,12 +14,13 @@ test("OpenAPI spec is valid 3.1 with required top-level fields", () => {
 test("OpenAPI spec exposes the public generation routes", () => {
   const spec = buildOpenApiSpec();
   const paths = Object.keys(spec.paths ?? {});
-  assert.ok(paths.includes("/v1/health"), "missing /v1/health");
+  // /health is intentionally unprefixed — it's an infra route, not a v1 contract.
+  assert.ok(paths.includes("/health"), "missing /health");
   assert.ok(paths.includes("/v1/generate"), "missing /v1/generate");
   assert.ok(paths.includes("/v1/generate/{id}"), "missing /v1/generate/{id}");
   assert.ok(paths.includes("/v1/generate/{id}/stream"), "missing /v1/generate/{id}/stream");
   assert.ok(paths.includes("/v1/applications"), "missing /v1/applications");
-  assert.ok(paths.includes("/v1/outcome"), "missing /v1/outcome");
+  assert.ok(paths.includes("/v1/generate/{id}/outcome"), "missing /v1/generate/{id}/outcome");
 });
 
 test("OpenAPI components include shared schemas", () => {

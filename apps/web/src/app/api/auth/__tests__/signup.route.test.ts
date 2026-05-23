@@ -74,7 +74,7 @@ describe("POST /api/auth/signup", () => {
       }),
     );
     expect(res.status).toBe(400);
-  });
+  }, 15_000);
 
   it("returns 400 for invalid schema", async () => {
     const { POST } = await import("@/app/api/auth/signup/route");

@@ -348,6 +348,25 @@ export async function claimRefinementAttempt(
   });
 }
 
+/**
+ * Append a usage_records audit row for a completed action.
+ *
+ * Charter 03 Epic 01 — separation of concerns:
+ *   - `atomicCheckGeneration` is the AUTHORITATIVE counter. It runs
+ *     BEFORE the upstream cognitive call, atomically increments
+ *     `subscriptions.credits_used` inside SELECT...FOR UPDATE, and is
+ *     race-free across concurrent attempts.
+ *   - `recordUsage` is the AUDIT TRAIL. It writes a usage_records row
+ *     keyed on (user, application) and is idempotent on retry. It
+ *     does NOT increment the counter — that already happened in
+ *     `atomicCheckGeneration`.
+ *
+ * Reading this file in isolation makes it look like usage_records is
+ * the source of truth (the `getUsedCredits` SUM helper reinforces
+ * that impression). It is NOT — that helper is retained only for
+ * reconciliation tooling. Production reads come from the
+ * `subscriptions.credits_used` denormalised counter.
+ */
 export async function recordUsage(
   userId: string,
   type: "generation" | "refinement",

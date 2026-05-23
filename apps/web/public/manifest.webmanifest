@@ -1,0 +1,49 @@
+{
+  "name": "Retune — AI-tailored job applications",
+  "short_name": "Retune",
+  "description": "Upload your resume, paste a job, ship a tailored application — with evidence.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#d4f5e0",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New application",
+      "short_name": "New",
+      "url": "/applications/new",
+      "icons": [{ "src": "/icons/shortcut-new.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Dashboard",
+      "url": "/dashboard"
+    }
+  ],
+  "categories": ["productivity", "business", "utilities"],
+  "orientation": "portrait-primary",
+  "lang": "en-GB"
+}

@@ -26,7 +26,6 @@ async function getClient(): Promise<PostHogClient | null> {
   if (_phClient) return _phClient;
   if (!process.env.NEXT_PUBLIC_POSTHOG_KEY) return null;
   try {
-    // @ts-expect-error — optional dep until installed
     const mod = await import("posthog-js");
     _phClient = mod.default as unknown as PostHogClient;
     return _phClient;

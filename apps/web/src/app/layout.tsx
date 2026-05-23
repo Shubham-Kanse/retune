@@ -1,12 +1,14 @@
 import "@/styles/globals.css";
 
 import { NavGuardProvider } from "@/components/layout/nav-guard-provider";
+import { PostHogProvider } from "@/components/posthog-provider";
 import { ThemeProvider } from "@/components/theme/theme-provider";
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { logWebStartupDiagnostics, resolveAppUrl } from "@/lib/startup-diagnostics";
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono, Inter } from "next/font/google";
+import { Suspense } from "react";
 import { Toaster } from "sonner";
 
 const inter = Inter({
@@ -32,7 +34,7 @@ export const metadata: Metadata = {
   description:
     "Paste a job description. Get a tailored resume, cover letter, and application strategy in under 3 minutes.",
   metadataBase: resolveAppUrl(process.env.NEXT_PUBLIC_APP_URL),
-  manifest: "/manifest.json",
+  manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
@@ -61,17 +63,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         >
           Skip to main content
         </a>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
           <TooltipProvider delayDuration={200}>
             <ErrorBoundary>
-              <NavGuardProvider>{children}</NavGuardProvider>
-              <Toaster
-                position="bottom-right"
-                toastOptions={{
-                  className: "border border-border bg-popover text-popover-foreground",
-                }}
-              />
+              <Suspense fallback={null}>
+                <PostHogProvider>
+                  <NavGuardProvider>{children}</NavGuardProvider>
+                </PostHogProvider>
+              </Suspense>
             </ErrorBoundary>
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                className: "border border-border bg-popover text-popover-foreground",
+              }}
+            />
           </TooltipProvider>
         </ThemeProvider>
       </body>

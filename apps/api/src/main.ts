@@ -163,46 +163,55 @@ assertProductionRuntime();
 await initOTel();
 await initSentryNode();
 
-const server = serve({ fetch: app.fetch, port }, (info) => {
-  logger.info(
-    { event: "startup", port: info.port, persist: persistMode, temporal: temporalEnabled },
-    `@retune/api listening on http://localhost:${info.port}`,
-  );
+// Allow tests to import { app } from "./main" without binding the
+// listening socket. Set RETUNE_API_BOOT=0 in test runtimes; default
+// remains "boot" for production parity.
+const shouldBoot = process.env.RETUNE_API_BOOT !== "0";
 
-  if (process.env.ENABLE_CRON !== "0") {
-    acquire_durability()
-      .then((durability) => {
-        if (!durability) return;
-        startCron(durability.db);
-        logger.info({ event: "cron.start" }, "nightly consolidator started");
-      })
-      .catch((err: unknown) => {
-        logger.error(
-          { event: "cron.start_failed", err: err instanceof Error ? err.message : String(err) },
-          "cron failed to start",
-        );
-      });
-  }
-});
+const server = shouldBoot
+  ? serve({ fetch: app.fetch, port }, (info) => {
+      logger.info(
+        { event: "startup", port: info.port, persist: persistMode, temporal: temporalEnabled },
+        `@retune/api listening on http://localhost:${info.port}`,
+      );
 
-server.on("error", (err: NodeJS.ErrnoException) => {
-  if (err?.code === "EADDRINUSE") {
-    logger.error(
-      { event: "startup_failed", code: err.code, port },
-      `port ${port} is already in use (EADDRINUSE). Stop the existing process or set PORT to a free port.`,
-    );
+      if (process.env.ENABLE_CRON !== "0") {
+        acquire_durability()
+          .then((durability) => {
+            if (!durability) return;
+            startCron(durability.db);
+            logger.info({ event: "cron.start" }, "nightly consolidator started");
+          })
+          .catch((err: unknown) => {
+            logger.error(
+              { event: "cron.start_failed", err: err instanceof Error ? err.message : String(err) },
+              "cron failed to start",
+            );
+          });
+      }
+    })
+  : null;
+
+if (server) {
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err?.code === "EADDRINUSE") {
+      logger.error(
+        { event: "startup_failed", code: err.code, port },
+        `port ${port} is already in use (EADDRINUSE). Stop the existing process or set PORT to a free port.`,
+      );
+      process.exit(1);
+    }
+    logger.error({ event: "server_error", err: err.message, code: err.code }, "server error");
     process.exit(1);
-  }
-  logger.error({ event: "server_error", err: err.message, code: err.code }, "server error");
-  process.exit(1);
-});
+  });
+}
 
 // Graceful shutdown — flush OTel spans before the process exits so
 // the last few seconds of traces aren't dropped.
 async function gracefulShutdown(signal: string): Promise<void> {
   logger.info({ event: "shutdown.start", signal }, `received ${signal}, shutting down`);
   try {
-    server.close();
+    if (server) server.close();
     await shutdownOTel();
   } catch (err) {
     logger.error(
@@ -213,7 +222,9 @@ async function gracefulShutdown(signal: string): Promise<void> {
   process.exit(0);
 }
 
-process.on("SIGTERM", () => void gracefulShutdown("SIGTERM"));
-process.on("SIGINT", () => void gracefulShutdown("SIGINT"));
+if (shouldBoot) {
+  process.on("SIGTERM", () => void gracefulShutdown("SIGTERM"));
+  process.on("SIGINT", () => void gracefulShutdown("SIGINT"));
+}
 
 export { app };

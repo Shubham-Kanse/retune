@@ -110,7 +110,6 @@ export async function isFlagEnabled(name: FlagName, context: FlagContext = {}): 
   if (e.NEXT_PUBLIC_POSTHOG_KEY && context.userId) {
     try {
       // Lazy import so we don't pull posthog-node into edge bundles.
-      // @ts-expect-error — optional dep until installed
       const mod = await import("posthog-node");
       const PostHog = (
         mod as {

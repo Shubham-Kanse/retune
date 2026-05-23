@@ -58,6 +58,8 @@
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "5.4.296",
     "postgres": "^3.4.9",
+    "posthog-js": "^1.376.0",
+    "posthog-node": "^5.35.1",
     "prosemirror-commands": "^1.7.1",
     "prosemirror-dropcursor": "^1.8.2",
     "prosemirror-history": "^1.4.1",

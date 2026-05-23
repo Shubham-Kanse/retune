@@ -23,24 +23,32 @@ export async function initOTel(): Promise<void> {
   if (!endpoint) return;
 
   try {
-    // @ts-expect-error — optional dep
     const { NodeSDK } = await import("@opentelemetry/sdk-node");
-    // @ts-expect-error — optional dep
-    // biome-ignore format: keep on one line so @ts-expect-error covers the import
-    const { getNodeAutoInstrumentations } = await import("@opentelemetry/auto-instrumentations-node");
-    // @ts-expect-error — optional dep
+    const { getNodeAutoInstrumentations } = await import(
+      "@opentelemetry/auto-instrumentations-node"
+    );
     const { OTLPTraceExporter } = await import("@opentelemetry/exporter-trace-otlp-http");
-    // @ts-expect-error — optional dep
-    const { Resource } = await import("@opentelemetry/resources");
-    // @ts-expect-error — optional dep
-    const { SemanticResourceAttributes } = await import("@opentelemetry/semantic-conventions");
+    const resourcesMod = await import("@opentelemetry/resources");
+    // @opentelemetry/resources@2 exports `resourceFromAttributes`; older versions
+    // exported `Resource`. We accept both.
+    const buildResource = (attrs: Record<string, string>) => {
+      const m = resourcesMod as unknown as {
+        resourceFromAttributes?: (a: Record<string, string>) => unknown;
+        Resource?: new (a: Record<string, string>) => unknown;
+      };
+      if (typeof m.resourceFromAttributes === "function") return m.resourceFromAttributes(attrs);
+      if (m.Resource) return new m.Resource(attrs);
+      throw new Error(
+        "@opentelemetry/resources: neither resourceFromAttributes nor Resource exported",
+      );
+    };
 
     const sdk = new NodeSDK({
-      resource: new Resource({
-        [SemanticResourceAttributes.SERVICE_NAME]: process.env.OTEL_SERVICE_NAME ?? "retune-api",
-        [SemanticResourceAttributes.SERVICE_VERSION]: process.env.npm_package_version ?? "0.0.0",
-        [SemanticResourceAttributes.DEPLOYMENT_ENVIRONMENT]: process.env.NODE_ENV ?? "development",
-      }),
+      resource: buildResource({
+        "service.name": process.env.OTEL_SERVICE_NAME ?? "retune-api",
+        "service.version": process.env.npm_package_version ?? "0.0.0",
+        "deployment.environment": process.env.NODE_ENV ?? "development",
+      }) as never,
       traceExporter: new OTLPTraceExporter({
         url: endpoint,
         headers: process.env.OTEL_EXPORTER_OTLP_HEADERS

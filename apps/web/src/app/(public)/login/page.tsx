@@ -52,7 +52,7 @@ function LoginContent() {
   return (
     <AuthShell
       title="Welcome back."
-      subtitle="Sign in to continue your application workflow."
+      subtitle="Sign in to pick up where you left off."
       footer={
         <>
           New here?{" "}
@@ -123,7 +123,9 @@ function LoginContent() {
           </p>
         ) : null}
         <Button type="submit" disabled={loading} className="w-full">
-          {loading ? "Signing in…" : (
+          {loading ? (
+            "Signing in…"
+          ) : (
             <>
               Sign in <ArrowRight className="ml-2 size-4" />
             </>

@@ -21,6 +21,7 @@
  * stops retrying after enough 400s — the only case where that's correct).
  */
 
+import { captureFunnelEvent } from "@/lib/funnel-events";
 import {
   HANDLED_EVENT_TYPES,
   markStripeEventProcessed,
@@ -109,6 +110,27 @@ export async function POST(request: Request): Promise<NextResponse> {
   try {
     await processStripeEvent(event);
     await markStripeEventProcessed(event.id, "processed");
+
+    // Charter 25 Epic 02 — fire activation-funnel events for the
+    // billing transitions PostHog cohort analyses care about.
+    const userId =
+      (event.data?.object as { client_reference_id?: string; metadata?: { userId?: string } })
+        ?.client_reference_id ??
+      (event.data?.object as { metadata?: { userId?: string } })?.metadata?.userId ??
+      null;
+    if (userId) {
+      if (event.type === "checkout.session.completed") {
+        void captureFunnelEvent(userId, "subscribed", {
+          plan:
+            (event.data.object as { items?: { data?: Array<{ price?: { id?: string } }> } })?.items
+              ?.data?.[0]?.price?.id ?? null,
+        });
+      } else if (event.type === "customer.subscription.trial_will_end") {
+        void captureFunnelEvent(userId, "trial_will_end");
+      } else if (event.type === "customer.subscription.deleted") {
+        void captureFunnelEvent(userId, "subscription_canceled");
+      }
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     await markStripeEventProcessed(event.id, "failed", message);

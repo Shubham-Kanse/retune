@@ -78,7 +78,7 @@ export default function SignupPage() {
   return (
     <AuthShell
       title="Create your account."
-      subtitle="Start with 3 free generations. No credit card required."
+      subtitle="Three free applications, no card required. Cancel anything."
       footer={
         <>
           Already a member?{" "}
@@ -93,7 +93,13 @@ export default function SignupPage() {
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <div className="space-y-1.5">
           <Label htmlFor="fullName">Full name</Label>
-          <Input id="fullName" name="fullName" autoComplete="name" disabled={loading} placeholder="Leonardo da Vinci" />
+          <Input
+            id="fullName"
+            name="fullName"
+            autoComplete="name"
+            disabled={loading}
+            placeholder="Leonardo da Vinci"
+          />
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="email">Email</Label>
@@ -171,7 +177,10 @@ export default function SignupPage() {
               { key: "retune", label: "Retuned (platform)" },
             ] as const
           ).map(({ key, label }) => (
-            <label key={key} className="flex cursor-pointer items-center gap-3 text-xs text-muted-foreground transition-colors hover:text-foreground">
+            <label
+              key={key}
+              className="flex cursor-pointer items-center gap-3 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
               <input
                 type="checkbox"
                 checked={consents[key]}
@@ -194,7 +203,9 @@ export default function SignupPage() {
         ) : null}
 
         <Button type="submit" disabled={loading || !allConsentsGranted} className="w-full">
-          {loading ? "Creating account…" : (
+          {loading ? (
+            "Creating account…"
+          ) : (
             <>
               Create account <ArrowRight className="ml-2 size-4" />
             </>

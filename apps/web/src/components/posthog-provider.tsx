@@ -40,7 +40,6 @@ async function loadPostHog(): Promise<PostHogModule | null> {
   const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   if (!key) return null;
   try {
-    // @ts-expect-error — optional dep until installed
     const mod = await import("posthog-js");
     const ph = mod.default as unknown as PostHogModule;
     ph.init(key, {
