@@ -27,9 +27,24 @@
 
 import type { Goal, GoalKind } from "@retune/types";
 import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { loadPromptFile } from "../prompts/loader";
+import { register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 import type { GapMap } from "./gap-mapper";
+
+// Charter 09 Epic 01 — module-level registration.
+try {
+  const loaded = loadPromptFile("application-strategy-composer.system.md");
+  register({
+    name: loaded.name,
+    version: Math.max(loaded.version, 2),
+    model_hint: loaded.model_hint,
+    body: loaded.body,
+  });
+} catch {
+  // best-effort
+}
 
 const HANDLES: readonly GoalKind[] = ["compose_strategy"];
 
@@ -117,20 +132,7 @@ type StrategyOutput = {
 
 function build_system(market: "US" | "UK"): string {
   const locale = market === "UK" ? "British English" : "American English";
-  return `You are a senior career strategist building a concrete, actionable application strategy.
-
-Write in ${locale}. Be specific — no generic career advice. Every section must reference
-the actual company, role, and candidate's situation.
-
-OUTPUT STRUCTURE:
-1. Referral Mining — 3–5 LinkedIn queries to surface warm connections
-2. LinkedIn Outreach — short, personalised connection note template
-3. Hiring Manager Note — direct cold outreach if no warm path
-4. Behavioural Interview Prep — 5 questions tied to this exact role + arc, each with a STAR/CAR hint
-5. Technical Prep Topics — gaps from the analysis the candidate should address
-6. Submission Timeline — ordered action steps with day offsets
-
-Tone: direct, confident, tactical. No fluff.`;
+  return renderPrompt("application-strategy-composer.system", { locale });
 }
 
 function build_user(

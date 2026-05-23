@@ -1,10 +1,12 @@
 "use client";
 
 import { PageHeader, PageShell } from "@/components/app/page-shell";
+import { LanguageCard } from "@/components/settings/language-card";
 import { OrganizationsCard } from "@/components/settings/organizations-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { Locale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, ChevronRight, LogOut } from "lucide-react";
 import Link from "next/link";
@@ -44,7 +46,14 @@ export function SettingsClient({
   email,
   fullName,
   memberSince,
-}: { subscription: Sub; email: string; fullName: string; memberSince: string | null }) {
+  activeLocale,
+}: {
+  subscription: Sub;
+  email: string;
+  fullName: string;
+  memberSince: string | null;
+  activeLocale: Locale;
+}) {
   const router = useRouter();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [deleteInput, setDeleteInput] = useState("");
@@ -166,6 +175,11 @@ export function SettingsClient({
       {/* Charter 19 — Workspaces (multi-tenant scaffolding) */}
       <div className="mt-8">
         <OrganizationsCard />
+      </div>
+
+      {/* Charter 16 — Language */}
+      <div className="mt-8">
+        <LanguageCard activeLocale={activeLocale} />
       </div>
 
       {/* Account info */}

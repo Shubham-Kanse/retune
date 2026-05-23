@@ -50,8 +50,31 @@
 import { randomUUID } from "node:crypto";
 import type { Goal, GoalKind, NarrativeArcCandidate } from "@retune/types";
 import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { loadPromptFile } from "../prompts/loader";
+import { register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
+
+// Charter 09 Epic 01 — module-level registration of the three critic
+// personas so direct-import tests find the bodies without the global
+// bootstrap.
+for (const file of [
+  "critic-ensemble.recruiter.md",
+  "critic-ensemble.hiring-manager.md",
+  "critic-ensemble.self-image.md",
+]) {
+  try {
+    const loaded = loadPromptFile(file);
+    register({
+      name: loaded.name,
+      version: Math.max(loaded.version, 2),
+      model_hint: loaded.model_hint,
+      body: loaded.body,
+    });
+  } catch {
+    // best-effort
+  }
+}
 
 const HANDLES: readonly GoalKind[] = ["select_arc"];
 
@@ -80,58 +103,23 @@ interface EnsembleResult {
 }
 
 // ──────────── Critic system prompts ────────────
+//
+// Charter 09 Epic 01 — bodies live in
+// `packages/agent/src/specialists/prompts/critic-ensemble.<role>.md`.
+// We register them at module load and look them up by name. Keeping
+// the lookup map here so the rest of the file (which iterates over
+// CriticRole values) doesn't have to thread a name string everywhere.
+
+const CRITIC_PROMPT_NAMES: Record<CriticRole, string> = {
+  recruiter: "critic-ensemble.recruiter",
+  hiring_manager: "critic-ensemble.hiring-manager",
+  self_image: "critic-ensemble.self-image",
+};
 
 const CRITIC_PROMPTS: Record<CriticRole, string> = {
-  recruiter: `You are a recruiter screener reviewing a resume for the first time. You have 6 seconds.
-
-YOUR MENTAL MODEL:
-- You scan top-to-bottom: name, title line, first 3 skills, most recent role's first bullet
-- You're pattern-matching against the job requirements you were given
-- You want: exact keyword matches, years alignment, no red flags, clean formatting
-- You don't read beyond page 1 unless the first scan passes
-
-YOUR SCORING CRITERIA:
-- Headline matches the JD role title? (+20)
-- Years of experience in range? (+15)
-- Top 3 JD keywords visible in first scan? (+20)
-- Most recent role is clearly relevant? (+20)
-- No formatting red flags (gaps, typos, walls of text)? (+15)
-- Would you forward this to the hiring manager? (+10)
-
-Score 0-100. Be ruthless — you see 200 resumes a day.`,
-
-  hiring_manager: `You are a hiring manager doing a deep technical read of a resume that passed recruiter screening.
-
-YOUR MENTAL MODEL:
-- You're evaluating: can this person actually DO the job on day 1-90?
-- You look for: depth of relevant experience, quality of evidence, progression
-- You're suspicious of: vague claims, scope inflation, buzzword density without substance
-- You want to see: specific systems, quantified outcomes, leadership signals (if senior)
-
-YOUR SCORING CRITERIA:
-- Technical depth matches role requirements? (+25)
-- Evidence quality: specific, verifiable claims? (+25)
-- Seniority calibration: language matches claimed level? (+15)
-- Narrative coherence: story makes sense? (+15)
-- Would you phone-screen this person? (+20)
-
-Score 0-100. You have high standards — you're building your team.`,
-
-  self_image: `You are the CANDIDATE reviewing your own resume. You know your real story.
-
-YOUR MENTAL MODEL:
-- You know what you're actually good at and what you've actually done
-- You have a preferred narrative: how you see your career trajectory
-- You're checking: does this resume represent ME authentically?
-- You're sensitive to: overstatement (embarrassing in interviews), understatement (selling short)
-
-YOUR SCORING CRITERIA:
-- Does the chosen narrative arc match how I see my career? (+25)
-- Are the claims honest — would I be comfortable defending each one in an interview? (+25)
-- Is the emphasis on the right things (what I actually want to be known for)? (+25)
-- Does it sound like me, not a generic AI-generated resume? (+25)
-
-Score 0-100. Be honest with yourself — not what sounds impressive, what IS you.`,
+  recruiter: renderPrompt(CRITIC_PROMPT_NAMES.recruiter, {}),
+  hiring_manager: renderPrompt(CRITIC_PROMPT_NAMES.hiring_manager, {}),
+  self_image: renderPrompt(CRITIC_PROMPT_NAMES.self_image, {}),
 };
 
 // ──────────── Critic tool schema ────────────
@@ -284,7 +272,7 @@ export class CriticEnsemble implements Specialist {
       };
 
       writes.push({
-        path: `conflicts`,
+        path: "conflicts",
         value: [...ctx.blackboard.conflicts, conflict],
       });
 
@@ -423,7 +411,7 @@ export class CriticEnsemble implements Specialist {
       const weighted = [recruiter, hiring_manager, self_image].sort(
         (a, b) => b.confidence * b.score - a.confidence * a.score,
       );
-      consensus_arc = weighted[0]!.preferred_arc;
+      consensus_arc = weighted[0]?.preferred_arc;
     }
 
     // Detect divergence: professional critics vs self-image
@@ -491,7 +479,7 @@ export class CriticEnsemble implements Specialist {
         "mission",
         "agency",
       ];
-      const strong = axes.filter((_, i) => Math.abs(cultural_vector[i]!) > 0.5);
+      const strong = axes.filter((_, i) => Math.abs(cultural_vector[i] ?? 0) > 0.5);
       if (strong.length > 0) {
         context += `## Company Culture Signals: ${strong.join(", ")}\n\n`;
       }

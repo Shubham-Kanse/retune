@@ -1,4 +1,5 @@
 import { SettingsClient } from "@/components/settings/settings-client";
+import { getActiveLocale } from "@/i18n/messages";
 import { getCachedUser } from "@/lib/cached-queries";
 import { getSession } from "@/lib/session";
 import { getSubscription } from "@retune/billing";
@@ -8,7 +9,7 @@ export default async function SettingsPage() {
   if (!session) return null;
 
   // Parallel execution
-  const [sub, userRows] = await Promise.all([
+  const [sub, userRows, activeLocale] = await Promise.all([
     getSubscription(session.userId).catch(() => ({
       plan: "free" as const,
       status: "active",
@@ -22,10 +23,11 @@ export default async function SettingsPage() {
       creditsRemainingUsd: 0,
     })),
     getCachedUser(session.userId),
+    getActiveLocale(),
   ]);
 
   const user = userRows[0];
-  
+
   // Format date on server to avoid hydration mismatch
   const formattedDate = user?.createdAt
     ? user.createdAt.toLocaleDateString("en-US", {
@@ -41,6 +43,7 @@ export default async function SettingsPage() {
       email={session.email}
       fullName={user?.fullName ?? session.fullName ?? ""}
       memberSince={formattedDate}
+      activeLocale={activeLocale}
     />
   );
 }

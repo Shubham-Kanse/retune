@@ -32,11 +32,16 @@ const PLACEHOLDER = "[[ unmigrated — see docs/charters/09-ai-ml/prompt-extract
  * These are loaded at bootstrap with their real bodies.
  */
 const EXTRACTED_PROMPT_FILES = [
+  "application-strategy-composer.system.md",
   "ats-patch-loop.system.md",
   "bullet-composer.system.md",
   "cover-letter-composer.draft.md",
+  "critic-ensemble.hiring-manager.md",
+  "critic-ensemble.recruiter.md",
+  "critic-ensemble.self-image.md",
   "narrative-arc-proposer.draft.md",
   "refuse-or-ship.gate.md",
+  "theory-of-mind.recruiter-belief.md",
 ];
 
 const SPECIALIST_PROMPTS: Array<{ name: string; model_hint: "smart" | "fast" | "frontier" }> = [

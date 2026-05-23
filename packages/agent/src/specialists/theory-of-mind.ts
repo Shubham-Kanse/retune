@@ -37,8 +37,23 @@
 
 import type { Goal, GoalKind, NarrativeArcCandidate } from "@retune/types";
 import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { loadPromptFile } from "../prompts/loader";
+import { register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
+
+// Charter 09 Epic 01 — module-level registration.
+try {
+  const loaded = loadPromptFile("theory-of-mind.recruiter-belief.md");
+  register({
+    name: loaded.name,
+    version: Math.max(loaded.version, 2),
+    model_hint: loaded.model_hint,
+    body: loaded.body,
+  });
+} catch {
+  // best-effort
+}
 
 const HANDLES: readonly GoalKind[] = ["model_recruiter_beliefs"];
 
@@ -193,9 +208,7 @@ export class TheoryOfMindSpecialist implements Specialist {
         {
           model: models.fast,
           max_tokens: 1024,
-          system: `You are a senior recruiter at a top-tier tech company with 10+ years of hiring experience.
-You have seen thousands of resumes. You're fast, pattern-matching, and skeptical — but fair.
-Your job is to model your own belief state after reading this resume. Be honest about what you'd believe, not what would be flattering.`,
+          system: renderPrompt("theory-of-mind.recruiter-belief", {}),
           messages: [{ role: "user", content: context }],
           tools: [BELIEF_STATE_TOOL],
           tool_choice: { type: "tool", name: BELIEF_STATE_TOOL.name },
@@ -245,12 +258,12 @@ Your job is to model your own belief state after reading this resume. Be honest 
     },
     evidence_graph: { span_ids: string[] },
   ): string {
-    let ctx = `## Resume Content to Analyze\n\n`;
+    let ctx = "## Resume Content to Analyze\n\n";
     ctx += `**Target Role**: ${role_schema?.display_name ?? "Unknown"} (${role_schema?.level ?? "mid"}-level)\n\n`;
     ctx += `**Narrative Arc**: ${arc.archetype} — "${arc.thesis}"\n\n`;
 
     if (bullets.length > 0) {
-      ctx += `**Experience Bullets**:\n`;
+      ctx += "**Experience Bullets**:\n";
       for (const b of bullets.slice(0, 8)) {
         ctx += `- ${b}\n`;
       }

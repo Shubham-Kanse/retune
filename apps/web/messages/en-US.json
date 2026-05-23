@@ -1,0 +1,42 @@
+{
+  "hero": {
+    "tagline": "AI-powered job applications, perfected",
+    "headline_prefix": "Your career,",
+    "headline_emphasis": "retuned.",
+    "subhead": "Paste a job. We'll write a resume and cover letter that earn the interview — every claim backed by evidence from your career.",
+    "cta": "Get started"
+  },
+  "auth": {
+    "login": {
+      "title": "Welcome back.",
+      "subtitle": "Sign in to pick up where you left off.",
+      "submit": "Sign in",
+      "footer_prompt": "New here?",
+      "footer_link": "Create an account"
+    },
+    "signup": {
+      "title": "Create your account.",
+      "subtitle": "Three free applications, no card required. Cancel anytime.",
+      "submit": "Create account",
+      "footer_prompt": "Already a member?",
+      "footer_link": "Sign in"
+    }
+  },
+  "settings": {
+    "sections": {
+      "career_profile": "Career profile",
+      "career_profile_sub": "Details, experience, skills, voice.",
+      "billing": "Billing",
+      "billing_sub": "Plan, credits, invoices.",
+      "workspaces": "Workspaces",
+      "workspaces_sub": "Share a Retune workspace with your team. The active one scopes the dashboard.",
+      "language": "Language",
+      "language_sub": "Choose how Retune talks to you."
+    },
+    "billing_button": "Manage billing"
+  },
+  "errors": {
+    "offline_title": "We're not connected.",
+    "offline_body": "Retune needs the network to read your job description, your evidence graph, and the model providers. Re-establish a connection and we'll pick up where you left off."
+  }
+}
