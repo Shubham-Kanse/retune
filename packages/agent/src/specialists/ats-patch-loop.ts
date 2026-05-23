@@ -28,9 +28,24 @@
 
 import type { Goal, GoalKind } from "@retune/types";
 import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { loadPromptFile } from "../prompts/loader";
+import { register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 import type { GapMap, GapMapEntry } from "./gap-mapper";
+
+// Charter 09 Epic 01 — module-level registration.
+try {
+  const loaded = loadPromptFile("ats-patch-loop.system.md");
+  register({
+    name: loaded.name,
+    version: Math.max(loaded.version, 2),
+    model_hint: loaded.model_hint,
+    body: loaded.body,
+  });
+} catch {
+  // best-effort
+}
 
 const HANDLES: readonly GoalKind[] = ["patch_ats"];
 
@@ -109,20 +124,7 @@ function extract_missing_t1(gap_map: GapMap): string[] {
 }
 
 function build_system(): string {
-  return `You are a surgical ATS keyword optimizer. You receive resume bullets, a skills section, and a list of missing keywords. Insert them naturally — leaving no fingerprints.
-
-INSERTION PRIORITY:
-1. Skills section — safest, add to most relevant category
-2. Summary bullet — weave into existing sentence if semantically natural
-3. Experience bullets — only where keyword is GENUINELY implied by the work
-
-RULES:
-- Never fabricate experience to justify an insertion
-- Never add keywords that sound unnatural in context
-- If a keyword cannot be inserted naturally, skip it
-- Vary phrasing; do not cluster multiple keywords in one sentence
-- Match the existing bullet's vocabulary level and sentence length
-- Return ONLY modified bullets; leave unchanged bullets out of the response`;
+  return renderPrompt("ats-patch-loop.system", {});
 }
 
 function build_user(

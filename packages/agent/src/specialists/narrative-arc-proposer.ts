@@ -46,9 +46,26 @@ import { randomUUID } from "node:crypto";
 import type { Goal, GoalKind, NarrativeArcArchetype } from "@retune/types";
 import { intervalConfidence } from "@retune/types";
 import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { loadPromptFile } from "../prompts/loader";
+import { register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 import type { SolverSolution } from "./evidence-solver";
+
+// Charter 09 Epic 01 — register this specialist's prompt at module
+// load so direct-import tests (provider-parity) don't need the global
+// bootstrap.
+try {
+  const loaded = loadPromptFile("narrative-arc-proposer.draft.md");
+  register({
+    name: loaded.name,
+    version: Math.max(loaded.version, 2),
+    model_hint: loaded.model_hint,
+    body: loaded.body,
+  });
+} catch {
+  // best-effort
+}
 import type { GapMap } from "./gap-mapper";
 
 const HANDLES: readonly GoalKind[] = ["propose_arcs"];
@@ -359,7 +376,10 @@ export class NarrativeArcProposer implements Specialist {
     }
 
     // Best arc becomes chosen_narrative_arc (will be overridden by critic ensemble in #11)
-    const chosen = candidates[0]!;
+    const chosen = candidates[0];
+    if (!chosen) {
+      throw new Error("narrative-arc-proposer: no candidates after scoring");
+    }
 
     // v2.0 §7.1: emit BOTH `model_recruiter_beliefs` and `select_arc` so the
     // ToM specialist runs first (higher priority) and CriticEnsemble consumes
@@ -440,21 +460,24 @@ export class NarrativeArcProposer implements Specialist {
       )
       .join("\n");
 
-    return `You are a career strategist analyzing a candidate's evidence to select the strongest narrative arc for their resume.
+    const level_emphasis =
+      level === "junior" || level === "intern"
+        ? "prefer no_history_high_potential and built_from_zero"
+        : "prefer deep_specialist, scaled_it, and led_the_team";
 
-TARGET ROLE: ${display} (${level}, ${family})
-EVIDENCE SUMMARY: ${gap_map.summary.direct_hits} direct hits, ${gap_map.summary.implied_hits} implied, ${gap_map.summary.transferable} transferable out of ${gap_map.summary.total_requirements} requirements.
-COVERAGE: ${gap_map.summary.coverage_pct.toFixed(1)}% | SOLVER: ${solver.bullets.length} bullet slots planned.
-
-AVAILABLE ARCHETYPES (only propose arcs that have clear evidence):
-${archetype_descriptions}
-
-CONSTRAINTS:
-1. Every arc MUST reference actual evidence_span_ids from the provided list.
-2. Thesis must be specific to THIS candidate — not a template.
-3. Do not propose arcs the evidence cannot support (feasibility < 0.3).
-4. For ${level}-level candidates, ${level === "junior" || level === "intern" ? "prefer no_history_high_potential and built_from_zero" : "prefer deep_specialist, scaled_it, and led_the_team"}.
-5. Propose 5-8 candidates. Quality over quantity — don't pad with weak arcs.`;
+    return renderPrompt("narrative-arc-proposer.draft", {
+      display,
+      level,
+      family,
+      direct_hits: gap_map.summary.direct_hits,
+      implied_hits: gap_map.summary.implied_hits,
+      transferable: gap_map.summary.transferable,
+      total_requirements: gap_map.summary.total_requirements,
+      coverage_pct: gap_map.summary.coverage_pct.toFixed(1),
+      bullet_slots: solver.bullets.length,
+      archetype_descriptions,
+      level_emphasis,
+    });
   }
 
   private build_user_prompt(gap_map: GapMap, solver: SolverSolution, span_ids: string[]): string {
@@ -515,8 +538,9 @@ Propose the narrative arcs now. For each, provide a specific thesis grounded in 
     let trust_sum = 0;
     let trust_count = 0;
     for (const dep of deps) {
-      if (honesty_cal[dep] !== undefined) {
-        trust_sum += honesty_cal[dep]!;
+      const trust = honesty_cal[dep];
+      if (trust !== undefined) {
+        trust_sum += trust;
         trust_count++;
       }
     }

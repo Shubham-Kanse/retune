@@ -32,8 +32,10 @@ const PLACEHOLDER = "[[ unmigrated — see docs/charters/09-ai-ml/prompt-extract
  * These are loaded at bootstrap with their real bodies.
  */
 const EXTRACTED_PROMPT_FILES = [
+  "ats-patch-loop.system.md",
   "bullet-composer.system.md",
   "cover-letter-composer.draft.md",
+  "narrative-arc-proposer.draft.md",
   "refuse-or-ship.gate.md",
 ];
 
@@ -58,6 +60,7 @@ const SPECIALIST_PROMPTS: Array<{ name: string; model_hint: "smart" | "fast" | "
   { name: "voice-drift-monitor.audit", model_hint: "fast" },
   { name: "well-being-monitor.audit", model_hint: "fast" },
   { name: "active-question-handler.compose", model_hint: "fast" },
+  { name: "ats-patch-loop.system", model_hint: "smart" },
   { name: "narrator.summary", model_hint: "fast" },
 ];
 

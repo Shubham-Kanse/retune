@@ -405,16 +405,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: baseline-only validation (canonical set schema)
         run: pnpm --filter @retune/eval eval --baseline-only
+      - name: adversarial corpus validation (Charter 26 Epic 02)
+        # Schema + coverage gates: minimum 12 cases, 6 attack classes,
+        # 4 distinct refusal reasons, unique ids. Fails the build if
+        # the corpus regresses below the baseline.
+        run: pnpm --filter @retune/eval eval:adversarial
 
-  # v2.0 §16 — nightly real-LLM eval matrix. Disabled until cases.jsonl
-  # is expanded from 14 → 200 (Phase 6 deliverable). Enabled here as a
-  # workflow_dispatch-only manual job; nightly schedule wakes up after
-  # canonical-set expansion.
+  # v2.0 §16 + Charter 21 Epic 02 — nightly real-LLM eval matrix.
+  # Runs against the canonical set + adversarial corpus on the nightly
+  # cron. Manual trigger remains available via workflow_dispatch.
+  # Failures here block release: a quality regression is the same
+  # severity as a typecheck regression.
   eval-live-matrix:
     name: eval --live (${{ matrix.ai_provider }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
     strategy:
       fail-fast: false
       matrix:

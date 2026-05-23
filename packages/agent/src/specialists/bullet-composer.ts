@@ -699,6 +699,7 @@ ${evidence}
     // Group bullets by section_hint
     for (let i = 0; i < plans.length && i < bullet_ids.length; i++) {
       const hint = plans[i]?.section_hint;
+      if (!hint) continue;
       if (!sections[hint]) {
         sections[hint] = { id: hint, kind: hint, bullet_ids: [] };
       }
