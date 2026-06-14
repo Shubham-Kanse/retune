@@ -1,6 +1,6 @@
+import { createHash } from "node:crypto";
 import { sql } from "drizzle-orm";
 import type { SQLWrapper } from "drizzle-orm";
-import { createHash } from "node:crypto";
 
 function normalizeJd(text: string): string {
   return text.replace(/\s+/g, " ").trim();
@@ -19,7 +19,7 @@ export async function dualWriteJobDescription(params: {
   const normalized = normalizeJd(params.jdText);
   const jdHash = createHash("sha256").update(normalized).digest("hex");
   if (params.jdId) {
-    const rows = await params.db.execute(sql`
+    const rows = (await params.db.execute(sql`
       insert into public.job_descriptions
         (id, user_id, jd_hash, title, company, market, jd_text, jd_url)
       values
@@ -31,11 +31,11 @@ export async function dualWriteJobDescription(params: {
         jd_text = excluded.jd_text,
         jd_url = coalesce(excluded.jd_url, public.job_descriptions.jd_url)
       returning id
-    `) as Array<{ id: string }>;
+    `)) as Array<{ id: string }>;
     return rows[0]?.id ?? params.jdId;
   }
 
-  const rows = await params.db.execute(sql`
+  const rows = (await params.db.execute(sql`
     insert into public.job_descriptions
       (user_id, jd_hash, title, company, market, jd_text, jd_url)
     values
@@ -46,6 +46,6 @@ export async function dualWriteJobDescription(params: {
       market = coalesce(excluded.market, public.job_descriptions.market),
       jd_url = coalesce(excluded.jd_url, public.job_descriptions.jd_url)
     returning id
-  `) as Array<{ id: string }>;
+  `)) as Array<{ id: string }>;
   return rows[0]?.id ?? null;
 }

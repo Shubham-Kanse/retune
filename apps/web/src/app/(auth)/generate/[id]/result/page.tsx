@@ -270,7 +270,7 @@ export default function ResultPage() {
   if (error || !result) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-sm text-muted-foreground">No results found for this generation.</p>
+        <p className="text-sm text-muted-foreground">No results found for this tuning.</p>
         <Link href="/dashboard" className="rt-btn-ghost inline-flex items-center gap-2 text-sm">
           <ArrowLeft className="h-4 w-4" /> Back to dashboard
         </Link>
@@ -369,7 +369,7 @@ export default function ResultPage() {
             </span>
           )}
           <span className="text-[11px] text-muted-foreground font-mono">
-            Generated in {generationDuration}
+            Tuned in {generationDuration}
           </span>
         </div>
 

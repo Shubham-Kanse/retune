@@ -1,7 +1,7 @@
 "use client";
 
 import { PageHeader, PageShell } from "@/components/app/page-shell";
-import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 // Inlined from @retune/ui/cognitive (package not yet built)
@@ -91,6 +91,7 @@ interface VoiceFingerprint {
 }
 
 export default function VoiceFingerprintSettingsPage() {
+  const t = useTranslations("settings_voice");
   const [fingerprint, setFingerprint] = useState<VoiceFingerprint | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -105,13 +106,13 @@ export default function VoiceFingerprintSettingsPage() {
   return (
     <PageShell>
       <PageHeader
-        eyebrow="Voice & style"
-        title="Writing voice"
-        subtitle="Your voice fingerprint captures how you naturally write. It's used to keep generated content authentic to your style."
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        subtitle={t("subtitle")}
         action={
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/settings">Back to settings</Link>
-          </Button>
+          <Link href="/settings" className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            {t("back")}
+          </Link>
         }
       />
 
@@ -123,16 +124,16 @@ export default function VoiceFingerprintSettingsPage() {
         <div className="space-y-8">
           <div>
             <div className="mb-4 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Status</span>
-              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Active</span>
+              <span className="text-xs text-muted-foreground">{t("status_label")}</span>
+              <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{t("status_active")}</span>
             </div>
             <div className="grid grid-cols-2 gap-6 text-sm">
               <div>
-                <p className="text-xs text-muted-foreground">Documents analyzed</p>
+                <p className="text-xs text-muted-foreground">{t("docs_analyzed")}</p>
                 <p className="mt-0.5 text-lg font-semibold">{fingerprint.sampleSize}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Last updated</p>
+                <p className="text-xs text-muted-foreground">{t("last_updated")}</p>
                 <p className="mt-0.5 text-lg font-semibold">
                   {new Date(fingerprint.updatedAt).toLocaleDateString()}
                 </p>
@@ -143,7 +144,7 @@ export default function VoiceFingerprintSettingsPage() {
           {fingerprint.dimensions && Object.keys(fingerprint.dimensions).length > 0 && (
             <div className="border-t border-border/50 pt-8">
               <h3 className="mb-4 text-xs text-muted-foreground">
-                Style characteristics
+                {t("style_characteristics")}
               </h3>
               <VoiceFingerprintRadar
                 dimensions={fingerprint.dimensions}
@@ -152,18 +153,14 @@ export default function VoiceFingerprintSettingsPage() {
             </div>
           )}
 
-          <p className="text-xs text-muted-foreground">
-            Updates automatically as you upload documents and complete generations.
-          </p>
+          <p className="text-xs text-muted-foreground">{t("auto_update_note")}</p>
         </div>
       ) : (
         <div className="py-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            No voice fingerprint yet. It will be created during your first generation.
-          </p>
-          <Button asChild className="mt-4">
-            <Link href="/generate/new">Start a generation</Link>
-          </Button>
+          <p className="text-sm text-muted-foreground">{t("empty_title")}</p>
+          <Link href="/generate/new" className="mt-4 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90">
+            {t("empty_cta")}
+          </Link>
         </div>
       )}
     </PageShell>

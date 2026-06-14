@@ -20,9 +20,8 @@ import { generations, jds } from "@retune/db/pg";
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import { getIdentity, ownsRow, requireIdentity } from "../lib/auth-middleware";
 import { renderGdprPacketAsText } from "../lib/gdpr-pdf-renderer";
-import { resolveAuthenticatedIdentity } from "../lib/internal-auth";
-import { recordSecurityEvent } from "../lib/security-audit";
 import type { TraceBusRegistry } from "../lib/trace-bus";
 import { createAndStartGeneration } from "../runtime/generation-lifecycle";
 import { acquire_durability } from "../runtime/persistence-factory";
@@ -64,9 +63,13 @@ const GenerateRequestSchema = z.object({
 export function generate_routes(registry: TraceBusRegistry) {
   const app = new Hono();
 
-  app.get("/generations", async (c) => {
+  app.get("/generations", requireIdentity(), async (c) => {
     const durability = await acquire_durability();
     if (durability) {
+      const identity = getIdentity(c);
+      const scope = identity.enforced
+        ? and(isNull(generations.deleted_at), eq(generations.user_id, identity.user_id))
+        : isNull(generations.deleted_at);
       const rows = await durability.db
         .select({
           id: generations.id,
@@ -78,7 +81,7 @@ export function generate_routes(registry: TraceBusRegistry) {
         })
         .from(generations)
         .leftJoin(jds, eq(generations.jd_id, jds.id))
-        .where(isNull(generations.deleted_at))
+        .where(scope)
         .orderBy(desc(generations.created_at))
         .limit(50);
 
@@ -109,7 +112,7 @@ export function generate_routes(registry: TraceBusRegistry) {
     return c.json(active);
   });
 
-  app.post("/generate", async (c) => {
+  app.post("/generate", requireIdentity(), async (c) => {
     log("info", "POST /generate", "request received");
     const body = await c.req.json().catch(() => ({}));
     const parsed = GenerateRequestSchema.safeParse(body);
@@ -135,23 +138,8 @@ export function generate_routes(registry: TraceBusRegistry) {
       );
     }
 
-    // 003 §10 — authenticated user resolution.
-    const durability = await acquire_durability();
-    const default_user_id = durability?.default_user_id ?? "00000000-0000-4000-8000-000000000000";
-    const auth = resolveAuthenticatedIdentity(c.req.raw.headers, default_user_id);
-    if ("error" in auth) {
-      log("warn", "POST /generate", `auth rejected: ${auth.error}`);
-      void recordSecurityEvent({
-        event_type: "api.auth.rejected",
-        actor_kind: "anonymous",
-        request_id: c.var.requestId,
-        ip: c.req.header("x-forwarded-for") ?? null,
-        user_agent: c.req.header("user-agent") ?? null,
-        outcome: "denied",
-        metadata: { route: "POST /generate", error: auth.error },
-      });
-      return c.json({ error: auth.error }, auth.status as 401 | 400);
-    }
+    // 003 §10 — authenticated user resolution (requireIdentity middleware).
+    const identity = getIdentity(c);
 
     log("info", "POST /generate", "payload accepted", {
       has_jd_url: !!parsed.data.jd_url,
@@ -159,13 +147,13 @@ export function generate_routes(registry: TraceBusRegistry) {
       has_profile_text: !!parsed.data.profile_text,
       market: parsed.data.market,
       has_idempotency_key: !!parsed.data.idempotency_key,
-      authenticated: auth.identity.authenticated_via_internal_key,
+      authenticated: identity.enforced,
     });
 
     try {
       const result = await createAndStartGeneration({
         payload: parsed.data,
-        user_id: auth.identity.user_id,
+        user_id: identity.user_id,
         registry,
         log,
       });
@@ -185,25 +173,12 @@ export function generate_routes(registry: TraceBusRegistry) {
     }
   });
 
-  app.delete("/generate/:id", async (c) => {
+  app.delete("/generate/:id", requireIdentity(), async (c) => {
     const id = c.req.param("id");
 
     // 003 §12: only the owning user (or the dev fallback user) may delete.
+    const identity = getIdentity(c);
     const durability = await acquire_durability();
-    const default_user_id = durability?.default_user_id ?? "00000000-0000-4000-8000-000000000000";
-    const auth = resolveAuthenticatedIdentity(c.req.raw.headers, default_user_id);
-    if ("error" in auth) {
-      void recordSecurityEvent({
-        event_type: "api.auth.rejected",
-        actor_kind: "anonymous",
-        request_id: c.var.requestId,
-        ip: c.req.header("x-forwarded-for") ?? null,
-        user_agent: c.req.header("user-agent") ?? null,
-        outcome: "denied",
-        metadata: { route: "DELETE /generate/:id", generation_id: id, error: auth.error },
-      });
-      return c.json({ error: auth.error }, auth.status as 401 | 400);
-    }
 
     // Try aborting in-flight first
     const aborted = registry.abort(id);
@@ -220,7 +195,7 @@ export function generate_routes(registry: TraceBusRegistry) {
         .limit(1);
       const row = rows[0];
       if (!row) return c.json({ error: "not_found" }, 404);
-      if (row.user_id !== auth.identity.user_id && auth.identity.authenticated_via_internal_key) {
+      if (!ownsRow(identity, row.user_id)) {
         return c.json({ error: "forbidden" }, 403);
       }
       const updated = await durability.db
@@ -236,28 +211,15 @@ export function generate_routes(registry: TraceBusRegistry) {
     return c.json({ error: "not_found" }, 404);
   });
 
-  app.get("/generate/:id/gdpr-pdf", async (c) => {
+  app.get("/generate/:id/gdpr-pdf", requireIdentity(), async (c) => {
     const id = c.req.param("id");
     const durability = await acquire_durability();
     if (!durability) {
       return c.json({ error: "persistence_not_configured" }, 503);
     }
 
-    // 003 §12 — ownership gate.
-    const default_user_id = durability.default_user_id;
-    const auth = resolveAuthenticatedIdentity(c.req.raw.headers, default_user_id);
-    if ("error" in auth) {
-      void recordSecurityEvent({
-        event_type: "api.auth.rejected",
-        actor_kind: "anonymous",
-        request_id: c.var.requestId,
-        ip: c.req.header("x-forwarded-for") ?? null,
-        user_agent: c.req.header("user-agent") ?? null,
-        outcome: "denied",
-        metadata: { route: "GET /generate/:id/gdpr", error: auth.error },
-      });
-      return c.json({ error: auth.error }, auth.status as 401 | 400);
-    }
+    // 003 §12 — ownership gate (requireIdentity middleware).
+    const identity = getIdentity(c);
 
     const { gdpr_packets } = await import("@retune/db/pg");
     const row = await durability.db
@@ -269,8 +231,7 @@ export function generate_routes(registry: TraceBusRegistry) {
     if (!row) {
       return c.json({ error: "not_found" }, 404);
     }
-    // Ownership check — packet must belong to the caller's user or the dev fallback.
-    if (auth.identity.authenticated_via_internal_key && row.user_id !== auth.identity.user_id) {
+    if (!ownsRow(identity, row.user_id)) {
       return c.json({ error: "forbidden" }, 403);
     }
 

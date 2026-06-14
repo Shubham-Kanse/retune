@@ -11,7 +11,9 @@ export interface GenerationCompletionEvent {
   error_message: string | null;
 }
 
-function statusFromTermination(termination: string | null): Exclude<GenerationRunStatus, "running"> {
+function statusFromTermination(
+  termination: string | null,
+): Exclude<GenerationRunStatus, "running"> {
   if (!termination) return "completed";
   if (termination === "aborted" || termination === "cancelled") return "cancelled";
   if (termination === "no_open_work") return "completed";

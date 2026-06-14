@@ -19,10 +19,6 @@
  * If the discourse_map is missing or empty, writes [] and satisfies the
  * goal so downstream specialists don't gate on it.
  *
- * @brain superior temporal sulcus + ACC: implicit-cue inference +
- * @thinking pattern_recognition
- * @cellType interneuron
- * @neurotransmitter norepinephrine
  *        contradiction detection
  */
 

@@ -271,13 +271,28 @@ export async function createAndStartGeneration(params: {
     const jd_hash =
       payload.jd_hash ?? sha256(payload.jd_text ?? payload.jd_url ?? generation_id).slice(0, 64);
 
+    // Insert a jds row so the generations FK is satisfied (same as Temporal path).
+    try {
+      await durability.db.insert(jds).values({
+        id: _jd_id,
+        source: "api",
+        content_hash: jd_hash.slice(0, 64),
+        raw_text: `${payload.jd_title ?? ""}\n${payload.company ?? ""}`.trim() || "jd",
+      });
+    } catch (jdsErr) {
+      log("error", "POST /generate", "jds insert failed", {
+        error: jdsErr instanceof Error ? jdsErr.message : String(jdsErr),
+      });
+      throw jdsErr;
+    }
+
     // Insert the generation row first to satisfy the generation_requests FK.
     await durability.db
       .insert(generations)
       .values({
         id: generation_id,
         user_id,
-        jd_id: null,
+        jd_id: _jd_id,
         ontology_version: "0.0.1",
       })
       .onConflictDoNothing();
@@ -287,7 +302,7 @@ export async function createAndStartGeneration(params: {
       .values({
         user_id,
         generation_id,
-        jd_id: null,
+        jd_id: _jd_id,
         jd_hash,
         idempotency_key,
         command: payload as unknown as Record<string, unknown>,

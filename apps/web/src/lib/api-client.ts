@@ -80,15 +80,36 @@ export interface OutcomeEstimate {
   confidence: string;
 }
 
+/**
+ * Server-side credentials for the cognitive API. The internal key +
+ * user-id pair mirrors the contract in apps/api/src/lib/internal-auth.ts;
+ * the web route handler / server component verifies the Supabase session
+ * first and forwards the authenticated user id.
+ */
+export function internalAuthHeaders(userId: string): Record<string, string> {
+  const headers: Record<string, string> = { "x-retune-user-id": userId };
+  if (process.env.RETUNE_INTERNAL_API_KEY) {
+    headers["x-retune-internal-key"] = process.env.RETUNE_INTERNAL_API_KEY;
+  }
+  return headers;
+}
+
 export class ApiClient {
   private baseUrl: string;
+  private authHeaders: Record<string, string>;
 
-  constructor(baseUrl: string = API_BASE_URL) {
+  constructor(baseUrl: string = API_BASE_URL, authHeaders: Record<string, string> = {}) {
     this.baseUrl = baseUrl;
+    this.authHeaders = authHeaders;
+  }
+
+  /** A copy of this client that authenticates as the given user (server-side only). */
+  asUser(userId: string): ApiClient {
+    return new ApiClient(this.baseUrl, internalAuthHeaders(userId));
   }
 
   async getApplications(): Promise<Application[]> {
-    const response = await fetch(`${this.baseUrl}/applications`);
+    const response = await fetch(`${this.baseUrl}/applications`, { headers: this.authHeaders });
     if (!response.ok) {
       throw new Error(`Failed to fetch applications: ${response.statusText}`);
     }
@@ -97,7 +118,9 @@ export class ApiClient {
   }
 
   async getApplication(id: string): Promise<ApplicationDetail> {
-    const response = await fetch(`${this.baseUrl}/applications/${id}`);
+    const response = await fetch(`${this.baseUrl}/applications/${id}`, {
+      headers: this.authHeaders,
+    });
     if (!response.ok) {
       throw new Error(`Failed to fetch application: ${response.statusText}`);
     }
@@ -105,7 +128,9 @@ export class ApiClient {
   }
 
   async getBlackboard(id: string): Promise<Blackboard> {
-    const response = await fetch(`${this.baseUrl}/applications/${id}/blackboard`);
+    const response = await fetch(`${this.baseUrl}/applications/${id}/blackboard`, {
+      headers: this.authHeaders,
+    });
     if (!response.ok) {
       throw new Error(`Failed to fetch blackboard: ${response.statusText}`);
     }
@@ -121,7 +146,7 @@ export class ApiClient {
   }): Promise<{ generation_id: string; runtime: string }> {
     const response = await fetch(`${this.baseUrl}/applications`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...this.authHeaders },
       body: JSON.stringify(data),
     });
     if (!response.ok) {

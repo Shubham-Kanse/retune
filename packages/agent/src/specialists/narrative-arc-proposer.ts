@@ -36,18 +36,14 @@
  *
  * Emits child goal: `compose_resume` (priority - 1)
  *
- * @brain default mode network: self-narrative formation + episodic integration
- * @thinking analogical_reasoning
- * @cellType pyramidal
- * @neurotransmitter dopamine
  */
 
 import { randomUUID } from "node:crypto";
 import type { Goal, GoalKind, NarrativeArcArchetype } from "@retune/types";
 import { intervalConfidence } from "@retune/types";
-import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { createMessageWithTool } from "../lib/anthropic";
 import { loadPromptFile } from "../prompts/loader";
-import { register, renderPrompt } from "../prompts/registry";
+import { modelForPrompt, register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 import type { SolverSolution } from "./evidence-solver";
@@ -268,7 +264,7 @@ const ARC_PROPOSAL_TOOL = {
 
 export class NarrativeArcProposer implements Specialist {
   readonly id = "narrative_arc_proposer";
-  readonly display_name = "Narrative Arc Proposer";
+  readonly display_name = "Choosing your story angle";
   readonly brain_region = "default_mode_network";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0.003;
@@ -314,12 +310,11 @@ export class NarrativeArcProposer implements Specialist {
       rationale: string;
     }>;
 
-    const models = getModels();
     try {
       const response = await createMessageWithTool<{ arcs: typeof raw_arcs }>(
         this.id,
         {
-          model: models.smart,
+          model: modelForPrompt("narrative-arc-proposer.draft"),
           max_tokens: 2048,
           system: system_prompt,
           messages: [{ role: "user", content: user_prompt }],
@@ -429,7 +424,7 @@ export class NarrativeArcProposer implements Specialist {
           chosen_feasibility: chosen.feasibility.point,
         }),
         justification: `proposed ${candidates.length} arcs, chose "${chosen.archetype}" (feasibility=${chosen.feasibility.point.toFixed(3)}, thesis="${chosen.thesis.slice(0, 80)}...")`,
-        model_version: models.smart,
+        model_version: modelForPrompt("narrative-arc-proposer.draft"),
         latency_ms: Date.now() - t0,
         cost_usd: this.estimated_cost_usd,
         writes: ["hypotheses.narrative_arcs_candidates", "hypotheses.chosen_narrative_arc"],

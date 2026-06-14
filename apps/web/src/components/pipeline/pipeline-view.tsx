@@ -19,7 +19,7 @@ const STEP_LABELS: Record<string, string> = {
   ats_optimization: "ATS optimisation",
   quality_gate: "Quality gate",
   validation: "Validation",
-  document_generation: "Document generation",
+  document_generation: "Rendering your documents",
   cover_letter: "Cover letter",
   application_strategy: "Application strategy",
   // Cognitive workbench steps
@@ -220,20 +220,20 @@ const ERROR_COPY: Record<
     retryable: true,
   },
   billing_limit_reached: {
-    headline: "Generation credits exhausted",
+    headline: "Tuning credits exhausted",
     detail: "You've used all credits on your current plan.",
-    action: "Upgrade to Pro for unlimited generations.",
+    action: "Upgrade to Pro for unlimited tunings.",
     retryable: false,
   },
   generation_timeout: {
-    headline: "Generation took too long",
+    headline: "Tuning took too long",
     detail: "A pipeline step exceeded the maximum allowed time.",
     action: "Click Retry. Company research sometimes takes longer on busy networks.",
     retryable: true,
   },
   docx_generation_failed: {
-    headline: "DOCX file generation failed",
-    detail: "The resume was generated but couldn't be converted to a Word file.",
+    headline: "DOCX file rendering failed",
+    detail: "The resume was written but couldn't be converted to a Word file.",
     action: "The markdown resume is still available. Try downloading again in a moment.",
     retryable: true,
   },
@@ -244,7 +244,7 @@ const ERROR_COPY: Record<
     retryable: true,
   },
   unknown: {
-    headline: "Generation failed",
+    headline: "Tuning failed",
     detail: "An unexpected error stopped the pipeline.",
     action: "Click Retry. If it keeps failing, try pasting the JD text instead of a URL.",
     retryable: true,
@@ -338,7 +338,7 @@ function getActionUi(action: string, fallback: string): { title: string; message
       return {
         title: "Profile details needed",
         message:
-          "Your profile is missing required details for high-quality generation. Complete your profile, then run generation again.",
+          "Your profile is missing required details for a high-quality tuning. Complete your profile, then start a new tuning.",
       };
     default:
       return { title: "Action required", message: fallback };

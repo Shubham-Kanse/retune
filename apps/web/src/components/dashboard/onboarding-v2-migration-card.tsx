@@ -45,13 +45,12 @@ export function OnboardingV2MigrationCard({ show }: OnboardingV2MigrationCardPro
         <Sparkles className="mt-1 size-4 text-indigo-400" />
         <div>
           <h2 className="text-lg font-semibold tracking-tight text-foreground">
-            We&apos;ve improved our profile system
+            Your profile just got smarter
           </h2>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Take 3 minutes to enrich your profile with the new positioning,
-            voice and preferences questions. Your existing experience and
-            skills carry over — we&apos;ll just add a few more so every resume
-            we generate sounds more like you.
+            Take 3 minutes to add your voice, positioning, and work-style
+            preferences. Your existing evidence carries over — we&apos;ll just
+            learn how you write so every tuning sounds like you.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link

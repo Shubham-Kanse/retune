@@ -1,6 +1,18 @@
 export { run_cognitive_pipeline, type CognitiveRunInput } from "./workbench-runner";
 export { assembleSystemPrompt } from "./prompt-assembler";
 export { getProvider, getModels } from "./lib/provider";
+export {
+  withProviderKeys,
+  activeKeyOverride,
+  byokActive,
+  byokEncryptionConfigured,
+  encryptApiKey,
+  decryptApiKey,
+  keyLast4,
+  maskKey,
+  type ProviderKeyOverrides,
+} from "./lib/byok";
+export { loadProviderKeyOverrides } from "./lib/byok-store";
 export * from "./types";
 export * from "./pipeline/schemas";
 export { authenticateVoice } from "./pipeline/enforcement/voice-authenticator";

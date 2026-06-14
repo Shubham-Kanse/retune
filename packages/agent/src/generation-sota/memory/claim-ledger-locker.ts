@@ -44,7 +44,8 @@ export class ClaimLedgerLocker implements Specialist {
   async run(ctx: SpecialistContext, goal: Goal): Promise<SpecialistResult> {
     const t0 = Date.now();
 
-    const ledgerRaw = (ctx.blackboard as unknown as { sota?: { claim_ledger?: unknown } })?.sota?.claim_ledger;
+    const ledgerRaw = (ctx.blackboard as unknown as { sota?: { claim_ledger?: unknown } })?.sota
+      ?.claim_ledger;
     const parsed = ClaimLedgerSchema.safeParse(ledgerRaw);
     if (!parsed.success) {
       return {

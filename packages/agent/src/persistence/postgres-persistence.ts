@@ -17,7 +17,6 @@
  * `persist_tick()` after blackboard.commit() succeeds, so the seq is
  * already monotonic and unique within a run.
  *
- * @brain hippocampal consolidation: atomic episodic encoding
  */
 
 import type { PgDb } from "@retune/db/pg";

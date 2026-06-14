@@ -7,7 +7,6 @@
  * Listener execution is fire-and-forget from the publisher's perspective,
  * but listener errors are caught, logged, and surfaced via `onError`.
  *
- * @brain thalamus: cortical relay / event router
  */
 
 import type { BlackboardEvent } from "@retune/types";

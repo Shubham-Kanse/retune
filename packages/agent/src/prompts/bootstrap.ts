@@ -32,17 +32,32 @@ const PLACEHOLDER = "[[ unmigrated — see docs/charters/09-ai-ml/prompt-extract
  * These are loaded at bootstrap with their real bodies.
  */
 const EXTRACTED_PROMPT_FILES = [
+  "active-question-handler.compose.md",
   "application-strategy-composer.system.md",
   "ats-patch-loop.system.md",
+  "bullet-composer.compose.md",
+  "bullet-composer.refine.md",
   "bullet-composer.system.md",
   "cover-letter-composer.draft.md",
   "cover-letter-composer.system.md",
+  "cover-letter-composer.tighten.md",
   "critic-ensemble.hiring-manager.md",
+  "critic-ensemble.peer.md",
   "critic-ensemble.recruiter.md",
   "critic-ensemble.self-image.md",
+  "critic-ensemble.skeptic.md",
+  "evidence-solver.match.md",
+  "fairness-monitor.review.md",
+  "gap-mapper.detect.md",
+  "gap-mapper.suggest.md",
   "narrative-arc-proposer.draft.md",
+  "narrative-arc-proposer.score.md",
+  "narrator.summary.md",
+  "outcome-predictor.score.md",
+  "profile-builder.system.md",
   "refuse-or-ship.gate.md",
   "theory-of-mind.recruiter-belief.md",
+  "voice-drift-monitor.audit.md",
 ];
 
 const SPECIALIST_PROMPTS: Array<{ name: string; model_hint: "smart" | "fast" | "frontier" }> = [
@@ -56,18 +71,18 @@ const SPECIALIST_PROMPTS: Array<{ name: string; model_hint: "smart" | "fast" | "
   { name: "narrative-arc-proposer.score", model_hint: "fast" },
   { name: "cover-letter-composer.draft", model_hint: "smart" },
   { name: "cover-letter-composer.tighten", model_hint: "fast" },
-  { name: "critic-ensemble.recruiter", model_hint: "smart" },
-  { name: "critic-ensemble.peer", model_hint: "smart" },
-  { name: "critic-ensemble.skeptic", model_hint: "smart" },
+  { name: "critic-ensemble.recruiter", model_hint: "fast" },
+  { name: "critic-ensemble.peer", model_hint: "fast" },
+  { name: "critic-ensemble.skeptic", model_hint: "fast" },
   { name: "evidence-solver.match", model_hint: "fast" },
   { name: "outcome-predictor.score", model_hint: "fast" },
-  { name: "theory-of-mind.recruiter-belief", model_hint: "smart" },
+  { name: "theory-of-mind.recruiter-belief", model_hint: "fast" },
   { name: "fairness-monitor.review", model_hint: "fast" },
   { name: "voice-drift-monitor.audit", model_hint: "fast" },
-  { name: "well-being-monitor.audit", model_hint: "fast" },
   { name: "active-question-handler.compose", model_hint: "fast" },
-  { name: "ats-patch-loop.system", model_hint: "smart" },
+  { name: "ats-patch-loop.system", model_hint: "fast" },
   { name: "narrator.summary", model_hint: "fast" },
+  { name: "profile-builder.system", model_hint: "frontier" },
 ];
 
 let _bootstrapped = false;

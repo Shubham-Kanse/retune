@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
 import OpenAI from "openai";
-import type { z } from "zod";
+import { activeKeyOverride } from "../../byok";
+import { withLlmBreaker } from "../../egress-breakers";
 import type {
   AIProvider,
   AIResponse,
@@ -24,8 +26,8 @@ import {
   hashRequest,
   hashResponse,
   newProviderResponseId,
-  recordTelemetry,
   reasonedOutputViaStructured,
+  recordTelemetry,
   structuredOutputViaTool,
   zodToJsonSchema,
 } from "../../provider-shared";
@@ -49,11 +51,17 @@ const COST_PER_1K: Record<string, { input: number; output: number; reasoning?: n
   "gpt-4o": { input: 0.0025, output: 0.01 },
   "gpt-4o-mini": { input: 0.00015, output: 0.0006 },
   "gpt-5": { input: 0.015, output: 0.075 },
-  "o1": { input: 0.015, output: 0.06, reasoning: 0.06 },
+  o1: { input: 0.015, output: 0.06, reasoning: 0.06 },
 };
 
-function costFor(model: string, inputTokens: number, outputTokens: number, reasoningTokens = 0): number {
-  const k = COST_PER_1K[model] ?? COST_PER_1K[model.split(":")[0] ?? ""] ?? { input: 0.001, output: 0.005 };
+function costFor(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  reasoningTokens = 0,
+): number {
+  const k = COST_PER_1K[model] ??
+    COST_PER_1K[model.split(":")[0] ?? ""] ?? { input: 0.001, output: 0.005 };
   const inputCost = (inputTokens / 1_000) * k.input;
   const outputCost = (outputTokens / 1_000) * k.output;
   const reasoningCost = ((k.reasoning ?? 0) * reasoningTokens) / 1_000;
@@ -64,10 +72,14 @@ function costFor(model: string, inputTokens: number, outputTokens: number, reaso
 // SDK client — lazy so module evaluation never throws on missing key
 // ---------------------------------------------------------------------------
 
-let _sdkClient: OpenAI | null = null;
+// Clients are cached per API key (not as a process singleton) so BYOK
+// requests from different users each get a client bound to THEIR key
+// while the platform key keeps its own long-lived client.
+const _clients = new Map<string, OpenAI>();
+const MAX_CACHED_CLIENTS = 64;
+
 function getSdkClient(): OpenAI {
-  if (_sdkClient) return _sdkClient;
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = activeKeyOverride("openai") ?? process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new LlmError(
       "OPENAI_API_KEY not set; set AI_PROVIDER=anthropic or provide an OpenAI key",
@@ -75,13 +87,18 @@ function getSdkClient(): OpenAI {
       "openai",
     );
   }
-  _sdkClient = new OpenAI({ apiKey });
-  return _sdkClient;
+  const cacheId = createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
+  const cached = _clients.get(cacheId);
+  if (cached) return cached;
+  if (_clients.size >= MAX_CACHED_CLIENTS) _clients.clear();
+  const client = new OpenAI({ apiKey });
+  _clients.set(cacheId, client);
+  return client;
 }
 
-/** Test-only — reset the cached client so a new env var takes effect. */
+/** Test-only — reset the cached clients so a new env var takes effect. */
 export function _resetOpenAIClient(): void {
-  _sdkClient = null;
+  _clients.clear();
 }
 
 // ---------------------------------------------------------------------------
@@ -318,10 +335,7 @@ class OpenAIProvider implements AIProvider {
    * still validated client-side via Zod — defence in depth against
    * provider drift.
    */
-  async createStructuredOutput<T>(
-    agent: string,
-    params: StructuredOutputParams<T>,
-  ): Promise<T> {
+  async createStructuredOutput<T>(agent: string, params: StructuredOutputParams<T>): Promise<T> {
     const model = params.model;
     const schemaJson = zodToJsonSchema(params.schema);
 
@@ -453,7 +467,11 @@ class OpenAIProvider implements AIProvider {
       cacheCreationTokens: 0,
       costUsd: costFor(model, resp.usage?.prompt_tokens ?? 0, resp.usage?.completion_tokens ?? 0),
       latencyMs: elapsed,
-      requestHash: hashRequest({ model, schema: params.schemaName, effort: params.reasoningEffort }),
+      requestHash: hashRequest({
+        model,
+        schema: params.schemaName,
+        effort: params.reasoningEffort,
+      }),
       responseHash: hashResponse(text),
       createdAt: new Date().toISOString(),
     });
@@ -473,7 +491,9 @@ class OpenAIProvider implements AIProvider {
     // releases. We try the Responses API path first; if not available,
     // we return null so callers know to fall back.
     const sdk = getSdkClient();
-    const responses = (sdk as unknown as { responses?: { create: (input: unknown) => Promise<unknown> } }).responses;
+    const responses = (
+      sdk as unknown as { responses?: { create: (input: unknown) => Promise<unknown> } }
+    ).responses;
     if (!responses) return null;
 
     try {
@@ -545,7 +565,9 @@ class OpenAIProvider implements AIProvider {
    */
   async searchFiles(query: string, opts: FileSearchOptions): Promise<FileSearchResult | null> {
     const sdk = getSdkClient();
-    const responses = (sdk as unknown as { responses?: { create: (input: unknown) => Promise<unknown> } }).responses;
+    const responses = (
+      sdk as unknown as { responses?: { create: (input: unknown) => Promise<unknown> } }
+    ).responses;
     if (!responses) return null;
     try {
       const t0 = Date.now();
@@ -579,7 +601,11 @@ class OpenAIProvider implements AIProvider {
         cacheCreationTokens: 0,
         costUsd: 0,
         latencyMs: elapsed,
-        requestHash: hashRequest({ tool: "file_search", query, vector_store_id: opts.vectorStoreId }),
+        requestHash: hashRequest({
+          tool: "file_search",
+          query,
+          vector_store_id: opts.vectorStoreId,
+        }),
         responseHash: null,
         createdAt: new Date().toISOString(),
       });
@@ -618,7 +644,13 @@ export const openaiProvider = new OpenAIProvider();
 const RETRYABLE_KINDS = new Set<LlmError["kind"]>(["5xx", "rate_limit"]);
 const MAX_RETRIES = 2;
 
+// Breaker wraps the whole retry sequence; see the Anthropic provider for
+// rationale (transient-only tripping, BYOK-safe).
 async function invokeOpenAI<T>(call: () => Promise<T>): Promise<T> {
+  return withLlmBreaker("openai", () => invokeOpenAIWithRetry(call));
+}
+
+async function invokeOpenAIWithRetry<T>(call: () => Promise<T>): Promise<T> {
   let attempt = 0;
   let lastErr: unknown;
   while (attempt <= MAX_RETRIES) {

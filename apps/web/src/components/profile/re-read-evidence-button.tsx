@@ -2,6 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { RefreshCw, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import * as React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ interface ReReadEvidenceButtonProps {
  * and surfaces a diff dialog the user can apply.
  */
 export function ReReadEvidenceButton({ onApplied }: ReReadEvidenceButtonProps) {
+  const tToasts = useTranslations("toasts");
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [applying, setApplying] = React.useState(false);
@@ -65,11 +67,11 @@ export function ReReadEvidenceButton({ onApplied }: ReReadEvidenceButtonProps) {
         body: JSON.stringify({ action: "apply" }),
       });
       if (!res.ok) throw new Error("Apply failed");
-      toast.success("Applied changes from your resume.");
+      toast.success(tToasts("resume_applied"));
       setOpen(false);
       onApplied?.();
     } catch {
-      toast.error("Could not apply changes.");
+      toast.error(tToasts("resume_apply_failed"));
     } finally {
       setApplying(false);
     }

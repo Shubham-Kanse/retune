@@ -1,7 +1,6 @@
 /**
  * Comprehension layer — public surface.
  *
- * @brain Wernicke's, angular gyrus, DLPFC
  */
 
 export { TitleSchemaRetriever } from "./title";

@@ -26,10 +26,6 @@
  * onto the goal stack as an `audit_fairness` goal or surface it on
  * the trace stream.
  *
- * @brain right ventrolateral PFC: cross-cutting bias detection
- * @thinking inhibition
- * @cellType interneuron
- * @neurotransmitter GABA
  */
 
 import { randomUUID } from "node:crypto";

@@ -17,6 +17,7 @@ import type { TraceBusRegistry } from "./lib/trace-bus";
 import { buildTraceBusRegistry } from "./lib/trace-bus-redis";
 import { active_questions_routes } from "./routes/active-questions";
 import { applications_routes } from "./routes/applications";
+import { facts_routes } from "./routes/facts";
 import { generate_routes } from "./routes/generate";
 import { health } from "./routes/health";
 import { outcome_routes } from "./routes/outcome";
@@ -43,22 +44,63 @@ app.use("*", requestLoggerMiddleware);
 // runs the next() chain through them.
 app.use("*", metricsMiddleware);
 
-// Charter 05 Epic 04 — /metrics scrape endpoint (no auth — Prometheus
-// scrapes are typically gated at the network / load-balancer layer).
-app.get("/metrics", metricsHandler);
+// Charter 05 Epic 04 — /metrics scrape endpoint. When
+// RETUNE_METRICS_TOKEN is set, the scrape must present it as a Bearer
+// token; in production the token is mandatory (the endpoint 401s
+// without it rather than exposing internals).
+app.get("/metrics", async (c) => {
+  const token = process.env.RETUNE_METRICS_TOKEN;
+  if (token) {
+    if (c.req.header("authorization") !== `Bearer ${token}`) {
+      return c.json({ error: "unauthorized" }, 401);
+    }
+  } else if (process.env.NODE_ENV === "production") {
+    return c.json({ error: "metrics_token_required" }, 401);
+  }
+  return metricsHandler(c);
+});
 
 // CORS — registered BEFORE routes so preflight + response headers apply
 // to every endpoint. The Next.js dev server (apps/web on :3000) needs
-// this to call the cognitive API on :8787 directly. Production tightens
-// the allowed origin via `RETUNE_API_CORS`.
+// this to call the cognitive API on :8787 directly.
+//
+// `RETUNE_API_CORS` is a comma-separated origin allowlist. Semantics:
+//   - unset in dev   → localhost origins allowed (credentialed)
+//   - unset in prod  → no cross-origin access (no CORS headers emitted)
+//   - "*"            → any origin, but WITHOUT credentials (the spec
+//                      forbids `*` + credentials; browsers reject it)
+//   - "https://a, https://b" → exact-match reflection, credentialed
+const DEV_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"];
 app.use("*", async (c, next) => {
-  const origin = c.req.header("origin") ?? "*";
-  const allowed = process.env.RETUNE_API_CORS ?? "*";
-  c.header("Access-Control-Allow-Origin", allowed === "*" ? "*" : origin);
-  c.header("Vary", "Origin");
-  c.header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
-  c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  c.header("Access-Control-Allow-Credentials", "true");
+  const origin = c.req.header("origin");
+  const conf = process.env.RETUNE_API_CORS;
+  const isProd = process.env.NODE_ENV === "production";
+
+  let allowOrigin: string | null = null;
+  let allowCredentials = false;
+  if (conf === "*") {
+    allowOrigin = "*";
+  } else if (conf) {
+    const allowlist = conf
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (origin && allowlist.includes(origin)) {
+      allowOrigin = origin;
+      allowCredentials = true;
+    }
+  } else if (!isProd && origin && DEV_ORIGINS.includes(origin)) {
+    allowOrigin = origin;
+    allowCredentials = true;
+  }
+
+  if (allowOrigin) {
+    c.header("Access-Control-Allow-Origin", allowOrigin);
+    c.header("Vary", "Origin");
+    c.header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS");
+    c.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+    if (allowCredentials) c.header("Access-Control-Allow-Credentials", "true");
+  }
   if (c.req.method === "OPTIONS") {
     return c.body(null, 204);
   }
@@ -85,6 +127,7 @@ app.route("/v1", result_routes(registry));
 app.route("/v1", outcome_routes());
 app.route("/v1", active_questions_routes());
 app.route("/v1", status_routes());
+app.route("/v1", facts_routes());
 
 // Legacy unprefixed mounts — emit deprecation headers on every response.
 app.use("*", async (c, next) => {

@@ -5,10 +5,11 @@
  * All application data now flows through the cognitive system's PostgreSQL store.
  */
 
-import { generations, jds } from "@retune/db/pg";
+import { generations } from "@retune/db/pg";
 import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import { getIdentity, ownsRow, requireIdentity } from "../lib/auth-middleware";
 import { acquire_durability } from "../runtime/persistence-factory";
 
 const log = (level: "info" | "warn" | "error", tag: string, msg: string, meta?: unknown) => {
@@ -29,15 +30,15 @@ const CreateApplicationSchema = z.object({
 export function applications_routes() {
   const app = new Hono();
 
-  // GET /applications - List all generations for the user
-  app.get("/applications", async (c) => {
+  // GET /applications - List the caller's generations
+  app.get("/applications", requireIdentity(), async (c) => {
     const durability = await acquire_durability();
     if (!durability) {
       return c.json({ error: "persistence_not_configured" }, 503);
     }
 
-    // TODO: Add user authentication and filter by user_id
-    const user_id = durability.default_user_id;
+    const identity = getIdentity(c);
+    const user_id = identity.enforced ? identity.user_id : durability.default_user_id;
 
     const rows = await durability.db
       .select({
@@ -70,7 +71,7 @@ export function applications_routes() {
   });
 
   // GET /applications/:id - Get single application with blackboard
-  app.get("/applications/:id", async (c) => {
+  app.get("/applications/:id", requireIdentity(), async (c) => {
     const id = c.req.param("id");
     const durability = await acquire_durability();
     if (!durability) {
@@ -84,7 +85,8 @@ export function applications_routes() {
       .limit(1)
       .then((rows) => rows[0]);
 
-    if (!row) {
+    // 404 (not 403) on other users' rows — don't leak row existence.
+    if (!row || !ownsRow(getIdentity(c), row.user_id)) {
       return c.json({ error: "not_found" }, 404);
     }
 
@@ -103,7 +105,7 @@ export function applications_routes() {
   });
 
   // GET /applications/:id/blackboard - Get just the blackboard data
-  app.get("/applications/:id/blackboard", async (c) => {
+  app.get("/applications/:id/blackboard", requireIdentity(), async (c) => {
     const id = c.req.param("id");
     const durability = await acquire_durability();
     if (!durability) {
@@ -111,13 +113,13 @@ export function applications_routes() {
     }
 
     const row = await durability.db
-      .select({ blackboard: generations.current_blackboard })
+      .select({ blackboard: generations.current_blackboard, user_id: generations.user_id })
       .from(generations)
       .where(eq(generations.id, id))
       .limit(1)
       .then((rows) => rows[0]);
 
-    if (!row) {
+    if (!row || !ownsRow(getIdentity(c), row.user_id)) {
       return c.json({ error: "not_found" }, 404);
     }
 
@@ -125,7 +127,7 @@ export function applications_routes() {
   });
 
   // POST /applications - Create new application (triggers generation)
-  app.post("/applications", async (c) => {
+  app.post("/applications", requireIdentity(), async (c) => {
     const body = await c.req.json().catch(() => ({}));
     const parsed = CreateApplicationSchema.safeParse(body);
 
@@ -134,10 +136,16 @@ export function applications_routes() {
       return c.json({ error: "invalid_request", issues: parsed.error.issues }, 400);
     }
 
-    // Forward to the existing /generate endpoint
+    // Forward to the existing /generate endpoint, preserving the caller's
+    // credentials so the generation lands on the right user.
+    const forwarded: Record<string, string> = { "Content-Type": "application/json" };
+    for (const h of ["authorization", "x-retune-internal-key", "x-retune-user-id"]) {
+      const v = c.req.header(h);
+      if (v) forwarded[h] = v;
+    }
     const generateResponse = await fetch(`http://localhost:${process.env.PORT ?? 8787}/generate`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: forwarded,
       body: JSON.stringify({
         jd_text: parsed.data.jd_text,
         jd_url: parsed.data.jd_url,

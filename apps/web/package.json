@@ -9,7 +9,8 @@
     "start": "next start",
     "startup:selfcheck": "node scripts/startup-selfcheck.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test"
   },

@@ -5,7 +5,6 @@
  * concentrates here so workflow tests exercise the exact same code path
  * as production.
  *
- * @brain DLPFC wiring: substrate assembly
  */
 
 import type { PgDb } from "@retune/db/pg";
@@ -35,7 +34,6 @@ import { ActiveQuestionHandler } from "../../specialists/active-question-handler
 import { SequentialBulletComposer } from "../../specialists/bullet-composer";
 import { CriticEnsemble } from "../../specialists/critic-ensemble";
 import { DocumentRenderer } from "../../specialists/document-renderer";
-import { EmotionalStateModeler } from "../../specialists/emotional-state-modeler";
 import { EvidenceSolver } from "../../specialists/evidence-solver";
 import { FairnessMonitor } from "../../specialists/fairness-monitor";
 import { GapMapper } from "../../specialists/gap-mapper";
@@ -45,7 +43,6 @@ import { RefuseOrShipGate } from "../../specialists/refuse-or-ship-gate";
 import { SpecialistRegistry } from "../../specialists/registry";
 import { TheoryOfMindSpecialist } from "../../specialists/theory-of-mind";
 import { VoiceDriftMonitor } from "../../specialists/voice-drift-monitor";
-import { WellBeingMonitor } from "../../specialists/well-being-monitor";
 import { AttentionScheduler } from "../../workbench/attention-scheduler";
 import { AuditTrail } from "../../workbench/audit-trail";
 import { BlackboardStore } from "../../workbench/blackboard";
@@ -162,7 +159,6 @@ function build_registry(deps: SubstrateDeps): SpecialistRegistry {
   // Strategy specialists (commit #9) — deterministic, no deps.
   specialists.push(new GapMapper());
   specialists.push(new EvidenceSolver());
-  specialists.push(new EmotionalStateModeler());
   // Production specialists (commit #10) — LLM-driven.
   specialists.push(new NarrativeArcProposer());
   specialists.push(new SequentialBulletComposer());
@@ -222,8 +218,6 @@ export function build_fresh_substrate(input: {
       }
     },
   });
-  // WellBeingMonitor: detects candidate distress signals.
-  bus.subscribe(new WellBeingMonitor({ staging_queue: conflict_staging }));
   const blackboard = new BlackboardStore(
     build_blackboard({
       generation_id: input.generation_id,

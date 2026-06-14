@@ -21,12 +21,12 @@ import { randomUUID } from "node:crypto";
 import {
   type CandidateModel,
   CandidateModelSchema,
+  type CareerTimelineEntry,
   type IdentityField,
   type LeadershipInventoryEntry,
   type MetricInventoryEntry,
   type PreferenceModel,
   type SkillInventoryEntry,
-  type CareerTimelineEntry,
 } from "@retune/types";
 
 export interface BuildCandidateModelInput {
@@ -37,12 +37,17 @@ export interface BuildCandidateModelInput {
 
 export interface BuildCandidateModelResult {
   candidate_model: CandidateModel;
-  source_records: Array<{ id: string; kind: "career_profile" | "profile_markdown" | "user_message" }>;
+  source_records: Array<{
+    id: string;
+    kind: "career_profile" | "profile_markdown" | "user_message";
+  }>;
   warnings: string[];
 }
 
-const METRIC_RE = /(\d+(?:[.,]\d+)?\s?(?:%|x|×|\+|k|m|b|bn|million|billion|million\/yr|users|clients|hours|days|weeks|months|qps|rps|tps|nodes|teams|engineers|reports|customers))/gi;
-const LEADERSHIP_RE = /\b(led|managed|directed|owned|coached|mentored|hired|spun up|stood up|architect(?:ed)?)\s+(?:a\s+)?(?:team|org|cohort|group|guild|chapter|squad|workstream|crew|of)\b/gi;
+const METRIC_RE =
+  /(\d+(?:[.,]\d+)?\s?(?:%|x|×|\+|k|m|b|bn|million|billion|million\/yr|users|clients|hours|days|weeks|months|qps|rps|tps|nodes|teams|engineers|reports|customers))/gi;
+const LEADERSHIP_RE =
+  /\b(led|managed|directed|owned|coached|mentored|hired|spun up|stood up|architect(?:ed)?)\s+(?:a\s+)?(?:team|org|cohort|group|guild|chapter|squad|workstream|crew|of)\b/gi;
 const ACHIEVEMENT_VERBS = [
   "shipped",
   "launched",
@@ -185,7 +190,9 @@ export function buildCandidateModelDeterministic(
     }
 
     // Domains
-    const domainsField = (profile.professionalProfile as Record<string, { value?: unknown[] }> | undefined)?.domainExperience?.value;
+    const domainsField = (
+      profile.professionalProfile as Record<string, { value?: unknown[] }> | undefined
+    )?.domainExperience?.value;
     if (Array.isArray(domainsField)) {
       for (const d of domainsField) if (typeof d === "string") domain_inventory.push(d);
     }
@@ -253,7 +260,12 @@ interface IdentityFieldRaw {
 }
 
 function emptyIdentity(): CandidateModel["identity"] {
-  const f = (): IdentityField => ({ value: null, source_ids: [], confidence: 0, user_confirmed: false });
+  const f = (): IdentityField => ({
+    value: null,
+    source_ids: [],
+    confidence: 0,
+    user_confirmed: false,
+  });
   return {
     full_name: f(),
     email: f(),
@@ -293,9 +305,12 @@ function liftIdentity(raw: IdentityFieldRaw | undefined, source_ids: string[]): 
 function liftPreferences(profile: Record<string, unknown>, source_ids: string[]): PreferenceModel {
   const rwp = profile.resumeWritingPreferences as Record<string, { value?: unknown }> | undefined;
   const ci = profile.careerIntent as Record<string, { value?: unknown }> | undefined;
-  const arr = (v: unknown): string[] => (Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : []);
+  const arr = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
   const wpRaw = (ci?.workPreference?.value as string | undefined) ?? "unknown";
-  const wp = ["remote", "hybrid", "onsite", "open"].includes(wpRaw) ? (wpRaw as PreferenceModel["work_preference"]) : "unknown";
+  const wp = ["remote", "hybrid", "onsite", "open"].includes(wpRaw)
+    ? (wpRaw as PreferenceModel["work_preference"])
+    : "unknown";
 
   return {
     emphasis_areas: arr(rwp?.emphasisAreas?.value),
@@ -373,7 +388,10 @@ function mineAchievement(
   sink: CandidateModel["achievement_inventory"],
   source_ids: string[],
 ): void {
-  const sentences = text.split(/[.!?\n]+/).map((s) => s.trim()).filter(Boolean);
+  const sentences = text
+    .split(/[.!?\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   for (const s of sentences) {
     const lc = s.toLowerCase();
     const verb = ACHIEVEMENT_VERBS.find((v) => lc.startsWith(v) || lc.includes(` ${v} `));
@@ -389,7 +407,9 @@ function mineAchievement(
 }
 
 function extractUnit(value: string): string | null {
-  const m = value.match(/(%|x|×|\+|k|m|b|bn|million|billion|qps|rps|tps|nodes|teams|engineers|reports|customers|users|clients)/i);
+  const m = value.match(
+    /(%|x|×|\+|k|m|b|bn|million|billion|qps|rps|tps|nodes|teams|engineers|reports|customers|users|clients)/i,
+  );
   return m?.[0]?.toLowerCase() ?? null;
 }
 
@@ -416,7 +436,9 @@ function inferScopeFromContext(text: string, idx: number): LeadershipInventoryEn
 
 function extractTeamSize(text: string, idx: number): number | null {
   const win = text.slice(Math.max(0, idx - 60), idx + 80);
-  const m = win.match(/(\d{1,3})\s+(?:engineers?|reports|directs|people|members?|developers|designers)/i);
+  const m = win.match(
+    /(\d{1,3})\s+(?:engineers?|reports|directs|people|members?|developers|designers)/i,
+  );
   if (m && m[1]) {
     const n = Number(m[1]);
     if (Number.isFinite(n) && n > 0 && n < 10_000) return n;

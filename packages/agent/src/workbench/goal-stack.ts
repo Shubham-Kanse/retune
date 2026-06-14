@@ -15,7 +15,6 @@
  *   - `attempt_count` hard cap: when `max_attempts` is exceeded the
  *     goal is marked abandoned with `status_reason="max_attempts_exceeded"`.
  *
- * @brain DLPFC: working-memory goal maintenance
  */
 
 import { randomUUID } from "node:crypto";
@@ -62,7 +61,9 @@ export class GoalStack {
       const existing = this.goals.find(
         (g) =>
           g.semantic_key === input.semantic_key &&
-          (g.status === "pending" || g.status === "in_progress" || g.status === "blocked_on_prerequisites"),
+          (g.status === "pending" ||
+            g.status === "in_progress" ||
+            g.status === "blocked_on_prerequisites"),
       );
       if (existing) return existing;
     }
@@ -111,7 +112,9 @@ export class GoalStack {
       const existing = this.goals.find(
         (g) =>
           g.semantic_key === goal.semantic_key &&
-          (g.status === "pending" || g.status === "in_progress" || g.status === "blocked_on_prerequisites"),
+          (g.status === "pending" ||
+            g.status === "in_progress" ||
+            g.status === "blocked_on_prerequisites"),
       );
       if (existing) {
         // Semantic dedupe — drop the duplicate quietly. The chain
@@ -154,7 +157,11 @@ export class GoalStack {
     let best: Goal | undefined;
     for (const g of this.goals) {
       if (g.status !== "pending") continue;
-      if (g.attempt_count !== undefined && g.max_attempts !== undefined && g.attempt_count >= g.max_attempts) {
+      if (
+        g.attempt_count !== undefined &&
+        g.max_attempts !== undefined &&
+        g.attempt_count >= g.max_attempts
+      ) {
         continue;
       }
       if (opts.blackboard && !this.prerequisites_met(g, opts.blackboard)) continue;
@@ -175,9 +182,7 @@ export class GoalStack {
    * `blocked_on_prerequisites` for diagnostic/audit purposes.
    */
   pending_blocked_by_prerequisites(reader: BlackboardReader): Goal[] {
-    return this.goals.filter(
-      (g) => g.status === "pending" && !this.prerequisites_met(g, reader),
-    );
+    return this.goals.filter((g) => g.status === "pending" && !this.prerequisites_met(g, reader));
   }
 
   private prerequisites_met(goal: Goal, reader: BlackboardReader): boolean {

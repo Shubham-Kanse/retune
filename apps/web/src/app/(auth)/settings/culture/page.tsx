@@ -1,22 +1,22 @@
 "use client";
 
 import { PageHeader, PageShell } from "@/components/app/page-shell";
-import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const AXES = [
-  { key: "individualVsCollective", left: "Individual contributor", right: "Team-first" },
-  { key: "directVsDiplomatic", left: "Direct communicator", right: "Diplomatic" },
-  { key: "fastVsDeliberate", left: "Move fast", right: "Deliberate" },
-  { key: "hierarchyVsFlat", left: "Clear hierarchy", right: "Flat org" },
-  { key: "remoteVsOnsite", left: "Remote-first", right: "Onsite-first" },
-  { key: "explicitVsImplicit", left: "Explicit norms", right: "Implicit culture" },
-  { key: "riskVsSafe", left: "Risk-taking", right: "Risk-averse" },
-  { key: "missionVsCompensation", left: "Mission-driven", right: "Compensation-driven" },
+const AXIS_KEYS = [
+  "individualVsCollective",
+  "directVsDiplomatic",
+  "fastVsDeliberate",
+  "hierarchyVsFlat",
+  "remoteVsOnsite",
+  "explicitVsImplicit",
+  "riskVsSafe",
+  "missionVsCompensation",
 ] as const;
 
-type AxisKey = (typeof AXES)[number]["key"];
+type AxisKey = (typeof AXIS_KEYS)[number];
 type Axes = Record<AxisKey, number>;
 
 const DEFAULT_AXES: Axes = {
@@ -31,6 +31,7 @@ const DEFAULT_AXES: Axes = {
 };
 
 export default function CultureSettingsPage() {
+  const t = useTranslations("settings_culture");
   const [axes, setAxes] = useState<Axes>(DEFAULT_AXES);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -92,17 +93,17 @@ export default function CultureSettingsPage() {
   return (
     <PageShell>
       <PageHeader
-        eyebrow="Settings"
-        title="Cultural preferences"
-        subtitle="Set your work style preferences so applications are calibrated to roles that suit you."
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        subtitle={t("subtitle")}
         action={
           <div className="flex items-center gap-3">
             {saved ? (
-              <span className="text-xs text-muted-foreground">Saved</span>
+              <span className="text-xs text-muted-foreground">{t("saved")}</span>
             ) : null}
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/settings">Back to settings</Link>
-            </Button>
+            <Link href="/settings" className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              {t("back")}
+            </Link>
           </div>
         }
       />
@@ -113,13 +114,13 @@ export default function CultureSettingsPage() {
         </div>
       ) : (
         <div className="space-y-6">
-          {AXES.map(({ key, left, right }) => {
+          {AXIS_KEYS.map((key) => {
             const value = axes[key];
             return (
               <div key={key} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{left}</span>
-                  <span className="text-xs text-muted-foreground">{right}</span>
+                  <span className="text-xs text-muted-foreground">{t(`axes.${key}_left` as Parameters<typeof t>[0])}</span>
+                  <span className="text-xs text-muted-foreground">{t(`axes.${key}_right` as Parameters<typeof t>[0])}</span>
                 </div>
                 <input
                   type="range"
@@ -129,10 +130,11 @@ export default function CultureSettingsPage() {
                   value={value}
                   onChange={(e) => handleChange(key, e.target.value)}
                   className="w-full accent-foreground"
+                  aria-label={`${t(`axes.${key}_left` as Parameters<typeof t>[0])} to ${t(`axes.${key}_right` as Parameters<typeof t>[0])}`}
                 />
                 <div className="flex justify-center">
                   <span className="text-[10px] tabular-nums text-muted-foreground">
-                    {value > 0 ? `+${value}` : value === 0 ? "Balanced" : value}
+                    {value > 0 ? `+${value}` : value === 0 ? t("balanced") : value}
                   </span>
                 </div>
               </div>

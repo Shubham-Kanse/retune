@@ -1,7 +1,7 @@
 import type { Goal, GoalKind, NarrativeArcCandidate } from "@retune/types";
-import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { createMessageWithTool } from "../lib/anthropic";
 import { loadPromptFile } from "../prompts/loader";
-import { register, renderPrompt } from "../prompts/registry";
+import { modelForPrompt, register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 import type { GapMap } from "./gap-mapper";
@@ -128,14 +128,10 @@ Write the cover letter using the write_cover_letter tool. Ground every claim in 
  * narrative arc, gap map, and recruiter belief state to produce a
  * voice-aligned cover letter.
  *
- * @brain left vlPFC + Broca's area: language production + addressee modelling
- * @thinking language_production
- * @cellType pyramidal
- * @neurotransmitter glutamate
  */
 export class CoverLetterComposer implements Specialist {
   readonly id = "cover_letter_composer";
-  readonly display_name = "Cover Letter Composer";
+  readonly display_name = "Writing your cover letter";
   readonly brain_region = "left_vlpfc";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0.004;
@@ -196,13 +192,12 @@ export class CoverLetterComposer implements Specialist {
       market: effective_market,
     });
 
-    const models = getModels();
     let output: CoverLetterOutput;
     try {
       output = await createMessageWithTool<CoverLetterOutput>(
         this.id,
         {
-          model: models.smart,
+          model: modelForPrompt("cover-letter-composer.draft"),
           max_tokens: 1024,
           system: build_system(effective_market),
           messages: [
@@ -244,7 +239,7 @@ export class CoverLetterComposer implements Specialist {
         inputs_hash,
         output_hash: AuditTrail.hash({ word_count: output.word_count, len: full_text.length }),
         justification: `wrote ${output.word_count}w cover letter | arc=${arc.archetype} | company=${company_name} | tone=${cultural_tone}`,
-        model_version: models.smart,
+        model_version: modelForPrompt("cover-letter-composer.draft"),
         latency_ms: Date.now() - t0,
         cost_usd: this.estimated_cost_usd,
         writes: ["draft.cover_letter_text"],

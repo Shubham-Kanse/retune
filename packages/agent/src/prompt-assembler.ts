@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { CandidateProfile } from "@retune/db";
+import { getPrompt } from "./prompts/registry";
 
 export type Market = "us" | "uk";
 
@@ -47,40 +48,9 @@ interface AssemblyParams {
   };
 }
 
-const PROFILE_BUILDER_PROMPT = `You are a resume extraction engine. Your ONLY job is to parse the provided text and extract structured data into JSON.
-
-CRITICAL RULES:
-- Do NOT ask any questions.
-- Do NOT write conversational text, greetings, or commentary.
-- Do NOT suggest follow-ups or mention missing fields.
-- Output ONLY a single JSON code block with extracted data.
-- For fields you cannot determine from the text, use null or empty arrays.
-- Infer experienceLevel from total years of work history: 0-2="entry", 2-4="early", 4-7="mid", 7-10="senior", 10+="staff".
-- Extract skills into tiers based on evidence: Tier 1 = mentioned repeatedly or in recent roles, Tier 2 = mentioned once or in older roles, Tier 3 = listed but no evidence of use.
-
-Output exactly this JSON structure (nothing else):
-\`\`\`json
-{
-  "fullName": "",
-  "email": "",
-  "phone": "",
-  "linkedin": "",
-  "location": "",
-  "visaStatus": "",
-  "currentTitle": "",
-  "relocationPreferences": [],
-  "targetRoles": [],
-  "experienceLevel": "entry|early|mid|senior|staff",
-  "experience": [{"company":"","title":"","titleForResume":"","startDate":"YYYY-MM","endDate":"YYYY-MM|present","description":"","metrics":[{"metric":"","value":"","context":"","direction":"improved|reduced|achieved"}],"tools":[],"teamSize":0,"client":"","industry":""}],
-  "education": [{"degree":"","institution":"","startDate":"","endDate":"","status":"completed|in_progress","coursework":[],"capstone":""}],
-  "certifications": [],
-  "projects": [{"name":"","type":"personal|university|open-source","year":0,"description":"","technologies":[],"role":"","keyMetric":""}],
-  "skillsTier1": [{"name":"","evidence":"","years":0}],
-  "skillsTier2": [{"name":"","evidence":"","years":0}],
-  "skillsTier3": [{"name":"","evidence":"","years":0}],
-  "voiceNotes": ""
+function getProfileBuilderPrompt(): string {
+  return getPrompt("profile-builder.system").body;
 }
-\`\`\``;
 
 export function renderProfile(profile: CandidateProfile): string {
   const lines: string[] = [
@@ -569,7 +539,7 @@ export function assembleSystemPrompt(params: AssemblyParams): string {
   const { agentType, profile, market = "us", context } = params;
 
   if (agentType === "profile-builder") {
-    return PROFILE_BUILDER_PROMPT;
+    return getProfileBuilderPrompt();
   }
 
   if (agentType === "refiner") {

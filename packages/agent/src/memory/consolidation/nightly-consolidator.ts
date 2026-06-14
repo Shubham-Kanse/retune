@@ -24,7 +24,6 @@
  *   - Uses PersistenceStore interface for all DB reads/writes
  *   - Returns a ConsolidationReport summarizing what changed
  *
- * @brain entorhinal cortex: memory gating + nightly consolidation
  */
 
 import type { BetaPrior } from "@retune/types";

@@ -43,8 +43,8 @@ import {
   type Goal,
   type GoalKind,
   type RenderedApplicationPackage,
-  type RenderedArtifact,
   RenderedApplicationPackageSchema,
+  type RenderedArtifact,
   type SotaClaim,
 } from "@retune/types";
 import { AuditTrail } from "../../workbench/audit-trail";
@@ -69,7 +69,13 @@ export class ApplicationPackageRenderer implements Specialist {
     // Read the locked claim ledger and the winning draft variant.
     const ledgerParse = ClaimLedgerSchema.safeParse(sotaRaw.claim_ledger);
     if (!ledgerParse.success || !ledgerParse.data.locked) {
-      return skipResult(this.id, goal, t0, "ledger_not_locked", "no locked claim ledger — refusing to render");
+      return skipResult(
+        this.id,
+        goal,
+        t0,
+        "ledger_not_locked",
+        "no locked claim ledger — refusing to render",
+      );
     }
     const ledger = ledgerParse.data;
 
@@ -78,7 +84,13 @@ export class ApplicationPackageRenderer implements Specialist {
       : [];
     const finalVariant = variants.find((v) => v.is_final);
     if (!finalVariant) {
-      return skipResult(this.id, goal, t0, "no_final_variant", "draft tournament did not produce a winner");
+      return skipResult(
+        this.id,
+        goal,
+        t0,
+        "no_final_variant",
+        "draft tournament did not produce a winner",
+      );
     }
 
     // Verify that every claim_id used by the winner is in the locked ledger.
@@ -120,7 +132,9 @@ export class ApplicationPackageRenderer implements Specialist {
 
     // Provenance map — JSON keyed by claim id.
     const provenance = renderClaimProvenanceMap(consumedClaims);
-    artifacts.push(makeArtifact("claim_provenance_map", JSON.stringify(provenance, null, 2), renderedAt));
+    artifacts.push(
+      makeArtifact("claim_provenance_map", JSON.stringify(provenance, null, 2), renderedAt),
+    );
 
     // Interview defense sheet — for every claim shown to the recruiter,
     // give the candidate a sharp question they should rehearse.
@@ -129,7 +143,9 @@ export class ApplicationPackageRenderer implements Specialist {
 
     // Audit packet — projection of the GDPR Article 22 disclosure.
     const auditPacket = renderAuditPacket(ctx.blackboard, finalVariant, ledger);
-    artifacts.push(makeArtifact("audit_packet_json", JSON.stringify(auditPacket, null, 2), renderedAt));
+    artifacts.push(
+      makeArtifact("audit_packet_json", JSON.stringify(auditPacket, null, 2), renderedAt),
+    );
 
     // ── 2. Verify parseability ───────────────────────────────────
     const failures: string[] = [];
@@ -218,7 +234,11 @@ function verifyArtifact(a: RenderedArtifact): boolean {
     // future renderer points to a remote URI we'd validate by fetching.
     return a.uri.startsWith("inline:") || a.uri.startsWith("https://");
   }
-  if (a.kind.endsWith("_markdown") || a.kind === "interview_defense_sheet" || a.kind === "strategy_memo") {
+  if (
+    a.kind.endsWith("_markdown") ||
+    a.kind === "interview_defense_sheet" ||
+    a.kind === "strategy_memo"
+  ) {
     return a.uri.startsWith("inline:") || a.uri.startsWith("https://");
   }
   if (a.kind.endsWith("_docx") || a.kind.endsWith("_pdf")) {
@@ -235,9 +255,7 @@ function renderResumeMarkdown(
   // Trust the winning variant's markdown; append a hidden provenance
   // footer so claim ids round-trip through download/upload cycles.
   const trimmed = variantMarkdown.trim();
-  const claimList = claims
-    .map((c) => `- ${c.id}: ${c.text.slice(0, 120)}`)
-    .join("\n");
+  const claimList = claims.map((c) => `- ${c.id}: ${c.text.slice(0, 120)}`).join("\n");
   return `${trimmed}\n\n<!-- retune:claim-provenance\n${claimList}\n-->\n`;
 }
 

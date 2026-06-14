@@ -19,16 +19,12 @@
  * Writes:
  *   - draft.strategy_text
  *
- * @brain orbitofrontal cortex: prospective planning + outcome valuation
- * @thinking prospective_planning
- * @cellType pyramidal
- * @neurotransmitter dopamine
  */
 
 import type { Goal, GoalKind } from "@retune/types";
-import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { createMessageWithTool } from "../lib/anthropic";
 import { loadPromptFile } from "../prompts/loader";
-import { register, renderPrompt } from "../prompts/registry";
+import { modelForPrompt, register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 import type { GapMap } from "./gap-mapper";
@@ -171,7 +167,7 @@ Make every piece of advice specific to ${company_name} and the ${role_name} role
 
 export class ApplicationStrategyComposer implements Specialist {
   readonly id = "application_strategy_composer";
-  readonly display_name = "Application Strategy Composer";
+  readonly display_name = "Writing your application strategy";
   readonly brain_region = "orbitofrontal";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0.003;
@@ -227,13 +223,12 @@ export class ApplicationStrategyComposer implements Specialist {
       outcome_point,
     });
 
-    const models = getModels();
     let output: StrategyOutput;
     try {
       output = await createMessageWithTool<StrategyOutput>(
         this.id,
         {
-          model: models.smart,
+          model: modelForPrompt("application-strategy-composer.system"),
           max_tokens: 2048,
           system: build_system(effective_market),
           messages: [
@@ -284,7 +279,7 @@ export class ApplicationStrategyComposer implements Specialist {
           `${output.technical_prep_topics.length} prep topics`,
           `${output.submission_timeline.length} timeline steps`,
         ].join(" | "),
-        model_version: models.smart,
+        model_version: modelForPrompt("application-strategy-composer.system"),
         latency_ms: Date.now() - t0,
         cost_usd: this.estimated_cost_usd,
         writes: ["draft.strategy_text"],

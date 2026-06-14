@@ -15,7 +15,6 @@
  *   - dev: `HttpTransport` against `apps/ml`'s FastAPI (commit #1)
  *   - prod: `GrpcTransport` against the gRPC server (commit #5)
  *
- * @brain thalamus + cerebellar precision: routing + validation
  */
 
 import {
@@ -69,6 +68,7 @@ export class MLClient {
     this.transport = config.transport;
     this.retry_policy = config.retry_policy ?? DEFAULT_RETRY_POLICY;
     this.breaker = new CircuitBreaker({
+      name: "ml",
       failureThreshold: config.circuit_breaker?.failureThreshold ?? 5,
       successThreshold: config.circuit_breaker?.successThreshold ?? 3,
       timeoutMs: config.circuit_breaker?.timeoutMs ?? 60_000,

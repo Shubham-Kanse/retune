@@ -1,5 +1,8 @@
+import { createHash } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
+import { activeKeyOverride } from "../../byok";
+import { withLlmBreaker } from "../../egress-breakers";
 import type {
   AIProvider,
   AIResponse,
@@ -25,8 +28,8 @@ import {
   drainTelemetry,
   hashRequest,
   hashResponse,
-  recordTelemetry,
   reasonedOutputViaStructured,
+  recordTelemetry,
   structuredOutputViaTool,
 } from "../../provider-shared";
 
@@ -45,11 +48,14 @@ export const ANTHROPIC_MODELS: Models = {
 // (technical-2.0 §13: jsdom + missing key broke 130 web vitest tests in v1.0.)
 // ---------------------------------------------------------------------------
 
-let _sdkClient: Anthropic | null = null;
+// Clients are cached per API key (not as a process singleton) so BYOK
+// requests from different users each get a client bound to THEIR key
+// while the platform key keeps its own long-lived client.
+const _clients = new Map<string, Anthropic>();
+const MAX_CACHED_CLIENTS = 64;
 
 function getSdkClient(): Anthropic {
-  if (_sdkClient) return _sdkClient;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = activeKeyOverride("anthropic") ?? process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     throw new LlmError(
       "ANTHROPIC_API_KEY not set; set AI_PROVIDER=openai or provide an Anthropic key",
@@ -57,13 +63,18 @@ function getSdkClient(): Anthropic {
       "anthropic",
     );
   }
-  _sdkClient = new Anthropic({ apiKey });
-  return _sdkClient;
+  const cacheId = createHash("sha256").update(apiKey).digest("hex").slice(0, 16);
+  const cached = _clients.get(cacheId);
+  if (cached) return cached;
+  if (_clients.size >= MAX_CACHED_CLIENTS) _clients.clear();
+  const client = new Anthropic({ apiKey });
+  _clients.set(cacheId, client);
+  return client;
 }
 
-/** Test-only — reset the cached client so a new env var takes effect. */
+/** Test-only — reset the cached clients so a new env var takes effect. */
 export function _resetAnthropicClient(): void {
-  _sdkClient = null;
+  _clients.clear();
 }
 
 // ---------------------------------------------------------------------------
@@ -243,7 +254,10 @@ class AnthropicProvider implements AIProvider {
       requestHash: hashRequest({
         model: params.model,
         messages: params.messages,
-        system: typeof params.system === "string" ? params.system : params.system.map((s) => s.text).join("\n"),
+        system:
+          typeof params.system === "string"
+            ? params.system
+            : params.system.map((s) => s.text).join("\n"),
       }),
       responseHash: hashResponse(aiResp.content),
       createdAt: new Date().toISOString(),
@@ -283,10 +297,7 @@ class AnthropicProvider implements AIProvider {
    * the Zod schema's tool form. The result is Zod-validated by
    * `structuredOutputViaTool`.
    */
-  async createStructuredOutput<T>(
-    agent: string,
-    params: StructuredOutputParams<T>,
-  ): Promise<T> {
+  async createStructuredOutput<T>(agent: string, params: StructuredOutputParams<T>): Promise<T> {
     return structuredOutputViaTool(this, agent, params);
   }
 
@@ -373,7 +384,10 @@ class AnthropicProvider implements AIProvider {
     return null;
   }
 
-  async runBackground<T>(_agent: string, _params: BackgroundParams<T>): Promise<BackgroundRun<T> | null> {
+  async runBackground<T>(
+    _agent: string,
+    _params: BackgroundParams<T>,
+  ): Promise<BackgroundRun<T> | null> {
     return null;
   }
 
@@ -392,8 +406,16 @@ function anthropicCostFor(
   },
 ): number {
   // Conservative per-tier rates per technical-2.0 §4.2.
-  const COST: Record<string, { input: number; output: number; cacheRead: number; cacheCreate: number }> = {
-    "claude-haiku-4-5": { input: 0.00025, output: 0.00125, cacheRead: 0.00003, cacheCreate: 0.0003 },
+  const COST: Record<
+    string,
+    { input: number; output: number; cacheRead: number; cacheCreate: number }
+  > = {
+    "claude-haiku-4-5": {
+      input: 0.00025,
+      output: 0.00125,
+      cacheRead: 0.00003,
+      cacheCreate: 0.0003,
+    },
     "claude-sonnet-4-6": { input: 0.003, output: 0.015, cacheRead: 0.0003, cacheCreate: 0.00375 },
     "claude-opus-4-1": { input: 0.015, output: 0.075, cacheRead: 0.0015, cacheCreate: 0.01875 },
   };
@@ -416,7 +438,15 @@ export const anthropicProvider = new AnthropicProvider();
 const ANTHROPIC_RETRYABLE = new Set<LlmError["kind"]>(["5xx", "rate_limit"]);
 const ANTHROPIC_MAX_RETRIES = 2;
 
+// The circuit breaker wraps the WHOLE retry sequence (not each attempt),
+// so an exhausted-retry transient failure counts as a single trip event.
+// A bad BYOK key (auth_failed) is not a counted failure, so it never
+// opens the breaker shared across users.
 async function invokeAnthropic<T>(call: () => Promise<T>): Promise<T> {
+  return withLlmBreaker("anthropic", () => invokeAnthropicWithRetry(call));
+}
+
+async function invokeAnthropicWithRetry<T>(call: () => Promise<T>): Promise<T> {
   let attempt = 0;
   let lastErr: unknown;
   while (attempt <= ANTHROPIC_MAX_RETRIES) {

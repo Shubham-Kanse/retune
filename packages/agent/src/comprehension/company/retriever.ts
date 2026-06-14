@@ -14,10 +14,6 @@
  *   5. cultural fingerprinter (returns the stored fingerprint)
  *   6. talent-flow analyzer (deferred to commit #6 when company KG ships)
  *
- * @brain angular gyrus + DLPFC: schema activation
- * @thinking long_term_memory
- * @cellType stellate
- * @neurotransmitter acetylcholine
  */
 
 import type { Goal, GoalKind } from "@retune/types";

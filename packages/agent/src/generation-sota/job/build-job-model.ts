@@ -16,7 +16,7 @@
  * (Temporal vs in-memory) reach identical job_model rows.
  */
 
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import {
   type AtsKeyword,
   type HiddenConstraint,
@@ -53,20 +53,55 @@ const HIDDEN_CONSTRAINT_RULES: Array<{
   pattern: RegExp;
   severity: HiddenConstraint["severity"];
 }> = [
-  { category: "security_clearance", pattern: /\b(?:active\s+)?(?:US\s+)?(?:security\s+clearance|secret|top[-\s]?secret|TS\/SCI|SCI|public\s+trust)\b/i, severity: "dealbreaker" },
-  { category: "citizenship", pattern: /\b(?:US|U\.S\.|United States|UK|British)\s+(?:citizen|citizenship)\b/i, severity: "hard" },
-  { category: "work_authorization", pattern: /\b(?:must\s+)?(?:be\s+)?author[is]z(?:ed|ation)\s+to\s+work|\bH-?1B\b|\bvisa\s+sponsorship\s+not\b/i, severity: "hard" },
-  { category: "background_check", pattern: /\bbackground\s+check\b|\bcriminal\s+background\b/i, severity: "soft" },
+  {
+    category: "security_clearance",
+    pattern:
+      /\b(?:active\s+)?(?:US\s+)?(?:security\s+clearance|secret|top[-\s]?secret|TS\/SCI|SCI|public\s+trust)\b/i,
+    severity: "dealbreaker",
+  },
+  {
+    category: "citizenship",
+    pattern: /\b(?:US|U\.S\.|United States|UK|British)\s+(?:citizen|citizenship)\b/i,
+    severity: "hard",
+  },
+  {
+    category: "work_authorization",
+    pattern:
+      /\b(?:must\s+)?(?:be\s+)?author[is]z(?:ed|ation)\s+to\s+work|\bH-?1B\b|\bvisa\s+sponsorship\s+not\b/i,
+    severity: "hard",
+  },
+  {
+    category: "background_check",
+    pattern: /\bbackground\s+check\b|\bcriminal\s+background\b/i,
+    severity: "soft",
+  },
   { category: "drug_test", pattern: /\bdrug\s+(?:test|screen)\b/i, severity: "soft" },
   { category: "non_compete", pattern: /\bnon[-\s]compete\b/i, severity: "soft" },
-  { category: "geo_lock", pattern: /\bonsite\s+(?:only|required)\b|\bin[-\s]?office\s+(?:only|required)\b/i, severity: "soft" },
-  { category: "tenure_min", pattern: /\b(\d+)\+?\s+years?\s+(?:minimum|required|of\s+experience)\b/i, severity: "hard" },
-  { category: "education_min", pattern: /\b(?:bachelor|master|phd|m\.?s\.?|b\.?s\.?)\s+(?:degree|required|preferred)?/i, severity: "soft" },
-  { category: "language", pattern: /\b(?:fluent|native)\s+in\s+(?:english|german|french|spanish|mandarin|japanese)\b/i, severity: "soft" },
+  {
+    category: "geo_lock",
+    pattern: /\bonsite\s+(?:only|required)\b|\bin[-\s]?office\s+(?:only|required)\b/i,
+    severity: "soft",
+  },
+  {
+    category: "tenure_min",
+    pattern: /\b(\d+)\+?\s+years?\s+(?:minimum|required|of\s+experience)\b/i,
+    severity: "hard",
+  },
+  {
+    category: "education_min",
+    pattern: /\b(?:bachelor|master|phd|m\.?s\.?|b\.?s\.?)\s+(?:degree|required|preferred)?/i,
+    severity: "soft",
+  },
+  {
+    category: "language",
+    pattern: /\b(?:fluent|native)\s+in\s+(?:english|german|french|spanish|mandarin|japanese)\b/i,
+    severity: "soft",
+  },
 ];
 
 const ROLE_FAMILY_HINTS: Record<string, RegExp> = {
-  backend_swe: /\b(?:backend|server[-\s]?side|api|distributed\s+systems)\s+(?:engineer|developer)\b/i,
+  backend_swe:
+    /\b(?:backend|server[-\s]?side|api|distributed\s+systems)\s+(?:engineer|developer)\b/i,
   frontend_swe: /\b(?:frontend|front[-\s]end|web|UI)\s+(?:engineer|developer)\b/i,
   fullstack_swe: /\b(?:full[-\s]?stack)\s+(?:engineer|developer)\b/i,
   mle: /\b(?:machine\s+learning|ML|MLE|AI)\s+(?:engineer|scientist)\b/i,
@@ -191,7 +226,11 @@ export function buildJobModelDeterministic(input: BuildJobModelInput): BuildJobM
     }
 
     // ── compensation signals ──
-    if (/\$\s?\d{2,3}(?:[,]\d{3})?(?:\s*[-–]\s*\$?\d{2,3}(?:[,]\d{3})?)?\s*(?:k|K|\/yr|per\s+year)?/.test(s)) {
+    if (
+      /\$\s?\d{2,3}(?:[,]\d{3})?(?:\s*[-–]\s*\$?\d{2,3}(?:[,]\d{3})?)?\s*(?:k|K|\/yr|per\s+year)?/.test(
+        s,
+      )
+    ) {
       compensation_signals.push(s.trim());
     }
 
@@ -257,7 +296,8 @@ export function buildJobModelDeterministic(input: BuildJobModelInput): BuildJobM
 
   // ── 5. Assemble + parse ──────────────────────────────────────────────
   if (requirements.length === 0) warnings.push("no_requirements_extracted");
-  if (hidden_constraints.length > 0) warnings.push(`${hidden_constraints.length}_hidden_constraints`);
+  if (hidden_constraints.length > 0)
+    warnings.push(`${hidden_constraints.length}_hidden_constraints`);
 
   const job_model: JobModel = {
     schema_version: "sota-v3",
@@ -307,11 +347,13 @@ type DiscourseFunction = Requirement["discourse_function"];
 
 function classifyDiscourse(s: string): DiscourseFunction {
   if (BOILERPLATE_PATTERNS.some((p) => p.test(s))) return "boilerplate";
-  if (/\b(?:as defined|in accordance with|pursuant to|equal opportunity)\b/i.test(s)) return "legal";
+  if (/\b(?:as defined|in accordance with|pursuant to|equal opportunity)\b/i.test(s))
+    return "legal";
   if (HARD_FILTER_PATTERNS.some((p) => p.test(s))) return "filter";
   if (/^\s*(?:[•\-\*]\s+|\d+\.\s+)/.test(s)) return "actual_test";
   if (/\b(?:experience\s+with|proficiency\s+in|ability\s+to)\b/i.test(s)) return "actual_test";
-  if (/\b(?:nice\s+to\s+have|preferred|bonus|plus|ideal|love|amazing|exciting|culture)\b/i.test(s)) return "aspiration";
+  if (/\b(?:nice\s+to\s+have|preferred|bonus|plus|ideal|love|amazing|exciting|culture)\b/i.test(s))
+    return "aspiration";
   if (/\b(?:we|our|team|culture|mission)\b/i.test(s) && s.length < 120) return "culture";
   return "actual_test";
 }
@@ -373,8 +415,13 @@ function detectSource(text: string): JobModel["posting_source"] {
   return "user_paste";
 }
 
-function buildRecruiterScorecard(reqs: Requirement[], ats: Map<string, AtsKeyword>): ScorecardLine[] {
-  const top = Array.from(ats.values()).sort((a, b) => b.weight - a.weight).slice(0, 5);
+function buildRecruiterScorecard(
+  reqs: Requirement[],
+  ats: Map<string, AtsKeyword>,
+): ScorecardLine[] {
+  const top = Array.from(ats.values())
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, 5);
   return top.map((k, i) => ({
     id: `recruiter:${k.normalized}`,
     observer: "recruiter" as const,
@@ -413,7 +460,11 @@ function escapeRegex(s: string): string {
 }
 
 function normalizeReq(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, " ").replace(/[^\w\s]/g, "");
+  return s
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/[^\w\s]/g, "");
 }
 
 function stableHash(s: string): string {

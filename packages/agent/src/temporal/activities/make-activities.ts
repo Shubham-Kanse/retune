@@ -13,6 +13,8 @@
 
 import { active_questions, goals as goals_table } from "@retune/db/pg";
 import { and, eq, isNull } from "drizzle-orm";
+import { withProviderKeys } from "../../lib/byok";
+import { loadProviderKeyOverrides } from "../../lib/byok-store";
 import { seed_initial_goals } from "../../workbench/seed-goals";
 import { type SubstrateDeps, build_fresh_substrate, build_resumed_substrate } from "./substrate";
 import type {
@@ -45,13 +47,18 @@ export function make_activities(deps: SubstrateDeps): ActivityFns {
         career_understanding: input.career_understanding,
       });
 
-      const result = await orchestrator.run({
-        generation_context: {
-          user_id: input.user_id,
-          jd_id: input.jd_id,
-          ontology_version: "0.0.1",
-        },
-      });
+      // BYOK — scope the user's stored provider keys (if any) to this
+      // activity so every LLM call bills their provider account.
+      const byok = await loadProviderKeyOverrides(deps.db, input.user_id);
+      const result = await withProviderKeys(byok, () =>
+        orchestrator.run({
+          generation_context: {
+            user_id: input.user_id,
+            jd_id: input.jd_id,
+            ontology_version: "0.0.1",
+          },
+        }),
+      );
 
       return to_outcome(result, await has_open_user_questions(deps, input.generation_id));
     },
@@ -64,7 +71,11 @@ export function make_activities(deps: SubstrateDeps): ActivityFns {
       if (!substrate) {
         throw new Error(`generation ${input.generation_id} not found`);
       }
-      const result = await substrate.orchestrator.run();
+      // BYOK on resume — the owning user comes from the rehydrated
+      // blackboard rather than the (minimal) resume input.
+      const owner = substrate.blackboard.snapshot().user_id;
+      const byok = owner ? await loadProviderKeyOverrides(deps.db, owner) : {};
+      const result = await withProviderKeys(byok, () => substrate.orchestrator.run());
       return to_outcome(result, await has_open_user_questions(deps, input.generation_id));
     },
 

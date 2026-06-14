@@ -13,10 +13,6 @@
  * `classify_discourse` so the goal-kind → specialist mapping is 1:1
  * and the attention scheduler stays simple).
  *
- * @brain ACC: irrelevant-information suppression
- * @thinking attention
- * @cellType interneuron
- * @neurotransmitter GABA
  */
 
 import type { Goal, GoalKind } from "@retune/types";

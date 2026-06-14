@@ -29,16 +29,12 @@
  *
  * Implementation: Haiku call with forced tool_use. Cost ~$0.0008 per generation.
  *
- * @brain temporo-parietal junction (TPJ): theory of mind + mental state attribution
- * @thinking social_cognition
- * @cellType mirror
- * @neurotransmitter serotonin
  */
 
 import type { Goal, GoalKind, NarrativeArcCandidate } from "@retune/types";
-import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { createMessageWithTool } from "../lib/anthropic";
 import { loadPromptFile } from "../prompts/loader";
-import { register, renderPrompt } from "../prompts/registry";
+import { modelForPrompt, register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 
@@ -173,7 +169,7 @@ const BELIEF_STATE_TOOL = {
 
 export class TheoryOfMindSpecialist implements Specialist {
   readonly id = "theory_of_mind";
-  readonly display_name = "Theory of Mind (Recruiter Belief Modeler)";
+  readonly display_name = "Modelling the recruiter's perspective";
   readonly brain_region = "temporo_parietal_junction";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0.0008;
@@ -200,13 +196,12 @@ export class TheoryOfMindSpecialist implements Specialist {
 
     const context = this.build_context(arc, role_schema, bullet_texts, hypotheses, evidence_graph);
 
-    const models = getModels();
     let belief: RecruiterBeliefState;
     try {
       belief = await createMessageWithTool<RecruiterBeliefState>(
         this.id,
         {
-          model: models.fast,
+          model: modelForPrompt("theory-of-mind.recruiter-belief"),
           max_tokens: 1024,
           system: renderPrompt("theory-of-mind.recruiter-belief", {}),
           messages: [{ role: "user", content: context }],
@@ -240,7 +235,7 @@ export class TheoryOfMindSpecialist implements Specialist {
           confidence: belief.belief_confidence,
         }),
         justification: `recruiter believes: level=${belief.inferred_candidate_level}, intent=${belief.hiring_intent_prediction}, coherence=${belief.narrative_coherence_score.toFixed(2)}, flight_risk=${belief.flight_risk_signal}, ${belief.perceived_gaps.length} knowledge gaps, first Q: "${belief.projected_first_question.slice(0, 80)}"`,
-        model_version: models.fast,
+        model_version: modelForPrompt("theory-of-mind.recruiter-belief"),
         latency_ms: Date.now() - t0,
         cost_usd: this.estimated_cost_usd,
         writes: ["hypotheses.recruiter_belief_state"],

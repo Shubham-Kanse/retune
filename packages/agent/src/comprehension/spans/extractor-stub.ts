@@ -167,10 +167,6 @@ const MIN_REQ_LENGTH = 15;
  * Deterministic stub mirroring JdSpanExtractor's brain-region tagging
  * for offline/dev runs (RETUNE_ML_USE_STUBS=true).
  *
- * @brain temporal cortex: lexical/structural pattern extraction
- * @thinking pattern_extraction
- * @cellType pyramidal
- * @neurotransmitter glutamate
  */
 export class StubJdSpanExtractor implements Specialist {
   readonly id = "jd_span_extractor";

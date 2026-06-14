@@ -41,10 +41,6 @@
  *   - outcome_estimate (Confidence with conformal interval)
  *   - blocking_factors (if prediction is critically low)
  *
- * @brain ventromedial PFC: value-based decision + outcome prediction
- * @thinking decision_making
- * @cellType pyramidal
- * @neurotransmitter dopamine
  */
 
 import { randomUUID } from "node:crypto";
@@ -137,7 +133,7 @@ export interface PredictionResult {
 
 export class OutcomePredictor implements Specialist {
   readonly id = "outcome_predictor";
-  readonly display_name = "Outcome Predictor";
+  readonly display_name = "Estimating callback probability";
   readonly brain_region = "ventromedial_PFC";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0;

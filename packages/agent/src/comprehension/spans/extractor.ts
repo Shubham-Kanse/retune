@@ -24,10 +24,6 @@
  *   - ML transport error → throws (orchestrator's tick-level catch
  *     records it as an error tick).
  *
- * @brain temporal cortex (entity recognition) + Wernicke's
- * @thinking perception
- * @cellType granule
- * @neurotransmitter glutamate
  */
 
 import { randomUUID } from "node:crypto";

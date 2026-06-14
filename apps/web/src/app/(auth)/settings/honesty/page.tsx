@@ -1,7 +1,7 @@
 "use client";
 
 import { PageHeader, PageShell } from "@/components/app/page-shell";
-import { Button } from "@/components/ui/button";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
 // Inlined from @retune/ui/cognitive (package not yet built)
@@ -17,21 +17,20 @@ function HonestyCalibrationTable({
   }[];
   className?: string;
 }) {
+  const t = useTranslations("settings_honesty");
   if (rows.length === 0)
     return (
       <div className={`text-sm text-muted-foreground ${className ?? ""}`}>
-        No calibration data yet.
+        {t("no_data")}
       </div>
     );
   return (
-    <div
-      className={`text-sm ${className ?? ""}`}
-    >
+    <div className={`text-sm ${className ?? ""}`}>
       <div className="grid grid-cols-[1fr_80px_60px_40px] gap-2 border-b border-border/50 pb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        <span>Claim type</span>
-        <span className="text-right">Trust</span>
-        <span className="text-right">Samples</span>
-        <span className="text-right">Trend</span>
+        <span>{t("col_claim_type")}</span>
+        <span className="text-right">{t("col_trust")}</span>
+        <span className="text-right">{t("col_samples")}</span>
+        <span className="text-right">{t("col_trend")}</span>
       </div>
       {rows.map((row) => (
         <div
@@ -76,6 +75,7 @@ interface CalibrationEntry {
 }
 
 export default function HonestyCalibrationPage() {
+  const t = useTranslations("settings_honesty");
   const [calibrations, setCalibrations] = useState<CalibrationEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -90,13 +90,13 @@ export default function HonestyCalibrationPage() {
   return (
     <PageShell>
       <PageHeader
-        eyebrow="Honesty"
-        title="Claim calibration"
-        subtitle="Tracks how your claims perform over time. The system adjusts confidence in different claim types based on outcome feedback."
+        eyebrow={t("eyebrow")}
+        title={t("title")}
+        subtitle={t("subtitle")}
         action={
-          <Button asChild variant="ghost" size="sm">
-            <Link href="/settings">Back to settings</Link>
-          </Button>
+          <Link href="/settings" className="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+            {t("back")}
+          </Link>
         }
       />
 
@@ -110,10 +110,7 @@ export default function HonestyCalibrationPage() {
         </div>
       )}
 
-      <p className="mt-6 text-xs text-muted-foreground">
-        Trust levels are updated when you log outcomes. A trust level below 70% means the system
-        will ask for stronger evidence before using that claim type prominently.
-      </p>
+      <p className="mt-6 text-xs text-muted-foreground">{t("trust_note")}</p>
     </PageShell>
   );
 }

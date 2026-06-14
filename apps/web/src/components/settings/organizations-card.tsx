@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Building2, Check, UserPlus } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -30,6 +31,7 @@ interface OrgsResponse {
 }
 
 export function OrganizationsCard() {
+  const tToasts = useTranslations("toasts");
   const [data, setData] = useState<OrgsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -64,12 +66,12 @@ export function OrganizationsCard() {
         body: JSON.stringify({ name: newName.trim() }),
       });
       if (res.ok) {
-        toast.success("Workspace created.");
+        toast.success(tToasts("workspace_created"));
         setNewName("");
         await refresh();
       } else {
         const body = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
-        toast.error(body.message ?? body.error ?? "Could not create the workspace.");
+        toast.error(body.message ?? body.error ?? tToasts("workspace_create_failed"));
       }
     } finally {
       setCreating(false);
@@ -79,10 +81,10 @@ export function OrganizationsCard() {
   async function handleSwitch(orgId: string) {
     const res = await fetch(`/api/orgs/${orgId}/switch`, { method: "POST" });
     if (res.ok) {
-      toast.success("Active workspace switched.");
+      toast.success(tToasts("workspace_switched"));
       await refresh();
     } else {
-      toast.error("Could not switch workspace.");
+      toast.error(tToasts("workspace_switch_failed"));
     }
   }
 
@@ -97,7 +99,7 @@ export function OrganizationsCard() {
     if (res.ok) {
       const body = (await res.json()) as { status: string; signup_link?: string };
       if (body.status === "added") {
-        toast.success("Member added.");
+        toast.success(tToasts("member_added"));
       } else if (body.signup_link) {
         toast.message("Invitation pending.", {
           description: `Share this link: ${body.signup_link}`,

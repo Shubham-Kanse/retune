@@ -13,7 +13,8 @@
     "test": "tsx --test tests/**/*.test.ts",
     "eval": "tsx src/runner.ts",
     "eval:baseline": "tsx src/runner.ts --baseline-only",
-    "eval:adversarial": "tsx src/adversarial/cli.ts"
+    "eval:adversarial": "tsx src/adversarial/cli.ts",
+    "eval:adversarial-live": "tsx src/adversarial/live-runner.ts"
   },
   "dependencies": {
     "@retune/agent": "workspace:*",

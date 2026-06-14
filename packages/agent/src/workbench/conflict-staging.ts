@@ -18,7 +18,6 @@
  * drains). No concurrent access in the Node single-threaded model, but the
  * API is designed defensively for future worker scenarios.
  *
- * @brain anterior cingulate cortex: conflict buffering + priority routing
  */
 
 import { randomUUID } from "node:crypto";

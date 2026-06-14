@@ -168,7 +168,7 @@ export default function GenerationPage() {
               ? "Your package is ready"
               : isError
                 ? "Something went wrong"
-                : "Working on your application"}
+                : "Working on your tuning"}
           </h1>
         </div>
         <button
@@ -186,7 +186,8 @@ export default function GenerationPage() {
 
       {isError && errorMessage ? (
         <div className="mb-6 rounded-md border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {errorMessage}
+          <p>{errorMessage}</p>
+          <p className="mt-1 text-destructive/80">Something went wrong with this tuning. Your profile is safe — try starting a new one.</p>
         </div>
       ) : null}
 

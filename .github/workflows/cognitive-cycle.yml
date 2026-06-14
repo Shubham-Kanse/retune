@@ -441,6 +441,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: eval --live
         run: pnpm --filter @retune/eval eval
+      - name: adversarial corpus pipeline-deep eval (Charter 26 Epic 02)
+        # Runs each adversarial case through the live cognitive pipeline and
+        # asserts the verdict matches expected_outcome.refusal (or ship/pass).
+        # This is the live complement to the structural eval:adversarial gate
+        # that runs on every PR.
+        run: pnpm --filter @retune/eval eval:adversarial-live
 
   # v2.0 §26.9 — Network oscillation rhythms gating.
   # Enforces P50 tick < 250ms and SSE heartbeat < 30s in the orchestrator

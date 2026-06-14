@@ -6,15 +6,17 @@ export default defineConfig({
   retries: 1,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:3100",
+    baseURL: process.env.BASE_URL ?? "http://localhost:3000",
     trace: "on-first-retry",
   },
-  webServer: {
-    command: "E2E_AUTH_BYPASS=1 pnpm --filter @retune/web dev --port 3100",
-    url: "http://127.0.0.1:3100",
-    reuseExistingServer: true,
-    timeout: 120000,
-  },
+  webServer: process.env.BASE_URL
+    ? undefined
+    : {
+        command: "E2E_AUTH_BYPASS=1 pnpm --filter @retune/web dev --port 3000",
+        url: "http://localhost:3000",
+        reuseExistingServer: true,
+        timeout: 120000,
+      },
   projects: [
     {
       name: "chromium",

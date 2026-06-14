@@ -28,8 +28,6 @@
  *
  * Tie-breaking: lower estimated cost wins, then registration order.
  *
- * @brain DLPFC: top-down attention allocation
- *        + dorsal anterior cingulate: cost-of-control valuation
  */
 
 import type { Goal } from "@retune/types";
@@ -86,7 +84,9 @@ function score(s: Specialist, input: PickInput, cost_alpha: number): number {
   const competence_factor = 1.0;
   const evoi_factor = compute_evoi_factor(input.goal);
   const cost_penalty =
-    input.budget_remaining_usd > 0 ? cost_alpha * (s.estimated_cost_usd / input.budget_remaining_usd) : 0;
+    input.budget_remaining_usd > 0
+      ? cost_alpha * (s.estimated_cost_usd / input.budget_remaining_usd)
+      : 0;
   return priority_factor * competence_factor * evoi_factor - cost_penalty;
 }
 

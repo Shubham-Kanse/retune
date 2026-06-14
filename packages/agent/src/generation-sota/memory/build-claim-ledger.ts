@@ -15,11 +15,7 @@
  */
 
 import { createHash, randomUUID } from "node:crypto";
-import {
-  type CandidateModel,
-  type ClaimLedger,
-  type SotaClaim,
-} from "@retune/types";
+import type { CandidateModel, ClaimLedger, SotaClaim } from "@retune/types";
 
 export function buildClaimLedgerFromCandidateModel(
   generation_id: string,
@@ -79,14 +75,19 @@ export function buildClaimLedgerFromCandidateModel(
       normalized_text: normalizeText(a.text),
       source_ids: a.source_ids,
       evidence_quotes: [
-        { source_id: a.source_ids[0] ?? "unknown", quote: a.text, confidence: defensibilityToConf(a.defensibility) },
+        {
+          source_id: a.source_ids[0] ?? "unknown",
+          quote: a.text,
+          confidence: defensibilityToConf(a.defensibility),
+        },
       ],
       confidence: defensibilityToConf(a.defensibility),
       verified_by_user: false,
       defensibility: a.defensibility,
       interview_defense_prompt: `What was the result of "${a.text.slice(0, 100)}" and how would you verify it?`,
       allowed_uses: a.defensibility === "unsafe" ? [] : ["resume", "cover_letter"],
-      forbidden_uses: a.defensibility === "unsafe" ? ["resume", "cover_letter", "linkedin", "outreach"] : [],
+      forbidden_uses:
+        a.defensibility === "unsafe" ? ["resume", "cover_letter", "linkedin", "outreach"] : [],
       created_at: now,
     });
   }
@@ -245,7 +246,9 @@ function skillConfidence(tier: import("@retune/types").SkillEvidenceTier): numbe
   }
 }
 
-function skillDefensibility(tier: import("@retune/types").SkillEvidenceTier): SotaClaim["defensibility"] {
+function skillDefensibility(
+  tier: import("@retune/types").SkillEvidenceTier,
+): SotaClaim["defensibility"] {
   switch (tier) {
     case "claimed":
       return "weak";

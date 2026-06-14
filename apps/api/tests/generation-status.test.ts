@@ -21,7 +21,10 @@ test("statusFromPersistenceRow maps row state to run status", () => {
     statusFromPersistenceRow({ completed_at: new Date(), termination: "aborted" }),
     "cancelled",
   );
-  assert.equal(statusFromPersistenceRow({ completed_at: new Date(), termination: "error" }), "failed");
+  assert.equal(
+    statusFromPersistenceRow({ completed_at: new Date(), termination: "error" }),
+    "failed",
+  );
 });
 
 test("completion mappers emit typed completion payload", () => {
@@ -48,4 +51,3 @@ test("resultStatusFromMeta preserves existing result-page semantics", () => {
   assert.equal(resultStatusFromMeta({ verdict: null, termination: "no_open_work" }), "complete");
   assert.equal(resultStatusFromMeta({ verdict: null, termination: "error" }), "error");
 });
-

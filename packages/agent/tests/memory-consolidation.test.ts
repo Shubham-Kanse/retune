@@ -1,7 +1,6 @@
 /**
  * Tests for commit #14:
  *   - NightlyConsolidator (Bayesian honesty update, voice centroid EMA, case-base entry)
- *   - WellBeingMonitor (trigger-bus listener, distress detection)
  *   - TheoryOfMindSpecialist (structural: goal kinds, brain region, cost)
  *
  * Invariants proven:
@@ -13,10 +12,6 @@
  *   6.  Voice centroid EMA: warm update is weighted correctly
  *   7.  Case-base entry added only on callback/offer
  *   8.  Consolidation is idempotent (mark_consolidated called after each)
- *   9.  WellBeingMonitor fires on high retry_count bullet
- *   10. WellBeingMonitor fires on pending_revisions accumulation
- *   11. WellBeingMonitor deduplicates repeated concerns
- *   12. WellBeingMonitor ignores non-write events
  *   13. TheoryOfMindSpecialist handles model_recruiter_beliefs goal kind (v2.0)
  *   14. TheoryOfMindSpecialist brain region is TPJ
  */
@@ -24,7 +19,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
-import type { BlackboardEvent } from "@retune/types";
 import {
   type CaseBaseEntry,
   type ConsolidationStore,
@@ -34,7 +28,6 @@ import {
   type OutcomeRecord,
   TheoryOfMindSpecialist,
   type VoiceCentroidRow,
-  WellBeingMonitor,
 } from "../src/sota-exports";
 
 // ──────────── In-memory ConsolidationStore stub ────────────
@@ -363,169 +356,6 @@ test("Consolidation report contains no errors on clean run", async () => {
 
   assert.equal(report.errors.length, 0);
   assert.ok(report.duration_ms >= 0);
-});
-
-// ─────────────── WellBeingMonitor ───────────────
-
-function make_write_event(path: string, after: unknown): BlackboardEvent {
-  return {
-    type: "write",
-    path,
-    before: null,
-    after,
-    by_specialist: "test",
-    seq: 0,
-    timestamp: new Date().toISOString(),
-  };
-}
-
-test("WellBeingMonitor fires on high retry_count bullet", () => {
-  const concerns: string[] = [];
-  const monitor = new WellBeingMonitor({
-    on_concern: (c) => concerns.push(c.kind),
-  });
-
-  monitor.on_event(
-    make_write_event("draft.bullets.abc-123", {
-      id: "abc-123",
-      text: "Led a team",
-      retry_count: 2,
-      voice_drift_cosine: 0.9,
-    }),
-  );
-
-  assert.equal(concerns[0], "high_retry_rate");
-  assert.equal(monitor.concerns().length, 1);
-});
-
-test("WellBeingMonitor fires on pending_revisions accumulation", () => {
-  const concerns: string[] = [];
-  const monitor = new WellBeingMonitor({
-    on_concern: (c) => concerns.push(c.kind),
-  });
-
-  // 3+ revisions triggers concern
-  monitor.on_event(
-    make_write_event("draft.pending_revisions", [
-      { target: "bullet_plan_0", reason: "honesty", requested_by: "composer" },
-      { target: "bullet_plan_1", reason: "coherence", requested_by: "composer" },
-      { target: "bullet_plan_2", reason: "drift", requested_by: "composer" },
-    ]),
-  );
-
-  assert.equal(concerns[0], "pending_revision_accumulation");
-});
-
-test("WellBeingMonitor fires on self-image divergence (positive)", () => {
-  const concerns: string[] = [];
-  const monitor = new WellBeingMonitor({
-    on_concern: (c) => concerns.push(c.kind),
-  });
-
-  // Professional avg 80, self 50 → positive divergence (candidate underselling)
-  monitor.on_event(
-    make_write_event("hypotheses.critic_ensemble_result", {
-      recruiter: { score: 80 },
-      hiring_manager: { score: 80 },
-      self_image: { score: 50 },
-    }),
-  );
-
-  assert.equal(concerns[0], "self_image_divergence");
-  const concern = monitor.concerns()[0]!;
-  assert.ok(concern.nudge.includes("Trust the evidence"));
-});
-
-test("WellBeingMonitor deduplicates repeated concerns", () => {
-  const fired: string[] = [];
-  const monitor = new WellBeingMonitor({
-    on_concern: (c) => fired.push(c.kind),
-  });
-
-  const event = make_write_event("draft.bullets.abc-123", {
-    id: "abc-123",
-    text: "Led a team",
-    retry_count: 2,
-    voice_drift_cosine: 0.9,
-  });
-
-  monitor.on_event(event);
-  monitor.on_event(event);
-  monitor.on_event(event);
-
-  // Should only fire once despite 3 identical events
-  assert.equal(fired.length, 1);
-  assert.equal(monitor.concerns().length, 1);
-});
-
-test("WellBeingMonitor ignores non-write events", () => {
-  const concerns: string[] = [];
-  const monitor = new WellBeingMonitor({
-    on_concern: (c) => concerns.push(c.kind),
-  });
-
-  monitor.on_event({
-    type: "delete",
-    path: "draft.bullets.abc-123",
-    before: { retry_count: 5 },
-    after: null,
-    by_specialist: "test",
-    seq: 0,
-    timestamp: new Date().toISOString(),
-  });
-
-  assert.equal(concerns.length, 0);
-});
-
-test("WellBeingMonitor fires refuse_verdict_distress on REFUSE", () => {
-  const concerns: string[] = [];
-  const monitor = new WellBeingMonitor({
-    on_concern: (c) => concerns.push(c.kind),
-  });
-
-  monitor.on_event(
-    make_write_event("hypotheses.ship_decision", {
-      verdict: "refuse",
-      outcome_point: 0.15,
-    }),
-  );
-
-  assert.equal(concerns[0], "refuse_verdict_distress");
-  const concern = monitor.concerns()[0]!;
-  assert.equal(concern.severity, "high");
-  assert.ok(concern.nudge.includes("profile"));
-});
-
-test("WellBeingMonitor stats correctly aggregates by kind", () => {
-  const monitor = new WellBeingMonitor();
-
-  monitor.on_event(
-    make_write_event("draft.bullets.a1", { retry_count: 3, voice_drift_cosine: 0.9 }),
-  );
-  monitor.on_event(make_write_event("draft.pending_revisions", [{}, {}, {}]));
-
-  const stats = monitor.stats();
-  assert.equal(stats.total, 2);
-  assert.ok("high_retry_rate" in stats.by_kind);
-  assert.ok("pending_revision_accumulation" in stats.by_kind);
-});
-
-test("WellBeingMonitor reset clears concerns and dedup state", () => {
-  const monitor = new WellBeingMonitor();
-
-  monitor.on_event(make_write_event("draft.bullets.a1", { retry_count: 3 }));
-  assert.equal(monitor.concerns().length, 1);
-
-  monitor.reset();
-  assert.equal(monitor.concerns().length, 0);
-
-  // After reset, same event should fire again
-  const fired: string[] = [];
-  const monitor2 = new WellBeingMonitor({ on_concern: (c) => fired.push(c.kind) });
-  monitor2.on_event(make_write_event("draft.bullets.a1", { retry_count: 3 }));
-  monitor2.reset();
-  monitor2.on_event(make_write_event("draft.bullets.a1", { retry_count: 3 }));
-  assert.equal(fired.length, 2);
 });
 
 // ─────────────── TheoryOfMindSpecialist structural ───────────────

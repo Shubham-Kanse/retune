@@ -1,7 +1,7 @@
 ---
 name: critic-ensemble.self-image
 version: 1
-model_hint: smart
+model_hint: fast
 charter: 09-ai-ml/epic-01
 extracted_from: packages/agent/src/specialists/critic-ensemble.ts:121
 parameters: []

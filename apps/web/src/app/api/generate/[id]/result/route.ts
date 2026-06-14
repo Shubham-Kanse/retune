@@ -1,6 +1,10 @@
 import { apiUrl } from "@/lib/api-config";
 import { withAuthParams } from "@/lib/api-handler";
-import { signGenerationAccessToken, userOwnsGeneration } from "@/lib/generation-access";
+import {
+  hasGenerationAccessSecret,
+  signGenerationAccessToken,
+  userOwnsGeneration,
+} from "@/lib/generation-access";
 import {
   dualWriteOptimizedResult,
   parityCheckResult,
@@ -18,6 +22,15 @@ export const GET = withAuthParams(async (_req, _session, { id }) => {
   const owns = await userOwnsGeneration({ userId: _session.userId, generationId: id });
   if (!owns) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (!hasGenerationAccessSecret()) {
+    return NextResponse.json(
+      {
+        error: "generation_access_not_configured",
+        message: "RETUNE_INTERNAL_GENERATION_ACCESS_SECRET must be set (>=16 chars)",
+      },
+      { status: 503 },
+    );
   }
 
   const token = signGenerationAccessToken({ generationId: id, userId: _session.userId });

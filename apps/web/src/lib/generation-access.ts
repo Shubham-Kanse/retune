@@ -14,6 +14,11 @@ function getSecret(): string {
   return secret;
 }
 
+export function hasGenerationAccessSecret(): boolean {
+  const secret = process.env.RETUNE_INTERNAL_GENERATION_ACCESS_SECRET;
+  return Boolean(secret && secret.length >= 16);
+}
+
 export async function userOwnsGeneration(params: {
   userId: string;
   generationId: string;
@@ -41,4 +46,3 @@ export function signGenerationAccessToken(params: {
   const sig = createHmac("sha256", getSecret()).update(payloadB64).digest("base64url");
   return `${payloadB64}.${sig}`;
 }
-

@@ -10,10 +10,12 @@
 
 import { LOCALES, LOCALE_LABELS, type Locale } from "@/i18n/config";
 import { Languages } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
 
 export function LanguageCard({ activeLocale }: { activeLocale: Locale }) {
+  const tToasts = useTranslations("toasts");
   const [pending, setPending] = useState(false);
 
   async function handleChange(next: string) {
@@ -26,10 +28,10 @@ export function LanguageCard({ activeLocale }: { activeLocale: Locale }) {
         body: JSON.stringify({ locale: next }),
       });
       if (!res.ok) {
-        toast.error("Couldn't switch language.");
+        toast.error(tToasts("language_update_failed"));
         return;
       }
-      toast.success("Language updated.");
+      toast.success(tToasts("language_updated"));
       // Reload so server components re-resolve the active locale.
       window.location.reload();
     } finally {

@@ -30,10 +30,6 @@
  *
  * Emits child goal: `solve_evidence` (priority - 1)
  *
- * @brain DLPFC: working memory + resource allocation planning
- * @thinking working_memory
- * @cellType pyramidal
- * @neurotransmitter glutamate
  */
 
 import { randomUUID } from "node:crypto";
@@ -261,7 +257,7 @@ const HARD_CONSTRAINT_THRESHOLD = 0.7;
 
 export class GapMapper implements Specialist {
   readonly id = "gap_mapper";
-  readonly display_name = "Gap Mapper";
+  readonly display_name = "Mapping role requirements";
   readonly brain_region = "DLPFC";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0;

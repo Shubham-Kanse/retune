@@ -299,6 +299,74 @@ export const evidence_spans = pgTable(
   }),
 );
 
+/**
+ * Evidence ledger (migration 0018) — one verified career fact per row,
+ * with provenance. Facts accrue from drift-check answers, resume
+ * extraction, and generation-time evidence solving, so every application
+ * sharpens the user's profile for the next one.
+ */
+export const career_facts = pgTable(
+  "career_facts",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** skill | achievement | scope | credential */
+    kind: varchar("kind", { length: 32 }).notNull(),
+    claim: text("claim").notNull(),
+    evidence: text("evidence"),
+    /** drift_check | resume_extraction | generation | user_edit */
+    source: varchar("source", { length: 48 }).notNull(),
+    confidence: doublePrecision("confidence").notNull().default(0.5),
+    verified_by_user: boolean("verified_by_user").notNull().default(false),
+    created_from_generation_id: uuid("created_from_generation_id").references(
+      () => generations.id,
+      { onDelete: "set null" },
+    ),
+    created_at: now(),
+    updated_at: updated(),
+    deleted_at: deleted(),
+  },
+  (t) => ({
+    user_ix: index("career_facts_user_ix").on(t.user_id),
+    kind_ix: index("career_facts_kind_ix").on(t.kind),
+    source_ix: index("career_facts_source_ix").on(t.source),
+    user_kind_claim_uniq: uniqueIndex("career_facts_user_kind_claim_uniq").on(
+      t.user_id,
+      t.kind,
+      t.claim,
+    ),
+  }),
+);
+
+/**
+ * BYOK provider keys (migration 0019). `encrypted_key` is AES-256-GCM
+ * ciphertext produced at the application layer — never plaintext.
+ */
+export const user_ai_keys = pgTable(
+  "user_ai_keys",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    user_id: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    /** anthropic | openai */
+    provider: varchar("provider", { length: 16 }).notNull(),
+    encrypted_key: text("encrypted_key").notNull(),
+    key_last4: varchar("key_last4", { length: 8 }).notNull(),
+    /** active | invalid */
+    status: varchar("status", { length: 16 }).notNull().default("active"),
+    last_validated_at: timestamp("last_validated_at", { withTimezone: true }),
+    created_at: now(),
+    updated_at: updated(),
+  },
+  (t) => ({
+    user_ix: index("user_ai_keys_user_ix").on(t.user_id),
+    user_provider_uniq: uniqueIndex("user_ai_keys_user_provider_uniq").on(t.user_id, t.provider),
+  }),
+);
+
 export const voice_centroids = pgTable("voice_centroids", {
   user_id: uuid("user_id")
     .primaryKey()

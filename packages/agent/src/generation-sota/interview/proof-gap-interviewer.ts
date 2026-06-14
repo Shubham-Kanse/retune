@@ -54,7 +54,12 @@ export class ProofGapInterviewer implements Specialist {
 
   async run(ctx: SpecialistContext, goal: Goal): Promise<SpecialistResult> {
     const t0 = Date.now();
-    const sotaRaw = (ctx.blackboard as unknown as { sota?: { job_model?: unknown; claim_ledger?: unknown; question_plan?: unknown } }).sota ?? {};
+    const sotaRaw =
+      (
+        ctx.blackboard as unknown as {
+          sota?: { job_model?: unknown; claim_ledger?: unknown; question_plan?: unknown };
+        }
+      ).sota ?? {};
 
     const jmParsed = JobModelSchema.safeParse(sotaRaw.job_model);
     const clParsed = ClaimLedgerSchema.safeParse(sotaRaw.claim_ledger);
@@ -66,7 +71,10 @@ export class ProofGapInterviewer implements Specialist {
         audit: {
           specialist: this.id,
           micro_stage: "missing_inputs",
-          inputs_hash: AuditTrail.hash({ has_job_model: jmParsed.success, has_ledger: clParsed.success }),
+          inputs_hash: AuditTrail.hash({
+            has_job_model: jmParsed.success,
+            has_ledger: clParsed.success,
+          }),
           output_hash: AuditTrail.hash({ status: "skipped" }),
           justification: "missing job_model or claim_ledger — no questions planned",
           latency_ms: Date.now() - t0,
@@ -85,8 +93,12 @@ export class ProofGapInterviewer implements Specialist {
         : DEFAULT_MAX_QUESTIONS;
 
     const previous: ProofQuestion[] = existingPlan.success ? existingPlan.data.questions : [];
-    const previousNormalized = new Set(previous.map((q) => q.question_text.toLowerCase().slice(0, 80)));
-    const askedCount = previous.filter((q) => q.status === "asked" || q.status === "answered").length;
+    const previousNormalized = new Set(
+      previous.map((q) => q.question_text.toLowerCase().slice(0, 80)),
+    );
+    const askedCount = previous.filter(
+      (q) => q.status === "asked" || q.status === "answered",
+    ).length;
     let budget_remaining = Math.max(0, maxQuestions - askedCount);
 
     const new_questions: ProofQuestion[] = [];
@@ -163,7 +175,10 @@ export class ProofGapInterviewer implements Specialist {
       audit: {
         specialist: this.id,
         micro_stage: "plan_questions",
-        inputs_hash: AuditTrail.hash({ n_reqs: jobModel.requirements.length, n_claims: ledger.claims.length }),
+        inputs_hash: AuditTrail.hash({
+          n_reqs: jobModel.requirements.length,
+          n_claims: ledger.claims.length,
+        }),
         output_hash: AuditTrail.hash({ n_new_questions: new_questions.length, budget_remaining }),
         justification: `planned ${new_questions.length} new question(s); ${budget_remaining} of ${maxQuestions} budget remaining`,
         latency_ms: Date.now() - t0,

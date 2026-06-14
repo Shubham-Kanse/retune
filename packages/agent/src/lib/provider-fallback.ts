@@ -45,7 +45,11 @@ interface ErrorWithStatus {
 
 function isFallbackable(err: unknown): boolean {
   if (!err) return false;
-  const e = err as ErrorWithStatus;
+  const e = err as ErrorWithStatus & { kind?: string; circuitOpen?: boolean };
+
+  // An open circuit on the primary provider is exactly when fallback
+  // should fire — the secondary provider has its own independent breaker.
+  if (e.kind === "circuit_open" || e.circuitOpen === true) return true;
 
   // Status-based: 429 (rate-limit), 502/503/504 (gateway / upstream),
   // 529 (Anthropic overloaded).

@@ -20,6 +20,7 @@ import type { CareerUnderstandingV1, UnderstandingScope } from "@/lib/career-und
 import type { ProfileReadiness } from "@/lib/onboarding/types";
 import type { V2ProfileSnapshot } from "@/lib/onboarding-v2/repository";
 import { Pencil, Upload } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
@@ -40,6 +41,7 @@ export interface CareerProfilePageProps {
 
 export function CareerProfilePage(props: CareerProfilePageProps) {
   const router = useRouter();
+  const tToasts = useTranslations("toasts");
   const [understanding, setUnderstanding] = React.useState<CareerUnderstandingV1 | null>(
     props.initialUnderstanding,
   );
@@ -57,11 +59,11 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
       body: JSON.stringify({ section, payload }),
     });
     if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: "Save failed" }));
-      toast.error(error || "Save failed");
+      const { error } = await res.json().catch(() => ({ error: tToasts("save_failed") }));
+      toast.error(error || tToasts("save_failed"));
       throw new Error(error);
     }
-    toast.success("Updated.");
+    toast.success(tToasts("updated"));
     router.refresh();
   };
 
@@ -81,7 +83,7 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
       const skills = [result.profile?.skillsTier1, result.profile?.skillsTier2, result.profile?.skillsTier3]
         .reduce<number>((sum, v) => sum + (Array.isArray(v) ? v.length : 0), 0);
       const proj = Array.isArray(result.profile?.projects) ? (result.profile.projects as unknown[]).length : 0;
-      toast.success(`Imported ${exp} experience${exp !== 1 ? "s" : ""}, ${skills} skills, ${proj} project${proj !== 1 ? "s" : ""}`);
+      toast.success(tToasts("imported", { exp, exp_plural: exp !== 1 ? "s" : "", skills, proj, proj_plural: proj !== 1 ? "s" : "" }));
       router.refresh();
     },
   });
@@ -97,7 +99,7 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
     setUnderstandingPersisted(true);
     setStale(false);
     setLocalStale(false);
-    toast.success("Retune updated.");
+    toast.success(tToasts("retune_updated"));
   }, []);
 
   const lens = useRetuneLens({
@@ -131,7 +133,7 @@ export function CareerProfilePage(props: CareerProfilePageProps) {
       const data = await res.json();
       setUnderstanding(data.understanding);
       setUnderstandingPersisted(true);
-      toast.success("Marked as accurate.");
+      toast.success(tToasts("marked_accurate"));
     } catch {
       toast.error("Could not save feedback.");
     }

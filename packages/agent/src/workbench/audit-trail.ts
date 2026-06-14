@@ -11,7 +11,6 @@
  *   - cost attribution per specialist × micro-stage (PRD §C10)
  *   - distillation training-data harvesting (PRD §11.2)
  *
- * @brain hippocampus + entorhinal: episodic record with consolidation pointer
  */
 
 import { createHash } from "node:crypto";

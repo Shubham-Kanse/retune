@@ -11,7 +11,6 @@
  * 65-word list). Cosine comparisons were semantically meaningless because
  * the dimensions were not aligned.
  *
- * @brain Broca's area + arcuate fasciculus: writing-style imprint
  */
 
 // ──────────── Constants ────────────

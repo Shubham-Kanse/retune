@@ -14,10 +14,6 @@
  *   5. on miss → push goal `request_user_input` so the orchestrator can
  *      surface an active question instead of fabricating
  *
- * @brain angular gyrus + Wernicke's: canonical-form retrieval
- * @thinking long_term_memory
- * @cellType stellate
- * @neurotransmitter acetylcholine
  */
 
 import { randomUUID } from "node:crypto";

@@ -13,7 +13,6 @@
  *     server_5xx / client_4xx / aborted / validation)
  *   - propagating the caller's `AbortSignal`
  *
- * @brain thalamus: routing layer between cortical regions
  */
 
 import type {

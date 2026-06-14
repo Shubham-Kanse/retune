@@ -15,6 +15,7 @@ import { getStatusQuery } from "@retune/agent";
 import { generations } from "@retune/db/pg";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
+import { getIdentity, ownsRow, requireIdentity } from "../lib/auth-middleware";
 import { statusFromPersistenceRow } from "../lib/generation-status";
 import { acquire_durability } from "../runtime/persistence-factory";
 import { acquire_temporal } from "../runtime/temporal-factory";
@@ -33,8 +34,24 @@ export interface StatusResponse {
 export function status_routes() {
   const app = new Hono();
 
-  app.get("/generate/:id/status", async (c) => {
+  app.get("/generate/:id/status", requireIdentity(), async (c) => {
     const generation_id = c.req.param("id");
+
+    // Ownership gate: when the generation is persisted, it must belong
+    // to the caller. (When persistence is off — pure in-memory dev — the
+    // row can't be looked up and the dev-fallback identity applies.)
+    const identity = getIdentity(c);
+    const durabilityForAuth = await acquire_durability();
+    if (durabilityForAuth && identity.enforced) {
+      const owned = await durabilityForAuth.db
+        .select({ user_id: generations.user_id })
+        .from(generations)
+        .where(eq(generations.id, generation_id))
+        .limit(1);
+      if (owned[0] && !ownsRow(identity, owned[0].user_id)) {
+        return c.json({ error: "not_found", generation_id }, 404);
+      }
+    }
 
     // Try Temporal first — most accurate when in temporal mode.
     const temporal = await acquire_temporal();

@@ -33,6 +33,8 @@
  * module load. Specialists then call `getPrompt("bullet-composer.refine")`.
  */
 
+import { getModels } from "../lib/provider";
+
 export interface PromptRecord {
   name: string;
   version: number;
@@ -98,6 +100,25 @@ export function renderPrompt(
     if (v === null || v === undefined) return "";
     return String(v);
   });
+}
+
+/**
+ * Resolve the concrete model id for a registered prompt's `model_hint`.
+ *
+ * The registry is the single source of truth for specialist → model-tier
+ * routing: call sites pass their prompt name instead of hardcoding a
+ * tier, so retiering a specialist is a one-line frontmatter change in
+ * its prompt file. Falls back to the "smart" tier when the prompt is
+ * unregistered or carries no hint.
+ */
+export function modelForPrompt(name: string): string {
+  const models = getModels();
+  try {
+    const hint = getPrompt(name).model_hint ?? "smart";
+    return models[hint] ?? models.smart;
+  } catch {
+    return models.smart;
+  }
 }
 
 /**

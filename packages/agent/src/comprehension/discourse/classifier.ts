@@ -15,10 +15,6 @@
  * Goal payload (required):
  *   - `jd_text`: string, ≥ 50 chars (matches the server's contract)
  *
- * @brain Wernicke's (lexical/discourse) + DLPFC (function attribution)
- * @thinking language_comprehension
- * @cellType stellate
- * @neurotransmitter glutamate
  */
 
 import { randomUUID } from "node:crypto";

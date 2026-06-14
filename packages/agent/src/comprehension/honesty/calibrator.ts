@@ -23,10 +23,6 @@
  *
  * Writes `hypotheses.honesty_calibration` as `Record<string, number>`.
  *
- * @brain orbitofrontal cortex (OFC): trustworthiness valuation
- * @thinking causal_reasoning
- * @cellType pyramidal
- * @neurotransmitter dopamine
  */
 
 import type { Goal, GoalKind } from "@retune/types";

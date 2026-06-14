@@ -14,7 +14,7 @@
  * boilerplate downweighted, hidden constraints surfaced).
  */
 
-import { type Goal, type GoalKind } from "@retune/types";
+import type { Goal, GoalKind } from "@retune/types";
 import { AuditTrail } from "../../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../../workbench/types";
 import { buildJobModelDeterministic } from "./build-job-model";

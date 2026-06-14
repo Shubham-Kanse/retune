@@ -20,7 +20,6 @@
  * one tick at a time; the reader reconstructs the whole state from the
  * log. That keeps the tick path cheap and the replay path explicit.
  *
- * @brain hippocampus → neocortex consolidation (write); retrieval cue
  *        → episodic replay (read)
  */
 

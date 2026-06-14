@@ -43,15 +43,6 @@ export {
   type RecruiterBeliefState,
   type KnowledgeGap,
 } from "./theory-of-mind";
-export {
-  WellBeingMonitor,
-  type WellBeingConcern,
-  type WellBeingConcernHandler,
-  WELL_BEING_WATCH_PATHS,
-} from "./well-being-monitor";
-export { EmotionalStateModeler, type EmotionalState } from "./emotional-state-modeler";
-export { MoodFingerprintSpecialist, type MoodFingerprint } from "./mood-fingerprint";
-export { MotivationModulator, type MotivationLevels } from "./motivation-modulator";
 export { Narrator, type NarrativeParagraph } from "./narrator";
 export { DocumentRenderer, type RenderComplete } from "./document-renderer";
 export { CoverLetterComposer } from "./cover-letter-composer";

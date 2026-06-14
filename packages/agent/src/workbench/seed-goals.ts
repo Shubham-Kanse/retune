@@ -161,12 +161,6 @@ export function seed_initial_goals(goals: GoalStack, payload: SeedGoalsPayload):
       emitted_by: "api",
       payload: { profile_texts: [payload.profile_text] },
     });
-    goals.add({
-      kind: "infer_emotional_state",
-      priority: 52,
-      emitted_by: "api",
-      payload: {},
-    });
   }
   // Honesty calibration always runs — cheap, no ML calls.
   goals.add({

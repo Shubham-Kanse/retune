@@ -1,7 +1,6 @@
 /**
  * Temporal namespace — durable workflows + activities for the cognitive cycle.
  *
- * @brain hippocampal consolidation across process boundaries
  */
 
 export { COGNITIVE_TASK_QUEUE } from "./task-queue";

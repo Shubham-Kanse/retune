@@ -33,7 +33,6 @@ import {
   DiscourseClassifier,
   DocumentRenderer,
   DraftTournamentRunner,
-  EmotionalStateModeler,
   EvidenceSolver,
   type ExtractedSpansSink,
   FairnessMonitor,
@@ -46,8 +45,6 @@ import {
   JdSpanExtractor,
   JobModelBuilder,
   MLClient,
-  MoodFingerprintSpecialist,
-  MotivationModulator,
   NarrativeArcProposer,
   Narrator,
   OntologyResolver,
@@ -67,8 +64,9 @@ import {
   VoiceDriftMonitor,
   VoiceFingerprintExtractor,
   type VoiceFingerprintSink,
-  WellBeingMonitor,
+  loadProviderKeyOverrides,
   seed_initial_goals,
+  withProviderKeys,
 } from "@retune/agent";
 import type { Blackboard } from "@retune/types";
 import { dualWriteJobDescription } from "../lib/optimized-dual-write";
@@ -434,10 +432,6 @@ export async function run_generation(input: {
   // Strategy specialists — deterministic, no deps.
   specialists.push(new GapMapper());
   specialists.push(new EvidenceSolver());
-  // Affective specialists — pure cognition, no ML deps.
-  specialists.push(new EmotionalStateModeler());
-  specialists.push(new MoodFingerprintSpecialist());
-  specialists.push(new MotivationModulator());
   // Production specialists — LLM-driven.
   specialists.push(new NarrativeArcProposer());
   specialists.push(new SequentialBulletComposer());
@@ -525,8 +519,6 @@ export async function run_generation(input: {
     },
   });
 
-  trigger_bus.subscribe(new WellBeingMonitor({ staging_queue: conflict_staging }));
-
   const audit = new AuditTrail();
   const budget = new BudgetController({
     spent_usd: 0,
@@ -612,20 +604,31 @@ export async function run_generation(input: {
     }
   }
 
+  // BYOK — resolve the user's stored provider keys (if any) and scope
+  // them to this generation. Every LLM call inside orchestrator.run()
+  // then bills the user's own provider account; absent keys fall back
+  // to the platform's env keys. Failures degrade to platform keys.
+  const byok_overrides = durability ? await loadProviderKeyOverrides(durability.db, user_id) : {};
+
   log("info", generation_id, "starting orchestrator", {
     specialists: specialists.map((s) => s.constructor.name),
     has_durability: !!durability,
     has_external_signal: !!external_signal,
+    byok: Boolean(byok_overrides.anthropic || byok_overrides.openai),
   });
 
   try {
     const result = await withTimeout(
-      orchestrator.run({
-        external_signal,
-        max_ticks: maxTicks,
-        on_trace: (event) => bus.publish({ kind: "trace", event }),
-        generation_context: durability ? { user_id, jd_id, ontology_version: "0.0.1" } : undefined,
-      }),
+      withProviderKeys(byok_overrides, () =>
+        orchestrator.run({
+          external_signal,
+          max_ticks: maxTicks,
+          on_trace: (event) => bus.publish({ kind: "trace", event }),
+          generation_context: durability
+            ? { user_id, jd_id, ontology_version: "0.0.1" }
+            : undefined,
+        }),
+      ),
       maxRuntimeMs,
       `generation_timeout: exceeded ${Math.round(maxRuntimeMs / 1000)}s`,
     );

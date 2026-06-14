@@ -20,7 +20,11 @@ import { rankVariantsByLearning } from "../src/generation-sota";
 
 const NOW = "2026-05-15T12:00:00.000Z";
 
-function makeVariant(flavor: DraftVariant["flavor"], total_score: number, is_final = false): DraftVariant {
+function makeVariant(
+  flavor: DraftVariant["flavor"],
+  total_score: number,
+  is_final = false,
+): DraftVariant {
   return {
     id: randomUUID(),
     flavor,
@@ -169,7 +173,10 @@ test("rankVariantsByLearning clamps adjusted_score into [0,1]", () => {
 
 test("rankVariantsByLearning never reorders to demote within ±25% bound", () => {
   // Two variants with score gap > 25% — re-ranking can't change the order.
-  const variants = [makeVariant("ats_forward", 0.9, true), makeVariant("recruiter_scan_forward", 0.5)];
+  const variants = [
+    makeVariant("ats_forward", 0.9, true),
+    makeVariant("recruiter_scan_forward", 0.5),
+  ];
   const result = rankVariantsByLearning({
     variants,
     flavor_priors: { recruiter_scan_forward: 1.0 }, // unrealistic huge prior

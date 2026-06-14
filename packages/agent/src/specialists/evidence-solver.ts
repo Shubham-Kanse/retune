@@ -49,10 +49,6 @@
  * Writes:
  *   - evidence_graph.solver_solution
  *
- * @brain DLPFC + premotor cortex: optimal resource allocation under constraints
- * @thinking planning
- * @cellType pyramidal
- * @neurotransmitter dopamine
  */
 
 import { randomUUID } from "node:crypto";
@@ -134,7 +130,7 @@ interface BestSolution {
 
 export class EvidenceSolver implements Specialist {
   readonly id = "evidence_solver";
-  readonly display_name = "Evidence Solver";
+  readonly display_name = "Matching your evidence to the role";
   readonly brain_region = "DLPFC";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0;

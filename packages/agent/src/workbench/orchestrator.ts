@@ -13,7 +13,6 @@
  * register, when to refuse-and-explain) lives outside this class. The
  * caller wires those up.
  *
- * @brain DLPFC + thalamus + meta-cognition: tick scheduling
  */
 
 import type { ConflictRecord } from "@retune/types";

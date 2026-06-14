@@ -6,7 +6,6 @@
  * `src/specialists/`; this directory holds new code so the boundaries
  * stay obvious during the migration.
  *
- * @brain dorsolateral PFC (executive composition) + medial PFC (self-model)
  */
 
 export {

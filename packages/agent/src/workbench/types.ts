@@ -4,7 +4,6 @@
  * Anything used cross-package goes in @retune/types; anything that's
  * implementation detail of the workbench engine itself lives here.
  *
- * @brain DLPFC + thalamus: orchestration internals
  */
 
 import type { AuditEntry, Blackboard, BlackboardEvent, ConflictRecord, Goal } from "@retune/types";

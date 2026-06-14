@@ -19,12 +19,7 @@
  * Cost: $0 (deterministic).
  */
 
-import {
-  type CandidateModel,
-  type ClaimLedger,
-  type Goal,
-  type GoalKind,
-} from "@retune/types";
+import type { CandidateModel, ClaimLedger, Goal, GoalKind } from "@retune/types";
 import { AuditTrail } from "../../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../../workbench/types";
 import { buildCandidateModelDeterministic } from "./build-candidate-model";

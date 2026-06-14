@@ -14,10 +14,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { JobModelSchema } from "@retune/types";
 import {
-  JobModelBuilder,
-  buildJobModelDeterministic,
   CompanyContextResearcher,
+  JobModelBuilder,
   _resetCompanyResearchCache,
+  buildJobModelDeterministic,
 } from "../src/generation-sota";
 
 const SAMPLE_JD = `# Senior Backend Engineer at Stripe
@@ -52,7 +52,9 @@ test("buildJobModelDeterministic extracts hard filters from required block", () 
   // At least one of the hard-filter sentences must be captured.
   assert.ok(result.job_model.hard_filters.length >= 1, "should extract at least one hard filter");
   assert.ok(
-    result.job_model.hard_filters.some((s) => /must|required|minimum|active|citizen|author/i.test(s)),
+    result.job_model.hard_filters.some((s) =>
+      /must|required|minimum|active|citizen|author/i.test(s),
+    ),
     "should match at least one hard-filter pattern",
   );
 });
@@ -138,7 +140,11 @@ test("CompanyContextResearcher writes a skeleton model when consent is not grant
     },
   );
   assert.equal(result.writes.length, 1);
-  const model = result.writes[0]?.value as { display_name: string; stale: boolean; fetch_consent: boolean };
+  const model = result.writes[0]?.value as {
+    display_name: string;
+    stale: boolean;
+    fetch_consent: boolean;
+  };
   assert.equal(model.display_name, "Stripe");
   assert.equal(model.stale, true);
   assert.equal(model.fetch_consent, false);
@@ -157,11 +163,20 @@ test("CompanyContextResearcher caches by company within TTL", async () => {
         promptCaching: false,
       },
       models: { smart: "x", fast: "x", frontier: "x" },
-      createMessage: async () => ({ content: [], stopReason: "end_turn", usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }, model: "x" }),
+      createMessage: async () => ({
+        content: [],
+        stopReason: "end_turn",
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
+        model: "x",
+      }),
       createMessageWithTool: async () => ({}) as never,
       createStructuredOutput: async () => ({}) as never,
       createReasonedOutput: async () => ({}) as never,
-      searchWeb: async () => ({ summary: "Stripe is investing in Asia. Expanding partnerships in 2024.", citations: [], partial: false }),
+      searchWeb: async () => ({
+        summary: "Stripe is investing in Asia. Expanding partnerships in 2024.",
+        citations: [],
+        partial: false,
+      }),
       searchFiles: async () => null,
       runBackground: async () => null,
       drainModelCallTelemetry: () => [],
@@ -205,7 +220,12 @@ test("CompanyContextResearcher invalidates stale cache past TTL", async () => {
         promptCaching: false,
       },
       models: { smart: "x", fast: "x", frontier: "x" },
-      createMessage: async () => ({ content: [], stopReason: "end_turn", usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 }, model: "x" }),
+      createMessage: async () => ({
+        content: [],
+        stopReason: "end_turn",
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0 },
+        model: "x",
+      }),
       createMessageWithTool: async () => ({}) as never,
       createStructuredOutput: async () => ({}) as never,
       createReasonedOutput: async () => ({}) as never,
@@ -252,7 +272,10 @@ test("JobModelBuilder writes sota.job_model when jd_text is supplied", async () 
       trace_id: "t",
       signal: new AbortController().signal,
     },
-    makeGoal({ jd_text: SAMPLE_JD, jd_title: "Senior Backend Engineer", market: "US" }, "build_job_model"),
+    makeGoal(
+      { jd_text: SAMPLE_JD, jd_title: "Senior Backend Engineer", market: "US" },
+      "build_job_model",
+    ),
   );
   assert.equal(result.writes.length, 1);
   assert.equal(result.writes[0]?.path, "sota.job_model");
@@ -310,7 +333,7 @@ function makeBlackboard() {
   };
 }
 
-function makeGoal(payload: Record<string, unknown>, kind: string = "research_company_context") {
+function makeGoal(payload: Record<string, unknown>, kind = "research_company_context") {
   return {
     id: "g-1",
     kind: kind as never,

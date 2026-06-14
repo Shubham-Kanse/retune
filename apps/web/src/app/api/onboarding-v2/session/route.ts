@@ -3,6 +3,8 @@
 
 import { getOnboardingV2UserId } from "@/lib/onboarding-v2/auth";
 import { createSession, loadSession } from "@/lib/onboarding-v2/session";
+import { db, users } from "@retune/db";
+import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -28,6 +30,12 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
 
   if (body.action === "save_draft") {
+    // Mark onboarding complete so the auth layout gate lets the user reach /dashboard.
+    // The profile may be partial — that's fine. They can return via the migration card.
+    await db
+      .update(users)
+      .set({ onboardingCompleted: true, onboardingCompletedAt: new Date() })
+      .where(eq(users.id, userId));
     return NextResponse.json({ success: true, message: "Progress saved." });
   }
 

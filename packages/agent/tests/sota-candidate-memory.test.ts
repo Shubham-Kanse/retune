@@ -17,11 +17,7 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
-import {
-  CandidateModelSchema,
-  ClaimLedgerSchema,
-  type Blackboard,
-} from "@retune/types";
+import { type Blackboard, CandidateModelSchema, ClaimLedgerSchema } from "@retune/types";
 import {
   CandidateMemoryHydrator,
   ClaimLedgerLocker,
@@ -30,7 +26,6 @@ import {
   findUnsafeClaims,
   lockClaimLedger,
 } from "../src/generation-sota";
-import { GoalStack } from "../src/workbench/goal-stack";
 import {
   AttentionScheduler,
   AuditTrail,
@@ -40,6 +35,7 @@ import {
   SpecialistRegistry,
   TriggerBus,
 } from "../src/sota-exports";
+import { GoalStack } from "../src/workbench/goal-stack";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Determinism + provenance
@@ -250,9 +246,7 @@ const SAMPLE_CAREER_PROFILE = {
         endDate: "2024-12",
         responsibilities: ["Led the payments API rebuild"],
         achievements: ["Shipped a new API handling 10k qps"],
-        metrics: [
-          { metric: "qps", value: "10k", context: "production peak" },
-        ],
+        metrics: [{ metric: "qps", value: "10k", context: "production peak" }],
       },
     ],
   },

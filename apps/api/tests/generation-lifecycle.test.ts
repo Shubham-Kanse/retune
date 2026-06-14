@@ -46,9 +46,7 @@ function makeFakeDb() {
               where(_w: unknown) {
                 return {
                   limit: async (_n: number) =>
-                    returnExisting
-                      ? [{ generation_id: "existing-gen-uuid" }]
-                      : [],
+                    returnExisting ? [{ generation_id: "existing-gen-uuid" }] : [],
                 };
               },
             };
@@ -74,7 +72,10 @@ test("temporal path seeds FK rows + generation_requests row + starts workflow", 
       idempotency_key: "test-idempotency-key-12345",
     },
     user_id: TEST_USER,
-    registry: { create: () => ({ signal: new AbortController().signal }), delete_after: () => {} } as never,
+    registry: {
+      create: () => ({ signal: new AbortController().signal }),
+      delete_after: () => {},
+    } as never,
     log: () => {},
     deps: {
       nowUuid: () => {
@@ -121,10 +122,7 @@ test("temporal path seeds FK rows + generation_requests row + starts workflow", 
   assert.ok(seed, "workflow start should pass a seed");
   assert.equal((seed as Record<string, unknown>).jd_text, "JD body");
   assert.equal((seed as Record<string, unknown>).market, "US");
-  assert.equal(
-    (seed as Record<string, unknown>).idempotency_key,
-    "test-idempotency-key-12345",
-  );
+  assert.equal((seed as Record<string, unknown>).idempotency_key, "test-idempotency-key-12345");
 });
 
 test("in-memory path creates bus, schedules cleanup, and starts run", async () => {
@@ -190,7 +188,10 @@ test("idempotent replay returns existing generation without starting a new one",
       idempotency_key: "test-idempotency-key-12345",
     },
     user_id: TEST_USER,
-    registry: { create: () => ({ signal: new AbortController().signal }), delete_after: () => {} } as never,
+    registry: {
+      create: () => ({ signal: new AbortController().signal }),
+      delete_after: () => {},
+    } as never,
     log: () => {},
     deps: {
       nowUuid: () => randomUUID(),
@@ -222,9 +223,16 @@ test("dual-write conflict is non-fatal on temporal path", async () => {
   const ids = [randomUUID(), randomUUID()];
 
   const result = await createAndStartGeneration({
-    payload: { jd_title: "Senior Engineer", company: "Acme", idempotency_key: "test-idempotency-key-67890" },
+    payload: {
+      jd_title: "Senior Engineer",
+      company: "Acme",
+      idempotency_key: "test-idempotency-key-67890",
+    },
     user_id: TEST_USER,
-    registry: { create: () => ({ signal: new AbortController().signal }), delete_after: () => {} } as never,
+    registry: {
+      create: () => ({ signal: new AbortController().signal }),
+      delete_after: () => {},
+    } as never,
     log: (_level, _tag, msg) => {
       if (msg.includes("dual-write failed")) warnings.push(msg);
     },

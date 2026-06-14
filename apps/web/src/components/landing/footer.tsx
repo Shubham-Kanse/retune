@@ -1,20 +1,23 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 
-const socialLinks = [
-  { href: "#", label: "Twitter" },
-  { href: "#", label: "LinkedIn" },
-];
-
-const footerLinks = [
-  { href: "/", label: "Home" },
-  { href: "#about", label: "About" },
-  { href: "#works", label: "Features" },
-  { href: "#contact", label: "Contact" },
-];
-
 export function Footer() {
+  const t = useTranslations("footer");
+
+  const socialLinks = [
+    { href: "#", label: t("twitter") },
+    { href: "#", label: t("linkedin") },
+  ];
+
+  const footerLinks = [
+    { href: "/", label: t("home") },
+    { href: "#about", label: t("about") },
+    { href: "#works", label: t("features") },
+    { href: "#contact", label: t("contact") },
+  ];
+
   return (
     <footer className="border-t border-border">
       <div className="max-w-[1280px] mx-auto px-6 md:px-12 py-16 md:py-24">
@@ -33,7 +36,7 @@ export function Footer() {
             </div>
           </div>
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-4">Pages</h4>
+            <h4 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-4">{t("pages_heading")}</h4>
             <ul className="space-y-3">
               {footerLinks.map((link) => (
                 <li key={link.label}><Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{link.label}</Link></li>
@@ -41,21 +44,21 @@ export function Footer() {
             </ul>
           </div>
           <div>
-            <h4 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-4">Stay Updated</h4>
-            <p className="text-sm text-muted-foreground mb-4">Get career tips and product updates.</p>
+            <h4 className="text-xs font-semibold uppercase tracking-[0.15em] text-muted-foreground mb-4">{t("stay_updated_heading")}</h4>
+            <p className="text-sm text-muted-foreground mb-4">{t("stay_updated_body")}</p>
             <form className="flex flex-col gap-3">
-              <input type="email" placeholder="Enter your email" className="rt-input text-sm" />
+              <input type="email" placeholder={t("email_placeholder")} className="rt-input text-sm" />
               <button type="submit" className="rt-btn text-sm">
-                Subscribe
+                {t("subscribe")}
               </button>
             </form>
           </div>
         </div>
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-16 pt-8 border-t border-border">
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Retuned. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground">{t("copyright", { year: new Date().getFullYear() })}</p>
           <div className="flex items-center gap-6">
-            <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Privacy Policy</Link>
-            <Link href="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Terms of Service</Link>
+            <Link href="/privacy" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t("privacy_policy")}</Link>
+            <Link href="/terms" className="text-xs text-muted-foreground hover:text-foreground transition-colors">{t("terms_of_service")}</Link>
           </div>
         </div>
       </div>

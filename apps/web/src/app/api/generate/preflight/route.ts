@@ -1,11 +1,18 @@
 import { withAuth } from "@/lib/api-handler";
+import { recordDriftFacts } from "@/lib/career-facts";
 import { createPreflightToken } from "@/lib/drift-preflight-token";
 import { ensureGenerationPreflightsTable } from "@/lib/preflight-table";
 import { canonicalDisplay, canonicalizeSkill, skillMatch } from "@/lib/skill-ontology";
 import type { DriftAnswer, DriftLevel, PreflightDetectResponse, StructuredJd } from "@/lib/drift-preflight";
 import { AgentError, ValidationError } from "@/lib/errors";
 import { updateProfile } from "@/lib/profile-domain/repositories/profile-repository";
-import { assembleSystemPrompt, getModels, getProvider } from "@retune/agent/web";
+import {
+  assembleSystemPrompt,
+  getModels,
+  getProvider,
+  loadProviderKeyOverrides,
+  withProviderKeys,
+} from "@retune/agent/web";
 import { db, generationPreflights, profiles } from "@retune/db";
 import { eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
@@ -235,7 +242,11 @@ export const POST = withAuth(async (request, session) => {
   const profile = profileRows[0] ?? null;
 
   const knownSkills = buildProfileSkills(profile);
-  const aiStructured = await structureJdWithAi(parsed.data.jd_text);
+  // BYOK: the JD-structuring LLM call uses the user's own key when stored.
+  const byokKeys = await loadProviderKeyOverrides(db, session.userId);
+  const aiStructured = await withProviderKeys(byokKeys, () =>
+    structureJdWithAi(parsed.data.jd_text),
+  );
   const deterministic = extractSkillsDeterministic(parsed.data.jd_text);
   const structured = aiStructured
     ? {
@@ -308,7 +319,25 @@ export const PATCH = withAuth(async (request, session) => {
   }
 
   const profileRows = await db.select().from(profiles).where(eq(profiles.userId, session.userId)).limit(1);
-  const profile = profileRows[0];
+  let profile = profileRows[0];
+  if (!profile) {
+    // User clicked "Finish later" — profile row doesn't exist yet. Create a minimal one
+    // so the preflight can proceed. The dashboard banner will prompt them to complete it.
+    const inserted = await db.insert(profiles).values({
+      userId: session.userId,
+      fullName: session.fullName ?? "",
+      email: session.email ?? "",
+      location: "",
+      profileMarkdown: "",
+      targetRoles: "[]",
+      experience: "[]",
+      education: "[]",
+      skillsTier1: "[]",
+      skillsTier2: "[]",
+      skillsTier3: "[]",
+    }).returning();
+    profile = inserted[0];
+  }
   if (!profile) {
     throw new AgentError("Profile not found. Complete onboarding first.");
   }
@@ -353,6 +382,10 @@ export const PATCH = withAuth(async (request, session) => {
     skillsTier2: JSON.stringify(nextTier2),
     profileMarkdown,
   });
+
+  // Evidence ledger: every claimable drift answer becomes a persistent,
+  // user-verified career fact (best-effort, never blocks generation).
+  await recordDriftFacts(session.userId, parsed.data.answers);
 
   const [preflightRow] = await db
     .insert(generationPreflights)

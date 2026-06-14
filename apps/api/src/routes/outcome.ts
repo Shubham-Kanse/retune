@@ -16,6 +16,7 @@ import { applications, generations, outcomes } from "@retune/db/pg";
 import { and, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import { getIdentity, ownsRow, requireIdentity } from "../lib/auth-middleware";
 import { acquire_durability } from "../runtime/persistence-factory";
 
 const OutcomeSchema = z.object({
@@ -34,7 +35,7 @@ const OutcomeSchema = z.object({
 export function outcome_routes() {
   const app = new Hono();
 
-  app.post("/generate/:id/outcome", async (c) => {
+  app.post("/generate/:id/outcome", requireIdentity(), async (c) => {
     const generation_id = c.req.param("id");
     const body = await c.req.json().catch(() => ({}));
     const parsed = OutcomeSchema.safeParse(body);
@@ -54,7 +55,9 @@ export function outcome_routes() {
       .where(eq(generations.id, generation_id))
       .limit(1);
     const gen = genRows[0];
-    if (!gen) return c.json({ error: "generation_not_found" }, 404);
+    if (!gen || !ownsRow(getIdentity(c), gen.user_id)) {
+      return c.json({ error: "generation_not_found" }, 404);
+    }
 
     // Find or create the application row that pairs this generation with
     // a user-submitted application. Since this is the first time the user

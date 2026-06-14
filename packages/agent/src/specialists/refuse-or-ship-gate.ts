@@ -46,11 +46,6 @@
  *
  * Emits: `render_documents` (if SHIP) or `request_user_input` (if REVISE)
  *
- * @brain locus coeruleus (arousal + vigilance) + amygdala (threat detection)
- * @thinking metacognition
- * @cellType chandelier
- * @neurotransmitter norepinephrine
- *        + prefrontal meta-cognition (supervisor)
  */
 
 import { randomUUID } from "node:crypto";
@@ -112,7 +107,7 @@ export interface GdprAuditPacket {
 
 export class RefuseOrShipGate implements Specialist {
   readonly id = "refuse_or_ship_gate";
-  readonly display_name = "Refuse-or-Ship Gate (Meta-cognition)";
+  readonly display_name = "Making the final quality decision";
   readonly brain_region = "locus_coeruleus_amygdala";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0;

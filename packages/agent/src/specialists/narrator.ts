@@ -21,10 +21,6 @@
  * Writes:
  *   - hypotheses.narrative_paragraphs (appends)
  *
- * @brain left inferior frontal gyrus (Broca's): language production
- * @thinking language_production
- * @cellType pyramidal
- * @neurotransmitter acetylcholine
  */
 
 import type { Goal, GoalKind } from "@retune/types";
@@ -116,7 +112,7 @@ const LAYER_TEMPLATES: Record<NarrativeLayer, (ctx: SpecialistContext) => string
 
 export class Narrator implements Specialist {
   readonly id = "narrator";
-  readonly display_name = "Narrator";
+  readonly display_name = "Writing your summary";
   readonly brain_region = "left inferior frontal gyrus";
   readonly handles_goal_kinds: readonly GoalKind[] = HANDLES;
   readonly estimated_cost_usd = 0;

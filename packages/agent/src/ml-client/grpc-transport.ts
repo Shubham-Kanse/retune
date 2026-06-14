@@ -15,7 +15,6 @@
  * module, so a future migration to native proto types throughout is
  * straightforward — we'd only need to delete the converters.
  *
- * @brain thalamus → primary cortex relay (cross-process serialization)
  */
 
 import { create, fromBinary, toBinary } from "@bufbuild/protobuf";

@@ -14,7 +14,7 @@ export default function GlobalError({
           <p className="text-xs text-muted-foreground uppercase tracking-widest mb-3">Error</p>
           <h1 className="text-xl font-normal mb-2">Something went wrong</h1>
           <p className="text-sm text-muted-foreground mb-4">
-            An unexpected error occurred. You can try reloading or return to the dashboard.
+            We hit an unexpected error. Refresh the page — if it keeps happening, contact support@retuned.cv.
           </p>
 
           {(error.message || error.digest) && (

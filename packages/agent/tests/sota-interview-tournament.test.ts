@@ -16,7 +16,6 @@ import {
   type Goal,
   type JobModel,
   JobModelSchema,
-  type ProofQuestion,
   type QuestionPlan,
 } from "@retune/types";
 import {
@@ -57,7 +56,10 @@ test("ProofGapInterviewer suppresses duplicate questions across runs", async () 
     questions: plan1.questions.map((q) => ({ ...q, status: "asked" })),
   };
   const ctx2 = makeCtxWith(makeJobModel(SAMPLE_JD), makeLedger(EMPTY_CANDIDATE), askedPlan);
-  const r2 = await interviewer.run(ctx2, makeGoal({ max_questions: plan1.questions.length }, "plan_proof_questions"));
+  const r2 = await interviewer.run(
+    ctx2,
+    makeGoal({ max_questions: plan1.questions.length }, "plan_proof_questions"),
+  );
   const plan2 = r2.writes[0]?.value as QuestionPlan;
   // Budget already consumed by asked questions → no new questions added.
   const newQs = plan2.questions.filter((q) => !plan1.questions.some((p) => p.id === q.id));
@@ -66,7 +68,9 @@ test("ProofGapInterviewer suppresses duplicate questions across runs", async () 
 
 test("ProofGapInterviewer skips when job_model or ledger is missing", async () => {
   const interviewer = new ProofGapInterviewer();
-  const ctx = makeCtxRaw({ /* no sota */ });
+  const ctx = makeCtxRaw({
+    /* no sota */
+  });
   const result = await interviewer.run(ctx, makeGoal({}, "plan_proof_questions"));
   assert.equal(result.writes.length, 0);
   assert.equal(result.audit.micro_stage, "missing_inputs");
@@ -100,7 +104,9 @@ test("DraftTournamentRunner generates variants, picks a winner, persists the rea
   const finals = variants.filter((v) => v.is_final === true);
   assert.equal(finals.length, 1);
   // Winning variant has a reason_won.
-  assert.ok(typeof finals[0]?.reason_won === "string" && (finals[0]?.reason_won as string).length > 0);
+  assert.ok(
+    typeof finals[0]?.reason_won === "string" && (finals[0]?.reason_won as string).length > 0,
+  );
   // Every variant lists claim_ids.
   for (const v of variants) {
     assert.ok(Array.isArray(v.claim_ids));
@@ -163,9 +169,33 @@ const EMPTY_CANDIDATE: CandidateModel = {
 const SAMPLE_CANDIDATE: CandidateModel = {
   ...EMPTY_CANDIDATE,
   skill_inventory: [
-    { id: "s1", name: "Kubernetes", category: "technical", years: 5, evidence_tier: "demonstrated", source_ids: ["src1"], recency_iso: null },
-    { id: "s2", name: "TypeScript", category: "technical", years: 5, evidence_tier: "demonstrated", source_ids: ["src1"], recency_iso: null },
-    { id: "s3", name: "AWS", category: "technical", years: 3, evidence_tier: "self_described", source_ids: ["src1"], recency_iso: null },
+    {
+      id: "s1",
+      name: "Kubernetes",
+      category: "technical",
+      years: 5,
+      evidence_tier: "demonstrated",
+      source_ids: ["src1"],
+      recency_iso: null,
+    },
+    {
+      id: "s2",
+      name: "TypeScript",
+      category: "technical",
+      years: 5,
+      evidence_tier: "demonstrated",
+      source_ids: ["src1"],
+      recency_iso: null,
+    },
+    {
+      id: "s3",
+      name: "AWS",
+      category: "technical",
+      years: 3,
+      evidence_tier: "self_described",
+      source_ids: ["src1"],
+      recency_iso: null,
+    },
   ],
   metric_inventory: [
     {
@@ -202,14 +232,20 @@ const SAMPLE_CANDIDATE: CandidateModel = {
 };
 
 function makeJobModel(jdText: string): JobModel {
-  return JobModelSchema.parse(buildJobModelDeterministic({ jd_id: JD_ID, jd_text: jdText }).job_model);
+  return JobModelSchema.parse(
+    buildJobModelDeterministic({ jd_id: JD_ID, jd_text: jdText }).job_model,
+  );
 }
 
 function makeLedger(cm: CandidateModel): ClaimLedger {
   return ClaimLedgerSchema.parse(buildClaimLedgerFromCandidateModel(GEN_ID, cm));
 }
 
-function makeCtxWith(jobModel: JobModel | null, ledger: ClaimLedger | null, questionPlan?: QuestionPlan) {
+function makeCtxWith(
+  jobModel: JobModel | null,
+  ledger: ClaimLedger | null,
+  questionPlan?: QuestionPlan,
+) {
   const sota: Record<string, unknown> = {};
   if (jobModel) sota.job_model = jobModel;
   if (ledger) sota.claim_ledger = ledger;
@@ -244,7 +280,12 @@ function makeCtxRaw(sota: Record<string, unknown>) {
       conflicts: [],
       outcome_estimate: null,
       blocking_factors: [],
-      cost_budget: { spent_usd: 0, ceiling_usd: 0.05, hard_kill_usd: 0.2, per_specialist_spent: {} },
+      cost_budget: {
+        spent_usd: 0,
+        ceiling_usd: 0.05,
+        hard_kill_usd: 0.2,
+        per_specialist_spent: {},
+      },
       audit_trail: [],
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),

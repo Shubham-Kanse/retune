@@ -7,10 +7,13 @@ import { getSession } from "@/lib/session";
 import { computeCompletenessScore, db } from "@retune/db";
 import { applications, profiles } from "@retune/db/schema";
 import { eq } from "drizzle-orm";
+import { getTranslations } from "next-intl/server";
 
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) return null;
+
+  const t = await getTranslations("dashboard");
 
   const profileRows = await safeQuery(
     () =>
@@ -55,14 +58,14 @@ export default async function DashboardPage() {
   return (
     <PageShell width="wide">
       <PageHeader
-        eyebrow="Dashboard"
-        title={firstName ? `Welcome back, ${firstName}.` : "Welcome back."}
-        subtitle="Paste a role below to start a new tuning."
+        eyebrow={t("eyebrow")}
+        title={firstName ? t("title_with_name", { name: firstName }) : t("title_anonymous")}
+        subtitle={t("subtitle")}
       />
       {showMigrationCard && (
         <section className="mb-12">
           <p className="mb-4 text-[11px] font-medium uppercase tracking-widest text-muted-foreground/60">
-            Notifications
+            {t("notifications_label")}
           </p>
           <OnboardingV2MigrationCard show={showMigrationCard} />
         </section>
@@ -70,6 +73,7 @@ export default async function DashboardPage() {
       <DashboardClient
         firstName={firstName}
         profileScore={profileScore}
+        hasV2Profile={!!v2Profile}
         shipped={shipped}
         total={generations.length}
       />

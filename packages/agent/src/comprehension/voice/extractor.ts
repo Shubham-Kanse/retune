@@ -33,10 +33,6 @@
  * vector is upserted into `voice_centroids` keyed by `user_id`. The
  * blackboard always gets the vector regardless of persistence.
  *
- * @brain Broca's area + arcuate fasciculus: motor-speech / writing
- * @thinking language_production
- * @cellType pyramidal
- * @neurotransmitter glutamate
  *        style imprint
  */
 

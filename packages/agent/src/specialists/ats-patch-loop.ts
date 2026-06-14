@@ -20,16 +20,12 @@
  *   - draft.bullets.* (updated text for patched bullets)
  *   - draft.sections.* (updated rendered_text for skills section)
  *
- * @brain basal ganglia: iterative habit refinement
- * @thinking iterative_correction
- * @cellType medium_spiny
- * @neurotransmitter dopamine
  */
 
 import type { Goal, GoalKind } from "@retune/types";
-import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { createMessageWithTool } from "../lib/anthropic";
 import { loadPromptFile } from "../prompts/loader";
-import { register, renderPrompt } from "../prompts/registry";
+import { modelForPrompt, register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 import type { GapMap, GapMapEntry } from "./gap-mapper";
@@ -150,7 +146,7 @@ Insert keywords as naturally as possible. Prefer the skills section for technica
 
 export class AtsPatchLoop implements Specialist {
   readonly id = "ats_patch_loop";
-  readonly display_name = "ATS Patch Loop";
+  readonly display_name = "Optimising for ATS keywords";
   readonly brain_region = "basal_ganglia";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0.002;
@@ -201,13 +197,12 @@ export class AtsPatchLoop implements Specialist {
       n_bullets: bullet_list.length,
     });
 
-    const models = getModels();
     let output: PatchOutput;
     try {
       output = await createMessageWithTool<PatchOutput>(
         this.id,
         {
-          model: models.fast,
+          model: modelForPrompt("ats-patch-loop.system"),
           max_tokens: 2048,
           system: build_system(),
           messages: [
@@ -288,7 +283,7 @@ export class AtsPatchLoop implements Specialist {
         ]
           .filter(Boolean)
           .join(" | "),
-        model_version: models.fast,
+        model_version: modelForPrompt("ats-patch-loop.system"),
         latency_ms: Date.now() - t0,
         cost_usd: this.estimated_cost_usd,
         writes: writes.map((w) => w.path),

@@ -10,7 +10,6 @@
  * the workbench predictable and makes the registry trivially auditable
  * for compliance (PRD §12.4: "factor disclosure on request").
  *
- * @brain DLPFC: representational scaffolding for action selection
  */
 
 import type { GoalKind } from "@retune/types";

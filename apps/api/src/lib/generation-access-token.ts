@@ -19,7 +19,11 @@ export function verifyGenerationAccessToken(
   generationId: string,
 ): GenerationAccessClaims | null {
   if (process.env.NODE_ENV === "test") {
-    return { generation_id: generationId, user_id: "__TEST_BYPASS__", exp: Number.MAX_SAFE_INTEGER };
+    return {
+      generation_id: generationId,
+      user_id: "__TEST_BYPASS__",
+      exp: Number.MAX_SAFE_INTEGER,
+    };
   }
   if (!token) return null;
 
@@ -35,7 +39,9 @@ export function verifyGenerationAccessToken(
 
   let payload: GenerationAccessClaims;
   try {
-    payload = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8")) as GenerationAccessClaims;
+    payload = JSON.parse(
+      Buffer.from(payloadB64, "base64url").toString("utf8"),
+    ) as GenerationAccessClaims;
   } catch {
     return null;
   }

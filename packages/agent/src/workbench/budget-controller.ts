@@ -7,7 +7,6 @@
  * Also tracks per-specialist spend for SHAP-style cost attribution and
  * for the cost dashboard (PRD §C10).
  *
- * @brain reticular activating system: arousal/wakefulness gating
  *        amygdala: threat (cost runaway) detection
  */
 

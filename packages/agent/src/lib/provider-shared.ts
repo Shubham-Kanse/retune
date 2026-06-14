@@ -24,7 +24,10 @@ import type {
 
 const buffers: Record<string, ModelCallTelemetry[]> = {};
 
-export function recordTelemetry(provider: "openai" | "anthropic", record: ModelCallTelemetry): void {
+export function recordTelemetry(
+  provider: "openai" | "anthropic",
+  record: ModelCallTelemetry,
+): void {
   const buf = buffers[provider] ?? (buffers[provider] = []);
   buf.push(record);
   // Cap each buffer at 10_000 entries to bound memory.
@@ -82,7 +85,8 @@ export async function structuredOutputViaTool<T>(
   const schema = params.schema;
   const tool: ToolDefinition = {
     name: params.schemaName,
-    description: params.schemaDescription ?? `Emit JSON conforming to the ${params.schemaName} schema.`,
+    description:
+      params.schemaDescription ?? `Emit JSON conforming to the ${params.schemaName} schema.`,
     inputSchema: zodToJsonSchema(schema),
   };
   const raw = await provider.createMessageWithTool<unknown>(

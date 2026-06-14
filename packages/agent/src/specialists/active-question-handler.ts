@@ -17,10 +17,6 @@
  * `PostgresPersistence.record_active_question` bound function; commit #5
  * adds a null sink for headless test harnesses.
  *
- * @brain ACC + TPJ: self-monitoring + theory-of-mind for the user
- * @thinking social_cognition
- * @cellType spindle
- * @neurotransmitter oxytocin
  */
 
 import type { Goal, GoalKind } from "@retune/types";

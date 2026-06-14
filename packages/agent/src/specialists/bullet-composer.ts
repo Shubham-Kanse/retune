@@ -32,18 +32,14 @@
  *   - draft.sections.{id} — section scaffolding
  *   - draft.pending_revisions — failed bullets
  *
- * @brain Broca's area (language production) + premotor (sequential planning) + cerebellum (fine adjustment)
- * @thinking language_production
- * @cellType pyramidal
- * @neurotransmitter glutamate
  */
 
 import { randomUUID } from "node:crypto";
 import type { Goal, GoalKind } from "@retune/types";
 import { compute_fingerprint, voice_drift_cosine } from "../comprehension/voice/fingerprint";
-import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { createMessageWithTool } from "../lib/anthropic";
 import { loadPromptFile } from "../prompts/loader";
-import { register, renderPrompt } from "../prompts/registry";
+import { modelForPrompt, register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 
 // Register this specialist's prompt at module load so callers that
@@ -167,7 +163,7 @@ const COMPOSE_BULLET_TOOL = {
 
 export class SequentialBulletComposer implements Specialist {
   readonly id = "sequential_bullet_composer";
-  readonly display_name = "Sequential Bullet Composer";
+  readonly display_name = "Writing your experience bullets";
   readonly brain_region = "brocas_area";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0.015;
@@ -282,7 +278,7 @@ export class SequentialBulletComposer implements Specialist {
           templates_used: [...new Set(template_history)],
         }),
         justification: `composed ${bullet_ids.length}/${solver.bullets.length} bullets (${pending_revisions.length} pending revision) | templates: ${[...new Set(template_history)].join(",")} | cost: $${total_cost.toFixed(4)}`,
-        model_version: getModels().smart,
+        model_version: modelForPrompt("bullet-composer.system"),
         latency_ms: Date.now() - t0,
         cost_usd: total_cost,
         writes: writes.map((w) => w.path),
@@ -352,7 +348,7 @@ export class SequentialBulletComposer implements Specialist {
         const response = await createMessageWithTool<{ text: string; reasoning: string }>(
           this.id,
           {
-            model: getModels().smart,
+            model: modelForPrompt("bullet-composer.system"),
             max_tokens: 512,
             system: this.bullet_system_prompt(ctx.role_level),
             messages: [{ role: "user", content: prompt }],

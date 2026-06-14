@@ -194,20 +194,11 @@ export {
   type CaseBaseEntry,
 } from "./memory";
 export {
-  EmotionalStateModeler,
-  type EmotionalState,
-  MoodFingerprintSpecialist,
-  type MoodFingerprint,
-  MotivationModulator,
-  type MotivationLevels,
   Narrator,
   type NarrativeParagraph,
   TheoryOfMindSpecialist,
   type RecruiterBeliefState,
   type KnowledgeGap,
-  WellBeingMonitor,
-  type WellBeingConcern,
-  type WellBeingConcernHandler,
 } from "./specialists";
 export {
   TraceBus,

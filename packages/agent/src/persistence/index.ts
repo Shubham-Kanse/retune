@@ -1,7 +1,6 @@
 /**
  * Persistence namespace — durable substrate for the cognitive workbench.
  *
- * @brain hippocampus + entorhinal consolidation: episodic → neocortex
  */
 
 export type {

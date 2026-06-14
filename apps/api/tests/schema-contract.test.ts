@@ -61,7 +61,10 @@ test("schema contract: generations has required columns", async () => {
   ) as Array<Record<string, unknown>>;
   const compatSet = new Set(
     compatRaw
-      .map((r) => `${String(r.table_name ?? "").toLowerCase()}.${String(r.column_name ?? "").toLowerCase()}`)
+      .map(
+        (r) =>
+          `${String(r.table_name ?? "").toLowerCase()}.${String(r.column_name ?? "").toLowerCase()}`,
+      )
       .filter(Boolean),
   );
   assert.equal(compatSet.has("voice_centroids.created_at"), true);

@@ -2,7 +2,7 @@
  * Listener-conflict persistence (technical-2.0 §9, §20 Phase 3).
  *
  * Proves the v2.0 fix for issue #7: trigger-bus listeners
- * (FairnessMonitor, VoiceDriftMonitor, WellBeingMonitor) push concerns
+ * (FairnessMonitor, VoiceDriftMonitor) push concerns
  * into a shared `ConflictStagingQueue`; the orchestrator drains the
  * queue at the top of every tick and commits the staged conflicts onto
  * the blackboard via a synthetic `listener_drainer` audit entry.

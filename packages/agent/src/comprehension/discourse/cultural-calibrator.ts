@@ -37,10 +37,6 @@
  *   - `jd_text`: string (used as fallback if discourse_map has no
  *     culture sentences)
  *
- * @brain right TPJ + STS: cultural / value inference
- * @thinking cognitive_flexibility
- * @cellType mirror
- * @neurotransmitter oxytocin
  */
 
 import type { Goal, GoalKind } from "@retune/types";

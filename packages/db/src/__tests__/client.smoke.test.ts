@@ -15,8 +15,8 @@
  * execute the query mid-build.
  */
 
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq, sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { closeDb, db, getDb, users } from "..";
 
 beforeAll(() => {
@@ -86,10 +86,7 @@ describe("@retune/db client proxy", () => {
   it("transaction (async callback)", async () => {
     const email = `tx-${Date.now()}@retune.local`;
     const result = await db.transaction(async (tx) => {
-      const inserted = await tx
-        .insert(users)
-        .values({ email })
-        .returning();
+      const inserted = await tx.insert(users).values({ email }).returning();
       const id = inserted[0]?.id;
       const rows = await tx.select().from(users).where(eq(users.id, id!)).limit(1);
       return { id, found: rows.length === 1 };
@@ -111,13 +108,12 @@ describe("@retune/db client proxy", () => {
   it("onConflictDoNothing is a no-op on duplicate", async () => {
     const email = `conflict-${Date.now()}@retune.local`;
     await db.insert(users).values({ email });
-    // Second insert with same email should be a no-op (partial unique
-    // index targets `email WHERE deleted_at IS NULL`).
-    const inserted = await db
-      .insert(users)
-      .values({ email })
-      .onConflictDoNothing({ target: users.email })
-      .returning();
+    // Second insert with same email should be a no-op. The unique index
+    // on email is PARTIAL (`WHERE deleted_at IS NULL`), so an explicit
+    // conflict target must not be passed — Postgres rejects a bare
+    // `ON CONFLICT (email)` against a partial index. The targetless form
+    // is what every production call site uses.
+    const inserted = await db.insert(users).values({ email }).onConflictDoNothing().returning();
     expect(inserted.length).toBe(0);
   });
 });

@@ -12,7 +12,7 @@
  * Brain region: angular gyrus (semantic memory + canonical lookup).
  */
 
-import { type Goal, type GoalKind, type CompanyModel } from "@retune/types";
+import type { CompanyModel, Goal, GoalKind } from "@retune/types";
 import { getProvider } from "../../lib/provider";
 import { AuditTrail } from "../../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../../workbench/types";
@@ -84,7 +84,10 @@ export class CompanyContextResearcher implements Specialist {
           specialist: this.id,
           micro_stage: "cache_hit",
           inputs_hash: AuditTrail.hash({ cache_key }),
-          output_hash: AuditTrail.hash({ company: cached.model.canonical_company_id, fresh: cached.freshness_iso }),
+          output_hash: AuditTrail.hash({
+            company: cached.model.canonical_company_id,
+            fresh: cached.freshness_iso,
+          }),
           justification: `served company_model from cache (age=${Math.round((Date.now() - new Date(cached.freshness_iso).getTime()) / 1000)}s)`,
           latency_ms: Date.now() - t0,
           cost_usd: 0,
@@ -116,9 +119,12 @@ export class CompanyContextResearcher implements Specialist {
     let citations: CompanyModel["citations"] = [];
     let stale = false;
     if (provider.capabilities.webSearch) {
-      const result = await provider.searchWeb(`${company} hiring bar engineering culture recent news`, {
-        maxUses: 3,
-      });
+      const result = await provider.searchWeb(
+        `${company} hiring bar engineering culture recent news`,
+        {
+          maxUses: 3,
+        },
+      );
       if (result) {
         summary = result.summary;
         citations = result.citations.map((c) => ({
@@ -135,7 +141,8 @@ export class CompanyContextResearcher implements Specialist {
 
     const model: CompanyModel = {
       schema_version: "sota-v3",
-      canonical_company_id: payload.canonical_company_id ?? company.toLowerCase().replace(/[^a-z0-9]/g, "-"),
+      canonical_company_id:
+        payload.canonical_company_id ?? company.toLowerCase().replace(/[^a-z0-9]/g, "-"),
       display_name: company,
       industry: null,
       product_lines: [],
@@ -162,7 +169,10 @@ export class CompanyContextResearcher implements Specialist {
         specialist: this.id,
         micro_stage: "web_search",
         inputs_hash: AuditTrail.hash({ company }),
-        output_hash: AuditTrail.hash({ canonical_company_id: model.canonical_company_id, n_citations: citations.length }),
+        output_hash: AuditTrail.hash({
+          canonical_company_id: model.canonical_company_id,
+          n_citations: citations.length,
+        }),
         justification: `researched company "${company}" (${citations.length} citations${stale ? ", partial" : ""})`,
         latency_ms: Date.now() - t0,
         cost_usd: 0.002,
@@ -217,7 +227,10 @@ const TECH_TERMS = [
 ];
 
 function extractBusinessPriorities(summary: string): string[] {
-  const sentences = summary.split(/[.!?\n]+/).map((s) => s.trim()).filter(Boolean);
+  const sentences = summary
+    .split(/[.!?\n]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
   return sentences
     .filter((s) => /\b(?:priority|focus|invest|launch|expand|growth|partnership)\b/i.test(s))
     .slice(0, 5);

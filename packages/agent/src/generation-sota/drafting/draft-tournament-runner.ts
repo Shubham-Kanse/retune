@@ -60,7 +60,9 @@ export class DraftTournamentRunner implements Specialist {
 
   async run(ctx: SpecialistContext, goal: Goal): Promise<SpecialistResult> {
     const t0 = Date.now();
-    const sotaRaw = (ctx.blackboard as unknown as { sota?: { job_model?: unknown; claim_ledger?: unknown } }).sota ?? {};
+    const sotaRaw =
+      (ctx.blackboard as unknown as { sota?: { job_model?: unknown; claim_ledger?: unknown } })
+        .sota ?? {};
 
     const clParsed = ClaimLedgerSchema.safeParse(sotaRaw.claim_ledger);
     if (!clParsed.success || !clParsed.data.locked) {
@@ -70,7 +72,10 @@ export class DraftTournamentRunner implements Specialist {
         audit: {
           specialist: this.id,
           micro_stage: "ledger_not_locked",
-          inputs_hash: AuditTrail.hash({ has_ledger: clParsed.success, locked: clParsed.success ? clParsed.data.locked : false }),
+          inputs_hash: AuditTrail.hash({
+            has_ledger: clParsed.success,
+            locked: clParsed.success ? clParsed.data.locked : false,
+          }),
           output_hash: AuditTrail.hash({ status: "skipped" }),
           justification: "claim ledger missing or not locked — refusing to draft",
           latency_ms: Date.now() - t0,
@@ -174,7 +179,11 @@ function makeVariant(
   };
 }
 
-function orderClaims(flavor: DraftFlavor, claims: SotaClaim[], jobModel: JobModel | null): SotaClaim[] {
+function orderClaims(
+  flavor: DraftFlavor,
+  claims: SotaClaim[],
+  jobModel: JobModel | null,
+): SotaClaim[] {
   const allowed = claims.filter((c) => c.allowed_uses.includes("resume"));
   const atsKeywords = new Set((jobModel?.ats_keywords ?? []).map((k) => k.normalized));
 
@@ -183,8 +192,13 @@ function orderClaims(flavor: DraftFlavor, claims: SotaClaim[], jobModel: JobMode
     s += defensibilityScore(c.defensibility);
     s += c.confidence * 0.5;
     if (flavor === "ats_forward" && c.kind === "skill") s += 0.7;
-    if (flavor === "recruiter_scan_forward" && (c.kind === "metric" || c.kind === "achievement")) s += 0.7;
-    if (flavor === "hiring_manager_depth_forward" && (c.kind === "leadership" || c.kind === "scope")) s += 0.7;
+    if (flavor === "recruiter_scan_forward" && (c.kind === "metric" || c.kind === "achievement"))
+      s += 0.7;
+    if (
+      flavor === "hiring_manager_depth_forward" &&
+      (c.kind === "leadership" || c.kind === "scope")
+    )
+      s += 0.7;
     if (flavor === "ats_forward") {
       for (const t of c.normalized_text.split(/\s+/)) if (atsKeywords.has(t)) s += 0.2;
     }
@@ -206,7 +220,11 @@ function defensibilityScore(d: SotaClaim["defensibility"]): number {
   }
 }
 
-function renderMarkdown(flavor: DraftFlavor, claims: SotaClaim[], _jobModel: JobModel | null): string {
+function renderMarkdown(
+  flavor: DraftFlavor,
+  claims: SotaClaim[],
+  _jobModel: JobModel | null,
+): string {
   const top = claims.slice(0, 8);
   const headingMap: Record<DraftFlavor, string> = {
     ats_forward: "ATS-Forward Resume",
@@ -225,7 +243,11 @@ function renderMarkdown(flavor: DraftFlavor, claims: SotaClaim[], _jobModel: Job
 // Scoring rubric (003 §5.10)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function scoreVariant(v: DraftVariant, ledger: ClaimLedger, jobModel: JobModel | null): DraftVariant["scores"] {
+function scoreVariant(
+  v: DraftVariant,
+  ledger: ClaimLedger,
+  jobModel: JobModel | null,
+): DraftVariant["scores"] {
   const claims = ledger.claims.filter((c) => v.claim_ids.includes(c.id));
 
   const ats = scoreAts(v, jobModel);
@@ -280,7 +302,14 @@ function scoreDefensibility(claims: SotaClaim[]): number {
 
 function avg(s: DraftVariant["scores"]): number {
   return (
-    (s.ats + s.recruiter + s.hiring_manager + s.voice + s.defensibility + s.formatting + s.market_fit + s.fairness) /
+    (s.ats +
+      s.recruiter +
+      s.hiring_manager +
+      s.voice +
+      s.defensibility +
+      s.formatting +
+      s.market_fit +
+      s.fairness) /
     8
   );
 }

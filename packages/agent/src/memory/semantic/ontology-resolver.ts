@@ -12,7 +12,6 @@
  *   - exact alias match           → point=0.92
  *   - no match                    → null (caller decides fallback strategy)
  *
- * @brain angular gyrus: semantic integration / canonical lookup
  */
 
 import { type Confidence, pointConfidence } from "@retune/types";

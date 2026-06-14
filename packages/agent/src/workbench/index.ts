@@ -13,7 +13,6 @@
  * The orchestrator (next commit) sits above all of these; specialists
  * sit alongside them, subscribed via the bus.
  *
- * @brain DLPFC + thalamus + entorhinal
  */
 
 export { BlackboardStore, read_path, write_path } from "./blackboard";

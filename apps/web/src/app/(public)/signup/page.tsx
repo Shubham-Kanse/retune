@@ -174,9 +174,9 @@ export default function SignupPage() {
           <p className="text-xs font-medium text-muted-foreground">Data processing consent</p>
           {(
             [
-              { key: "anthropic", label: "Anthropic (AI generation)" },
-              { key: "openai", label: "OpenAI (processing)" },
-              { key: "retune", label: "Retuned (platform)" },
+              { key: "anthropic", label: "Anthropic (writes your resume)" },
+              { key: "openai", label: "OpenAI (processes your text)" },
+              { key: "retune", label: "Retuned (stores your profile)" },
             ] as const
           ).map(({ key, label }) => (
             <label

@@ -14,9 +14,9 @@ import {
 } from "lucide-react";
 
 const steps = [
-  { title: "Paste the job", body: "Drop a JD, a URL, or describe the role in plain English." },
-  { title: "We tune from your profile", body: "Retuned reads your career brain - experience, evidence, links - and rewrites for the role." },
-  { title: "Export & apply", body: "Get a tailored resume, cover letter, ATS read‑out, and a focused application strategy." },
+  { title: "Paste the role", body: "Drop a JD, a URL, or describe the role in plain English." },
+  { title: "We read your evidence", body: "Retuned reads your career profile — experience, evidence, links — and writes for this specific role." },
+  { title: "Export & apply", body: "Get a tailored resume, cover letter, ATS read-out, and a focused application strategy." },
 ];
 
 const features = [
@@ -25,25 +25,25 @@ const features = [
   { icon: Gauge, title: "ATS & readiness", body: "Keyword coverage, score, and the precise gaps to close before submitting." },
   { icon: Brain, title: "Profile drift detector", body: "Spots stale links, missing roles, and conflicting claims across your profile." },
   { icon: ClipboardCheck, title: "Application strategy", body: "Who to reach, what to mention, and the strongest angle to lead with." },
-  { icon: Sparkles, title: "Brain you can edit", body: "Tunings improve as your career brain grows. Nothing is one‑shot." },
+  { icon: Sparkles, title: "Evidence you can grow", body: "Tunings improve as your profile grows. Every piece of evidence you add sharpens the next one." },
 ];
 
 const faqs = [
   {
     q: "How is this different from a generic AI resume builder?",
-    a: "Retuned doesn't write generic resumes. It reads your career brain (real evidence - projects, metrics, links) and tunes for one specific job at a time. Every line traces back to something you actually did.",
+    a: "Retuned doesn't write generic resumes. It reads your evidence — real projects, metrics, and links — and writes for one specific role at a time. Every line traces back to something you actually did.",
   },
   {
     q: "Will my resume pass ATS systems?",
-    a: "Yes. Every tuning includes a keyword‑coverage read‑out, format checks, and the specific gaps to close before submitting.",
+    a: "Yes. Every tuning includes a keyword-coverage read-out, format checks, and the specific gaps to close before submitting.",
   },
   {
     q: "Where does my data go?",
-    a: "Your data stays in your Retuned workspace. Generation is processed through Anthropic and OpenAI under explicit consent. You can delete your account and data any time.",
+    a: "Your data stays in your Retuned workspace. Tunings are processed through Anthropic and OpenAI under explicit consent. You can delete your account and data any time.",
   },
   {
     q: "Do I need to upload a resume?",
-    a: "It helps, but isn't required. You can build your career brain in the app or import from LinkedIn / a PDF.",
+    a: "It helps, but isn't required. You can build your profile in the app or import from LinkedIn or a PDF.",
   },
 ];
 
@@ -52,7 +52,7 @@ export function HowItWorks() {
     <section id="how" className="mx-auto max-w-4xl px-6 pt-24">
       <h2 className="text-center text-3xl font-semibold tracking-tight md:text-4xl">How it works</h2>
       <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-        Three minutes from job description to a complete, evidence‑backed application package.
+        Three minutes from job description to a complete, evidence-backed application package.
       </p>
       <ol className="mt-12 grid gap-12 md:grid-cols-3">
         {steps.map((s, i) => (
@@ -73,10 +73,10 @@ export function Features() {
   return (
     <section id="features" className="mx-auto max-w-5xl px-6 pt-32">
       <h2 className="text-center text-3xl font-semibold tracking-tight md:text-4xl">
-        What you get on every tuning
+        One tuning. Three deliverables.
       </h2>
       <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
-        Six tightly‑scoped artifacts. No fluff, no AI slop. Each one is editable and exportable.
+        Six tightly-scoped artifacts. No fluff, no AI slop. Each one is editable and exportable.
       </p>
       <div className="mt-12 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
         {features.map(({ icon: Icon, title, body }) => (

@@ -21,10 +21,6 @@
  *   - Emits drift measurements to an injected callback
  *   - Ring buffer of measurements (256) for inspection at generation end
  *
- * @brain cerebellum: fine motor precision + stylometric adjustment
- * @thinking motor_sequencing
- * @cellType purkinje
- * @neurotransmitter GABA
  */
 
 import type { BlackboardEvent } from "@retune/types";

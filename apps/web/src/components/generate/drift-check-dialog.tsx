@@ -1,5 +1,6 @@
 "use client";
 
+import { BrainIcon, type BrainIconHandle } from "@/components/ui/brain-icon";
 import {
   DRIFT_LEVEL_OPTIONS,
   type DriftAnswer,
@@ -9,21 +10,29 @@ import {
 } from "@/lib/drift-preflight";
 import * as Dialog from "@radix-ui/react-dialog";
 import { AlertCircle, ArrowRight, CheckCircle2, Info, Sparkles, X } from "lucide-react";
-import { motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BrainIcon, type BrainIconHandle } from "@/components/ui/brain-icon";
 
-export function DriftCheckLoading({ label = "Retune is checking profile drift..." }: { label?: string }) {
+export function DriftCheckLoading({
+  label = "Retune is checking profile drift...",
+}: { label?: string }) {
   const brainRef = useRef<BrainIconHandle>(null);
-  useEffect(() => { brainRef.current?.startAnimation(); }, []);
+  useEffect(() => {
+    brainRef.current?.startAnimation();
+  }, []);
   return (
     <div className="flex flex-col items-center gap-4 py-6">
       <BrainIcon ref={brainRef} size={36} className="text-[#2d8a5e]" />
       <p className="text-sm text-[#6f6a64]">{label}</p>
       <div className="inline-flex items-center gap-1.5 text-[#7c746b]">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]" />
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]" style={{ animationDelay: "120ms" }} />
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]" style={{ animationDelay: "240ms" }} />
+        <span
+          className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]"
+          style={{ animationDelay: "120ms" }}
+        />
+        <span
+          className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#2d8a5e]"
+          style={{ animationDelay: "240ms" }}
+        />
       </div>
     </div>
   );
@@ -62,7 +71,7 @@ export function DriftCheckDialog({
     return input
       .replace(/\s+/g, " ")
       .replace(/JD context:\s*/gi, "Detected in JD: ")
-      .replace(/\s*"\s*/g, "\"")
+      .replace(/\s*"\s*/g, '"')
       .trim()
       .slice(0, 320);
   }
@@ -91,8 +100,8 @@ export function DriftCheckDialog({
                 A slight drift was identified
               </Dialog.Title>
               <Dialog.Description className="mt-1 text-sm leading-relaxed text-[#6f6a64]">
-                We found skills in this job description that are not clearly present in your profile.
-                Confirming these helps Retune generate a truthful resume.
+                We found skills in this job description that are not clearly present in your
+                profile. Confirming these helps Retune generate a truthful resume.
               </Dialog.Description>
             </div>
             <button type="button" className="rt-icon-btn" onClick={onClose} aria-label="Close">
@@ -160,7 +169,9 @@ export function DriftCheckDialog({
           {current ? (
             <div className="rounded-2xl border border-[#e8e3dc] bg-white p-4">
               <div className="mb-3 flex items-center justify-between text-xs text-[#807b74]">
-                <span>Question {index + 1} of {questions.length}</span>
+                <span>
+                  Question {index + 1} of {questions.length}
+                </span>
                 <span>{progress}%</span>
               </div>
               <p className="mb-3 inline-flex items-center gap-2 text-base font-medium text-[#1a1a1a]">
@@ -184,7 +195,9 @@ export function DriftCheckDialog({
                     <button
                       key={opt.value}
                       type="button"
-                      onClick={() => setAnswers((prev) => ({ ...prev, [current.skill]: opt.value }))}
+                      onClick={() =>
+                        setAnswers((prev) => ({ ...prev, [current.skill]: opt.value }))
+                      }
                       className={`rounded-lg border px-3 py-2 text-sm transition-colors ${
                         active
                           ? "border-[#b84ed1] bg-[#f7ecfb] text-[#7e2d90]"

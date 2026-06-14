@@ -41,17 +41,13 @@
  *
  * May emit: `request_user_input` goal if divergence exceeds threshold.
  *
- * @brain temporo-parietal junction (TPJ): theory of mind + perspective taking
- * @thinking social_cognition
- * @cellType mirror
- * @neurotransmitter serotonin
  */
 
 import { randomUUID } from "node:crypto";
 import type { Goal, GoalKind, NarrativeArcCandidate } from "@retune/types";
-import { createMessageWithTool, getModels } from "../lib/anthropic";
+import { createMessageWithTool } from "../lib/anthropic";
 import { loadPromptFile } from "../prompts/loader";
-import { register, renderPrompt } from "../prompts/registry";
+import { modelForPrompt, register, renderPrompt } from "../prompts/registry";
 import { AuditTrail } from "../workbench/audit-trail";
 import type { Specialist, SpecialistContext, SpecialistResult } from "../workbench/types";
 
@@ -172,7 +168,7 @@ const FRONTIER_ESCALATION_THRESHOLD = 30;
 
 export class CriticEnsemble implements Specialist {
   readonly id = "critic_ensemble";
-  readonly display_name = "Critic Ensemble (TPJ)";
+  readonly display_name = "Reviewing the draft";
   readonly brain_region = "temporo_parietal_junction";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0.005;
@@ -336,7 +332,7 @@ export class CriticEnsemble implements Specialist {
           scores: [recruiter.score, hiring_manager.score, self_image.score],
         }),
         justification: `critics: recruiter=${recruiter.score}/100 (${recruiter.preferred_arc}), HM=${hiring_manager.score}/100 (${hiring_manager.preferred_arc}), self=${self_image.score}/100 (${self_image.preferred_arc}) → consensus="${ensemble.consensus_arc}"${ensemble.divergence_detected ? ` [DIVERGENCE: ${ensemble.divergence_description}]` : ""}${ensemble.escalated_to_frontier ? " [FRONTIER ESCALATED]" : ""}`,
-        model_version: getModels().fast,
+        model_version: modelForPrompt(CRITIC_PROMPT_NAMES.recruiter),
         latency_ms: Date.now() - t0,
         cost_usd: this.estimated_cost_usd,
         writes: writes.map((w) => w.path),
@@ -362,7 +358,7 @@ export class CriticEnsemble implements Specialist {
     }>(
       `${this.id}/${role}`,
       {
-        model: getModels().fast,
+        model: modelForPrompt(CRITIC_PROMPT_NAMES[role]),
         max_tokens: 512,
         system: CRITIC_PROMPTS[role],
         messages: [

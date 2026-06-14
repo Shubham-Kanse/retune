@@ -29,12 +29,9 @@ import { SequentialBulletComposer } from "./specialists/bullet-composer";
 import { CoverLetterComposer } from "./specialists/cover-letter-composer";
 import { CriticEnsemble } from "./specialists/critic-ensemble";
 import { DocumentRenderer } from "./specialists/document-renderer";
-import { EmotionalStateModeler } from "./specialists/emotional-state-modeler";
 import { EvidenceSolver } from "./specialists/evidence-solver";
 import { FairnessMonitor } from "./specialists/fairness-monitor";
 import { GapMapper } from "./specialists/gap-mapper";
-import { MoodFingerprintSpecialist } from "./specialists/mood-fingerprint";
-import { MotivationModulator } from "./specialists/motivation-modulator";
 import { NarrativeArcProposer } from "./specialists/narrative-arc-proposer";
 import { Narrator } from "./specialists/narrator";
 import { OutcomePredictor } from "./specialists/outcome-predictor";
@@ -42,7 +39,6 @@ import { RefuseOrShipGate } from "./specialists/refuse-or-ship-gate";
 import { SpecialistRegistry } from "./specialists/registry";
 import { TheoryOfMindSpecialist } from "./specialists/theory-of-mind";
 import { VoiceDriftMonitor } from "./specialists/voice-drift-monitor";
-import { WellBeingMonitor } from "./specialists/well-being-monitor";
 import { AttentionScheduler } from "./workbench/attention-scheduler";
 import { AuditTrail } from "./workbench/audit-trail";
 import { BlackboardStore } from "./workbench/blackboard";
@@ -142,9 +138,6 @@ export async function run_cognitive_pipeline(input: {
     new BoilerplateStripper(),
     new GapMapper(),
     new EvidenceSolver(),
-    new EmotionalStateModeler(),
-    new MoodFingerprintSpecialist(),
-    new MotivationModulator(),
     new NarrativeArcProposer(),
     new SequentialBulletComposer(),
     new CoverLetterComposer(),
@@ -197,8 +190,6 @@ export async function run_cognitive_pipeline(input: {
       }
     },
   });
-  trigger_bus.subscribe(new WellBeingMonitor({ staging_queue: conflict_staging }));
-
   const orchestrator = new Orchestrator({
     blackboard,
     goal_stack: goals,

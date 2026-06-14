@@ -1,6 +1,6 @@
 "use client";
 
-import { type DriftAnswer, type DriftLevel, type DriftQuestion } from "@/lib/drift-preflight";
+import type { DriftAnswer, DriftLevel, DriftQuestion } from "@/lib/drift-preflight";
 import { useState } from "react";
 
 const OPTIONS: { value: DriftLevel; label: string }[] = [
@@ -36,7 +36,10 @@ export function DriftCheckInline({
 
   async function handleNext() {
     if (!canNext) return;
-    if (!isLast) { setIndex((v) => v + 1); return; }
+    if (!isLast) {
+      setIndex((v) => v + 1);
+      return;
+    }
     await onSubmit(questions.map((q) => ({ skill: q.skill, level: answers[q.skill] ?? "no" })));
   }
 

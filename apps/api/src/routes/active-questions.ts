@@ -12,6 +12,7 @@ import { active_questions, generations } from "@retune/db/pg";
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
+import { getIdentity, ownsRow, requireIdentity } from "../lib/auth-middleware";
 import { acquire_durability } from "../runtime/persistence-factory";
 import { acquire_temporal } from "../runtime/temporal-factory";
 import { workflow_id_for } from "../runtime/workflow-ids";
@@ -23,7 +24,7 @@ const AnswerSchema = z.object({
 export function active_questions_routes() {
   const app = new Hono();
 
-  app.post("/active-questions/:id/answer", async (c) => {
+  app.post("/active-questions/:id/answer", requireIdentity(), async (c) => {
     const question_id = c.req.param("id");
     const body = await c.req.json().catch(() => ({}));
     const parsed = AnswerSchema.safeParse(body);
@@ -57,13 +58,13 @@ export function active_questions_routes() {
       return c.json({ error: "already_answered", question_id }, 409);
     }
 
-    // Confirm the generation exists (good error ergonomics).
+    // Confirm the generation exists and belongs to the caller.
     const gen_rows = await durability.db
-      .select({ id: generations.id })
+      .select({ id: generations.id, user_id: generations.user_id })
       .from(generations)
       .where(eq(generations.id, aq.generation_id))
       .limit(1);
-    if (!gen_rows[0]) {
+    if (!gen_rows[0] || !ownsRow(getIdentity(c), gen_rows[0].user_id)) {
       return c.json({ error: "generation_not_found", generation_id: aq.generation_id }, 404);
     }
 

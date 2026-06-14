@@ -1,13 +1,19 @@
 import { BlackboardResumeRenderer } from "@/components/results/blackboard-resume-renderer";
 import { apiClient } from "@/lib/api-client";
+import { getApiSession } from "@/lib/session";
 import { notFound, redirect } from "next/navigation";
 
 export default async function ApplicationPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
+  const session = await getApiSession();
+  if (!session) {
+    redirect("/login");
+  }
+
   let application;
   try {
-    application = await apiClient.getApplication(id);
+    application = await apiClient.asUser(session.userId).getApplication(id);
   } catch (error) {
     console.error("Failed to fetch application:", error);
     notFound();

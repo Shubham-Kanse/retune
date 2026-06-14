@@ -8,7 +8,24 @@
 
 export { assembleSystemPrompt } from "./prompt-assembler";
 export { getProvider, getModels } from "./lib/provider";
-export type { ToolDefinition, MessageParams, SystemBlock, ContentBlock, AIResponse } from "./lib/provider";
+export {
+  withProviderKeys,
+  byokActive,
+  byokEncryptionConfigured,
+  encryptApiKey,
+  decryptApiKey,
+  keyLast4,
+  maskKey,
+  type ProviderKeyOverrides,
+} from "./lib/byok";
+export { loadProviderKeyOverrides } from "./lib/byok-store";
+export type {
+  ToolDefinition,
+  MessageParams,
+  SystemBlock,
+  ContentBlock,
+  AIResponse,
+} from "./lib/provider";
 export * from "./types";
 export * from "./pipeline/schemas";
 
@@ -74,9 +91,6 @@ export {
   type RecruiterBeliefState,
   type KnowledgeGap,
   VoiceDriftMonitor,
-  WellBeingMonitor,
-  type WellBeingConcern,
-  type WellBeingConcernHandler,
 } from "./specialists";
 
 // Persistence — safe
@@ -95,17 +109,6 @@ export {
 
 // Temporal task queue constant — safe (no imports)
 export { COGNITIVE_TASK_QUEUE } from "./temporal/task-queue";
-
-// Temporal workflows — safe (only @temporalio/client for status queries)
-export {
-  getStatusQuery,
-  runGenerationWorkflow,
-  userAnsweredSignal,
-  type RunGenerationWorkflowResult,
-  type StatusSnapshot,
-  type UserAnsweredPayload,
-  type WorkflowStatus,
-} from "./temporal/workflows";
 
 // Comprehension — safe (uses ML client over network, no native bundling)
 export {

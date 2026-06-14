@@ -24,12 +24,7 @@
  *      enough to break ties in the user's favour.
  */
 
-import type {
-  DraftFlavor,
-  DraftVariant,
-  EditMemory,
-  OutcomeMemory,
-} from "@retune/types";
+import type { DraftFlavor, DraftVariant, EditMemory, OutcomeMemory } from "@retune/types";
 
 const HALF_LIFE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -122,7 +117,8 @@ export function rankVariantsByLearning(input: RankerInput): RankerOutput {
   if (ranked[0]) {
     ranked[0].is_final = true;
     if (changed_order) {
-      ranked[0].reason_won = `${ranked[0].reason_won ?? ""} | re-ranked by outcome learning (reward=${ranked[0].reward.toFixed(3)})`.trim();
+      ranked[0].reason_won =
+        `${ranked[0].reason_won ?? ""} | re-ranked by outcome learning (reward=${ranked[0].reward.toFixed(3)})`.trim();
     }
   }
 

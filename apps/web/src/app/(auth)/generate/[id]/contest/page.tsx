@@ -42,9 +42,9 @@ export default function ContestPage() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <p className="rt-label">Rights</p>
-            <h1 className="font-serif text-2xl font-normal text-foreground leading-tight">Contest Decision</h1>
+            <h1 className="font-serif text-2xl font-normal text-foreground leading-tight">Contest this decision</h1>
           </div>
-          <Link href={`/applications/${id}`} className="text-muted-foreground hover:text-foreground transition-colors text-sm">✕</Link>
+          <Link href={`/generate/${id}/result`} className="text-muted-foreground hover:text-foreground transition-colors text-sm">✕</Link>
         </div>
 
         {success ? (
@@ -52,14 +52,14 @@ export default function ContestPage() {
             <p className="text-sm font-medium text-foreground">Your contest has been logged and will be reviewed.</p>
             <p className="text-sm text-muted-foreground">A member of our team will respond within 30 days.</p>
             <div className="flex gap-3 pt-2">
-              <Link href={`/applications/${id}`} className="rt-btn text-sm px-4 py-2 inline-block">Back to Results</Link>
+              <Link href={`/generate/${id}/result`} className="rt-btn text-sm px-4 py-2 inline-block">Back to results</Link>
               <Link href="/dashboard" className="rt-btn-ghost text-sm px-4 py-2 inline-block">Dashboard</Link>
             </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-5 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
-              <p className="rt-label mb-2">Your Rights</p>
+              <p className="rt-label mb-2">Your rights</p>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 If you believe the automated decision was incorrect or unfair, you can contest it here. Explain why and include any relevant context.
               </p>
@@ -85,7 +85,7 @@ export default function ContestPage() {
               <button type="submit" className="rt-btn text-sm px-4 py-2" disabled={submitting || !reason.trim()}>
                 {submitting ? "Submitting…" : "Submit Contest"}
               </button>
-              <Link href={`/applications/${id}`} className="rt-btn-ghost text-sm px-4 py-2">Cancel</Link>
+              <Link href={`/generate/${id}/result`} className="rt-btn-ghost text-sm px-4 py-2">Cancel</Link>
             </div>
           </form>
         )}

@@ -29,6 +29,12 @@ function loadMigrations() {
       name: "0011_onboarding_v2_commit_rpc",
       sql: load("0011_onboarding_v2_commit_rpc.sql"),
     },
+    // NOTE: 0012–0017 are production-track migrations (Stripe events,
+    // RLS policies, organisations, …) applied out-of-band; several use
+    // roles/extensions pglite doesn't have, so they are intentionally
+    // not replayed here. 0018 is plain DDL and safe in both tracks.
+    { name: "0018_career_facts", sql: load("0018_career_facts.sql") },
+    { name: "0019_user_ai_keys", sql: load("0019_user_ai_keys.sql") },
   ];
 }
 

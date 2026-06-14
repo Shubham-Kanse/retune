@@ -12,13 +12,7 @@
  * exported from `@retune/db/pg`.
  */
 
-import {
-  type PgDb,
-  create_pglite,
-  pglite_drizzle,
-  postgres_drizzle,
-  run_migrations,
-} from "./pg";
+import { type PgDb, create_pglite, pglite_drizzle, postgres_drizzle, run_migrations } from "./pg";
 
 export type DB = PgDb;
 
@@ -145,18 +139,14 @@ function chainable<T>(promise: Promise<Box>): T {
       get(_target, prop) {
         if (typeof prop === "symbol") return undefined;
         if (prop === "then") {
-          return (
-            onFulfilled?: (v: unknown) => unknown,
-            onRejected?: (e: unknown) => unknown,
-          ) => execute(promise).then(onFulfilled, onRejected);
+          return (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) =>
+            execute(promise).then(onFulfilled, onRejected);
         }
         if (prop === "catch") {
-          return (onRejected: (e: unknown) => unknown) =>
-            execute(promise).catch(onRejected);
+          return (onRejected: (e: unknown) => unknown) => execute(promise).catch(onRejected);
         }
         if (prop === "finally") {
-          return (onFinally: () => void) =>
-            execute(promise).finally(onFinally);
+          return (onFinally: () => void) => execute(promise).finally(onFinally);
         }
         // Forward chained drizzle builder methods. We re-box the result
         // so the outer Promise doesn't auto-assimilate the drizzle

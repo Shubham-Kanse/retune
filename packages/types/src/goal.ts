@@ -57,9 +57,6 @@ export const GoalKindSchema = z.enum([
   "render_documents",
   "watermark_and_persist",
   // Meta-layer (technical-2.0 §24)
-  "infer_emotional_state",
-  "compute_mood_fingerprint",
-  "update_motivation_modulator",
   "narrate_layer",
   // ───── 003 SOTA upgrade additions ──────────────────────────────────
   "hydrate_candidate_memory",

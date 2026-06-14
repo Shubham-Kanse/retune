@@ -37,20 +37,19 @@ export function LandingHero({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
         variants={child}
         className="inline-flex items-center rounded-full border border-border bg-background/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur"
       >
-        Career tuning for serious applicants
+        AI-powered job applications, done right.
       </motion.span>
       <motion.h1
         variants={child}
         className="text-balance text-5xl font-semibold tracking-tight md:text-6xl"
       >
-        Retuned
+        Your career, retuned.
       </motion.h1>
       <motion.p
         variants={child}
         className="max-w-xl text-pretty text-base leading-relaxed text-muted-foreground md:text-lg"
       >
-        Paste a job description or URL. We tune your resume, write the cover letter, detect profile
-        drift, and hand you an application strategy - in under three minutes.
+        Paste a job. We'll write a resume and cover letter that earn the interview — every claim backed by evidence from your career.
       </motion.p>
       <motion.div variants={child} className="flex items-center gap-3 pt-4">
         {isLoggedIn ? (

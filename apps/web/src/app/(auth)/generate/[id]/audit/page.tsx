@@ -1,7 +1,7 @@
 "use client";
 
 import { apiUrl } from "@/lib/api-config";
-import { ArrowLeft, Brain, ScrollText } from "lucide-react";
+import { ArrowLeft, ScrollText } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -128,8 +128,6 @@ export default function AuditPage() {
                       <span className="text-xs text-muted-foreground tabular-nums">{e.latency_ms}ms · ${e.cost_usd.toFixed(5)}</span>
                     </div>
                     <div className="mt-1 ml-[3.25rem] flex items-center gap-3 text-[10px] uppercase tracking-widest text-muted-foreground">
-                      <span>{e.brain_region.replace(/_/g, " ")}</span>
-                      <span>·</span>
                       <span>{e.micro_stage.replace(/_/g, " ")}</span>
                       {e.writes_count > 0 && <span>· {e.writes_count} writes</span>}
                       {e.conflicts_count > 0 && <span className="text-[#d97706]">· {e.conflicts_count} conflict</span>}
@@ -160,7 +158,7 @@ export default function AuditPage() {
         {/* Contest */}
         <section className="rounded-3xl border border-[#e0ddd9] bg-white/90 p-6 backdrop-blur-sm shadow-[0_10px_40px_rgba(0,0,0,0.06)]">
           <div className="flex items-start gap-3">
-            <Brain className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+            <ScrollText className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
             <div>
               <h3 className="text-sm font-medium text-foreground">Contest this decision</h3>
               <p className="mt-2 text-sm text-muted-foreground max-w-prose">You have the right to contest this automated decision and request human review.</p>

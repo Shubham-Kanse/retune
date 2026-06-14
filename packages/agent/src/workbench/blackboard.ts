@@ -15,7 +15,6 @@
  *      blackboard via their context.
  *   4. Path resolution is dot-separated: "draft.bullets.<id>".
  *
- * @brain DLPFC: working memory + active maintenance
  */
 
 import type { AuditEntry, Blackboard, BlackboardEvent, ConflictRecord, Goal } from "@retune/types";

@@ -47,27 +47,30 @@ export const POST = withAuth(async (request, session) => {
     );
   }
 
+  const billingEnabled =
+    process.env.ENABLE_BILLING === "1" || process.env.ENABLE_BILLING === "true";
   // Charter 03 Epic 01 — billing gate.
   // Atomically reserve credits before kicking off the upstream cognitive
-  // run. If the user is over their plan limit, return 402 (Payment
-  // Required) with the structured reason so the UI can render an
-  // actionable upgrade CTA instead of a generic error.
-  const idemKey = body.idempotency_key ?? `${session.userId}:${suppliedHash}`;
-  const billingCheck = await atomicCheckGeneration(session.userId, idemKey);
-  if (!billingCheck.allowed) {
-    void captureFunnelEvent(session.userId, "billing_blocked", {
-      reason: billingCheck.reason ?? "insufficient_credits",
-      credits_remaining: billingCheck.creditsRemaining ?? 0,
-    });
-    return NextResponse.json(
-      {
-        error: "billing_blocked",
+  // run when billing is enabled. If the user is over their plan limit,
+  // return 402 (Payment Required) with a structured reason.
+  if (billingEnabled) {
+    const idemKey = body.idempotency_key ?? `${session.userId}:${suppliedHash}`;
+    const billingCheck = await atomicCheckGeneration(session.userId, idemKey);
+    if (!billingCheck.allowed) {
+      void captureFunnelEvent(session.userId, "billing_blocked", {
         reason: billingCheck.reason ?? "insufficient_credits",
-        creditsRemaining: billingCheck.creditsRemaining ?? 0,
-        creditsCost: billingCheck.creditsCost ?? 10,
-      },
-      { status: 402 },
-    );
+        credits_remaining: billingCheck.creditsRemaining ?? 0,
+      });
+      return NextResponse.json(
+        {
+          error: "billing_blocked",
+          reason: billingCheck.reason ?? "insufficient_credits",
+          creditsRemaining: billingCheck.creditsRemaining ?? 0,
+          creditsCost: billingCheck.creditsCost ?? 10,
+        },
+        { status: 402 },
+      );
+    }
   }
 
   const now = new Date();
@@ -145,7 +148,9 @@ export const POST = withAuth(async (request, session) => {
       // returns the existing generation_id rather than starting a new one.
       idempotency_key: body.idempotency_key ?? `${session.userId}:${suppliedHash}`,
       // Server-loaded profile (overrides anything the client sent).
-      profile_text: profileMarkdown,
+      // Fall back to a minimal placeholder so the cognitive API's min(1)
+      // validation passes for users who skipped onboarding.
+      profile_text: profileMarkdown || "No profile data yet.",
       career_profile: careerProfile ?? undefined,
       career_understanding: careerUnderstanding ?? undefined,
     }),
@@ -223,16 +228,15 @@ export const POST = withAuth(async (request, session) => {
     // Non-fatal — generation proceeds even if the row insert fails
   }
 
-  // Charter 03 Epic 01 — billing audit trail. The credit reservation
-  // happened above via atomicCheckGeneration (which atomically
-  // increments subscriptions.credits_used). recordUsage writes the
-  // historical usage_records row keyed on (user, application) for
-  // debugging and operational reconciliation. Failure is non-fatal —
-  // the credit counter is the authoritative source of truth.
-  recordUsage(session.userId, "generation", data.generation_id).catch((err) => {
-    // eslint-disable-next-line no-console
-    console.warn("[generate] recordUsage failed (non-fatal)", err);
-  });
+  // Charter 03 Epic 01 — billing audit trail. Only written when billing
+  // is enabled; local/dev runs can keep billing disabled for unrestricted
+  // generation testing.
+  if (billingEnabled) {
+    recordUsage(session.userId, "generation", data.generation_id).catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn("[generate] recordUsage failed (non-fatal)", err);
+    });
+  }
 
   // Charter 25 Epic 02 — activation funnel: first_generation_started.
   void captureFunnelEvent(session.userId, "first_generation_started", {

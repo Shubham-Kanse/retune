@@ -18,7 +18,11 @@ export type LlmErrorKind =
   | "auth_failed"
   | "5xx"
   | "malformed_response"
-  | "tool_call_missing";
+  | "tool_call_missing"
+  // Raised when the provider circuit breaker is open (too many recent
+  // transient failures). A fallback trigger for the provider-fallback
+  // router; never retried within the same provider.
+  | "circuit_open";
 
 export type LlmProvider = "anthropic" | "openai";
 

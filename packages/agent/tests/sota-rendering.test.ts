@@ -22,7 +22,6 @@ import {
   ClaimLedgerSchema,
   type DraftVariant,
   RenderedApplicationPackageSchema,
-  type SotaClaim,
 } from "@retune/types";
 import {
   ApplicationPackageRenderer,
@@ -143,9 +142,7 @@ function makeHarness(opts: HarnessOptions = {}) {
     profile_text: SAMPLE_PROFILE,
   }).candidate_model;
 
-  let ledger: ClaimLedger = ClaimLedgerSchema.parse(
-    buildClaimLedgerFromCandidateModel(GEN_ID, cm),
-  );
+  let ledger: ClaimLedger = ClaimLedgerSchema.parse(buildClaimLedgerFromCandidateModel(GEN_ID, cm));
   if (lockLedger) ledger = lockClaimLedger(ledger);
 
   // Build a single variant out of the first 3 ledger claims.
@@ -198,7 +195,9 @@ function makeHarness(opts: HarnessOptions = {}) {
   return { renderer, ctx, goal };
 }
 
-function makeBlackboard(sota: Record<string, unknown>): Blackboard & { sota: Record<string, unknown> } {
+function makeBlackboard(
+  sota: Record<string, unknown>,
+): Blackboard & { sota: Record<string, unknown> } {
   const now = new Date().toISOString();
   return {
     generation_id: GEN_ID,

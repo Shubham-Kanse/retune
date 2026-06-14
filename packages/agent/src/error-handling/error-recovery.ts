@@ -17,6 +17,32 @@ export interface CircuitBreakerConfig {
   failureThreshold?: number; // failures before opening circuit
   successThreshold?: number; // successes to close circuit
   timeoutMs?: number; // how long to stay open
+  /** Human name for logs/snapshots, e.g. "llm:anthropic". */
+  name?: string;
+  /**
+   * Decides whether a thrown error counts toward tripping the breaker.
+   * Defaults to counting ALL failures (legacy behaviour). Pass
+   * `isRetryable` to ignore non-transient errors (e.g. a 401 from one
+   * user's bad BYOK key must NOT open a breaker shared by everyone).
+   */
+  isCountedFailure?: (error: Error) => boolean;
+}
+
+/** Thrown by CircuitBreaker.execute() while the circuit is open. */
+export class CircuitOpenError extends Error {
+  readonly circuitOpen = true;
+  constructor(
+    public readonly circuitName: string,
+    public readonly retryAfterMs: number,
+  ) {
+    super(`Circuit breaker OPEN${circuitName ? ` (${circuitName})` : ""}. Retry after ${Math.round(retryAfterMs / 1000)}s`);
+    this.name = "CircuitOpenError";
+  }
+}
+
+/** Public failure classifier — exported so callers can reuse the breaker's transient-error policy. */
+export function isTransientError(error: Error): boolean {
+  return isRetryable(error);
 }
 
 export interface RequestMetrics {
@@ -117,7 +143,9 @@ export class CircuitBreaker {
   private failureCount = 0;
   private successCount = 0;
   private lastOpenTime = 0;
-  private config: Required<CircuitBreakerConfig>;
+  private readonly name: string;
+  private readonly isCountedFailure: (error: Error) => boolean;
+  private config: Required<Pick<CircuitBreakerConfig, "failureThreshold" | "successThreshold" | "timeoutMs">>;
 
   constructor(config: CircuitBreakerConfig = {}) {
     this.config = {
@@ -125,6 +153,11 @@ export class CircuitBreaker {
       successThreshold: config.successThreshold ?? 3,
       timeoutMs: config.timeoutMs ?? 60000,
     };
+    this.name = config.name ?? "";
+    // Legacy default: count every failure. Callers pass `isTransientError`
+    // to ignore non-transient errors (auth/validation) so one user's bad
+    // key cannot open a shared breaker.
+    this.isCountedFailure = config.isCountedFailure ?? (() => true);
   }
 
   /**
@@ -137,10 +170,9 @@ export class CircuitBreaker {
       if (timeSinceOpen > this.config.timeoutMs) {
         this.state = CircuitBreakerState.HALF_OPEN;
         this.successCount = 0;
+        this.log("circuit.half_open");
       } else {
-        throw new Error(
-          `Circuit breaker OPEN. Retry after ${Math.round((this.config.timeoutMs - timeSinceOpen) / 1000)}s`,
-        );
+        throw new CircuitOpenError(this.name, this.config.timeoutMs - timeSinceOpen);
       }
     }
 
@@ -149,7 +181,7 @@ export class CircuitBreaker {
       this.onSuccess();
       return result;
     } catch (error) {
-      this.onFailure();
+      this.onFailure(error instanceof Error ? error : new Error(String(error)));
       throw error;
     }
   }
@@ -161,28 +193,49 @@ export class CircuitBreaker {
       this.successCount++;
       if (this.successCount >= this.config.successThreshold) {
         this.state = CircuitBreakerState.CLOSED;
-        console.log("Circuit breaker CLOSED");
+        this.log("circuit.close");
       }
     }
   }
 
-  private onFailure(): void {
-    this.failureCount++;
-
-    if (this.failureCount >= this.config.failureThreshold) {
-      this.state = CircuitBreakerState.OPEN;
-      this.lastOpenTime = Date.now();
-      console.log("Circuit breaker OPEN");
-    }
-
+  private onFailure(error: Error): void {
+    // A probe failure in half-open always re-opens, regardless of kind.
     if (this.state === CircuitBreakerState.HALF_OPEN) {
       this.state = CircuitBreakerState.OPEN;
       this.lastOpenTime = Date.now();
+      this.log("circuit.open");
+      return;
     }
+
+    // In closed state, only transient/dependency failures count toward
+    // tripping; auth/validation errors pass through uncounted.
+    if (!this.isCountedFailure(error)) return;
+
+    this.failureCount++;
+    if (this.failureCount >= this.config.failureThreshold) {
+      this.state = CircuitBreakerState.OPEN;
+      this.lastOpenTime = Date.now();
+      this.log("circuit.open");
+    }
+  }
+
+  /** Observability snapshot — no PII, no secrets. */
+  snapshot(): { name: string; state: CircuitBreakerState; failures: number; openedAt: number } {
+    return {
+      name: this.name,
+      state: this.state,
+      failures: this.failureCount,
+      openedAt: this.lastOpenTime,
+    };
   }
 
   getState(): CircuitBreakerState {
     return this.state;
+  }
+
+  private log(event: "circuit.open" | "circuit.half_open" | "circuit.close"): void {
+    // eslint-disable-next-line no-console
+    console.warn(JSON.stringify({ event, name: this.name, failures: this.failureCount }));
   }
 }
 

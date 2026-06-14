@@ -53,13 +53,7 @@ const BLOCKED_HOSTNAMES = new Set([
   "169.254.169.254", // AWS / GCP / Azure / DigitalOcean metadata
 ]);
 
-const BLOCKED_IPV6_PREFIXES = [
-  "::1",
-  "fc",
-  "fd",
-  "fe80",
-  "ff",
-];
+const BLOCKED_IPV6_PREFIXES = ["::1", "fc", "fd", "fe80", "ff"];
 
 export interface UrlValidationResult {
   ok: boolean;

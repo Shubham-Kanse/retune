@@ -24,10 +24,6 @@ const HANDLES: readonly GoalKind[] = ["classify_discourse"];
  * Mirrors the real DiscourseClassifier's brain-region tagging so the
  * cell-type coverage invariant holds whether or not the ML server is up.
  *
- * @brain Wernicke's area: receptive language + categorical labelling
- * @thinking language_comprehension
- * @cellType pyramidal
- * @neurotransmitter glutamate
  */
 export class StubDiscourseClassifier implements Specialist {
   readonly id = "discourse_classifier";

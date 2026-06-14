@@ -2,6 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { Sparkles, X } from "lucide-react";
+import { useTranslations } from "next-intl";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -41,6 +42,7 @@ const DEFAULT_INTRO: Record<TuneSection, string> = {
  */
 export function TuneWithAIWidget({ section, label = "Tune with AI", intro }: TuneWithAIWidgetProps) {
   const router = useRouter();
+  const tToasts = useTranslations("toasts");
   const [open, setOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [input, setInput] = React.useState("");
@@ -93,7 +95,7 @@ export function TuneWithAIWidget({ section, label = "Tune with AI", intro }: Tun
             content: data.confirmationMessage ?? "Done. Anything else?",
           },
         ]);
-        toast.success("Profile updated.");
+        toast.success(tToasts("profile_updated"));
         router.refresh();
       } else {
         setMessages((m) => [

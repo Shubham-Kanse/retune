@@ -5,6 +5,7 @@ import { ColorOrb } from "@/components/retune-lens/color-orb";
 import type { RetuneLensPreviewRequest, RetuneLensPreviewResponse } from "@/components/retune-lens";
 import type { CareerUnderstandingV1 } from "@/lib/career-understanding";
 import { Check, Eye } from "lucide-react";
+import { useTranslations } from "next-intl";
 import * as React from "react";
 import { toast } from "sonner";
 
@@ -32,6 +33,7 @@ export function RetuneUnderstandingSection({
 }: RetuneUnderstandingSectionProps) {
   const [showWhy, setShowWhy] = React.useState(false);
 
+  const tToasts = useTranslations("toasts");
   const [regenerating, setRegenerating] = React.useState(false);
 
   async function handleRegenerate() {
@@ -47,7 +49,7 @@ export function RetuneUnderstandingSection({
       );
       await onApply(preview.previewId, preview.previewToken);
     } catch {
-      toast.error("Could not regenerate understanding.");
+      toast.error(tToasts("understanding_regen_failed"));
     } finally {
       setRegenerating(false);
     }

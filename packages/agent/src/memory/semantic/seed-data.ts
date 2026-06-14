@@ -10,7 +10,6 @@
  * of truth for the limited set of roles and companies the workbench can
  * reason about.
  *
- * @brain semantic cortex (small fragment)
  */
 
 export interface RoleNode {

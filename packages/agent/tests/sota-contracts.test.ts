@@ -25,7 +25,6 @@ import {
   LearningSignalSchema,
   ProofQuestionSchema,
   QualityBoardSchema,
-  QuestionPlanSchema,
   RenderedApplicationPackageSchema,
   SotaClaimSchema,
   StartGenerationCommandSchema,

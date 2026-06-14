@@ -15,7 +15,6 @@
  * fs, net, or any async API outside the Temporal SDK. All side effects
  * are delegated to activities.
  *
- * @brain hippocampus + DLPFC: durable episodic memory + plan maintenance
  */
 
 import { condition, proxyActivities, setHandler } from "@temporalio/workflow";

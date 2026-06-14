@@ -22,10 +22,6 @@
  *
  * Emits: no downstream goals
  *
- * @brain premotor cortex (motor execution readiness)
- * @thinking execution
- * @cellType pyramidal
- * @neurotransmitter dopamine
  */
 
 import type { Goal, GoalKind } from "@retune/types";
@@ -43,7 +39,7 @@ export interface RenderComplete {
 
 export class DocumentRenderer implements Specialist {
   readonly id = "document_renderer";
-  readonly display_name = "Document Renderer";
+  readonly display_name = "Rendering your documents";
   readonly brain_region = "premotor_cortex";
   readonly handles_goal_kinds = HANDLES;
   readonly estimated_cost_usd = 0;

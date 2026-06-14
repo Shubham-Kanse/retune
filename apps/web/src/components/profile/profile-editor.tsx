@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type KeyboardEvent, useState } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 
 interface MetricEntry {
@@ -343,6 +344,7 @@ export function ProfileEditor({
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const router = useRouter();
+  const tToasts = useTranslations("toasts");
 
   function updateForm(patch: Partial<typeof form>) {
     setForm((f) => ({ ...f, ...patch }));
@@ -380,11 +382,11 @@ export function ProfileEditor({
       });
       if (!res.ok) throw new Error();
       setIsDirty(false);
-      toast.success("Profile saved");
+      toast.success(tToasts("profile_saved"));
       onSaved?.();
       router.refresh();
     } catch {
-      toast.error("Failed to save");
+      toast.error(tToasts("profile_save_failed"));
     } finally {
       setSaving(false);
     }
@@ -967,10 +969,37 @@ export function ProfileEditor({
             {(form.skillsTier1.length > 0 || form.skillsTier2.length > 0 || form.skillsTier3.length > 0) && (
               <details className="text-xs text-muted-foreground">
                 <summary className="cursor-pointer">Legacy skill tiers (read-only)</summary>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {[...form.skillsTier1, ...form.skillsTier2, ...form.skillsTier3].map((s, i) => (
-                    <span key={i} className="rounded-full border border-border/50 bg-muted/30 px-2 py-0.5 text-[11px]">{s.name}</span>
-                  ))}
+                <div className="mt-2 space-y-2">
+                  {form.skillsTier1.length > 0 && (
+                    <div>
+                      <p className="font-medium text-muted-foreground/80 mb-1">Core skills</p>
+                      <div className="flex flex-wrap gap-1">
+                        {form.skillsTier1.map((s, i) => (
+                          <span key={i} className="rounded-full border border-border/50 bg-muted/30 px-2 py-0.5 text-[11px]">{s.name}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {form.skillsTier2.length > 0 && (
+                    <div>
+                      <p className="font-medium text-muted-foreground/80 mb-1">Supporting skills</p>
+                      <div className="flex flex-wrap gap-1">
+                        {form.skillsTier2.map((s, i) => (
+                          <span key={i} className="rounded-full border border-border/50 bg-muted/30 px-2 py-0.5 text-[11px]">{s.name}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {form.skillsTier3.length > 0 && (
+                    <div>
+                      <p className="font-medium text-muted-foreground/80 mb-1">Familiar with</p>
+                      <div className="flex flex-wrap gap-1">
+                        {form.skillsTier3.map((s, i) => (
+                          <span key={i} className="rounded-full border border-border/50 bg-muted/30 px-2 py-0.5 text-[11px]">{s.name}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </details>
             )}

@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils";
 import { ArrowUp } from "lucide-react";
 import { motion } from "motion/react";
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // ─── Orb ─────────────────────────────────────────────────────────────────────
@@ -26,16 +27,23 @@ function Orb({ size = 24 }: { size?: number; animate?: boolean }) {
 // ─── Intro ────────────────────────────────────────────────────────────────────
 
 function IntroPhase({ onComplete }: { onComplete: () => void }) {
+  const t = useTranslations("onboarding");
   const [step, setStep] = useState(0);
   useEffect(() => {
-    const t = [
+    const timers = [
       setTimeout(() => setStep(1), TRANSITION_INTRO_STEP_MS[0]),
       setTimeout(() => setStep(2), TRANSITION_INTRO_STEP_MS[1]),
       setTimeout(() => setStep(3), TRANSITION_INTRO_STEP_MS[2]),
       setTimeout(onComplete, TRANSITION_INTRO_COMPLETE_MS),
     ];
-    return () => t.forEach(clearTimeout);
+    return () => timers.forEach(clearTimeout);
   }, [onComplete]);
+
+  const introLines = [
+    { text: t("intro_hello"), cls: "text-[2.25rem] font-semibold tracking-tight text-foreground" },
+    { text: t("intro_name"), cls: "text-[0.9375rem] text-muted-foreground" },
+    { text: t("intro_instruction"), cls: "text-[0.9375rem] text-muted-foreground" },
+  ];
 
   return (
     <div className="flex h-full min-h-[100dvh] w-full flex-col items-center justify-center gap-7 px-6">
@@ -47,17 +55,7 @@ function IntroPhase({ onComplete }: { onComplete: () => void }) {
         <Orb size={72} animate />
       </motion.div>
       <div className="text-center space-y-2">
-        {[
-          { text: "Hello", cls: "text-[2.25rem] font-semibold tracking-tight text-foreground" },
-          {
-            text: "I'm Retuned — your career profile builder.",
-            cls: "text-[0.9375rem] text-muted-foreground",
-          },
-          {
-            text: "Upload your resume and I'll build your profile from it.",
-            cls: "text-[0.9375rem] text-muted-foreground",
-          },
-        ].map(({ text, cls }, i) => (
+        {introLines.map(({ text, cls }, i) => (
           <motion.p
             key={text}
             initial={false}
@@ -167,6 +165,7 @@ function Bubble({
 }
 
 function ThinkingBubble() {
+  const t = useTranslations("onboarding");
   return (
     <motion.div
       className="flex w-full gap-2 items-start"
@@ -177,7 +176,7 @@ function ThinkingBubble() {
         <Orb size={20} animate />
       </div>
       <div className="px-4 py-3 rounded-2xl rounded-bl-md bg-card border border-border">
-        <ShiningText text="Thinking..." />
+        <ShiningText text={t("thinking")} />
       </div>
     </motion.div>
   );
@@ -185,18 +184,12 @@ function ThinkingBubble() {
 
 // ─── Stage label ──────────────────────────────────────────────────────────────
 
-const STAGE_LABELS: Record<UIStage, string> = {
-  loading: "Loading",
-  upload: "Upload",
-  processing: "Processing",
-  summary: "Review",
-  correction: "Correction",
-  questions: "Questions",
-  voice: "Voice",
-  audit: "Audit",
-  committing: "Saving",
-  complete: "Done",
-};
+type UIStageKey = `stage_${UIStage}`;
+
+function useStageLabel(stage: UIStage): string {
+  const t = useTranslations("onboarding");
+  return t(`stage_${stage}` as UIStageKey);
+}
 
 // ─── Render messages — groups progress into ChainOfThought ────────────────────
 
@@ -264,6 +257,7 @@ function renderMessages(
 // ─── Chat view ────────────────────────────────────────────────────────────────
 
 function ChatView() {
+  const t = useTranslations("onboarding");
   const onboarding = useOnboardingV2();
   const {
     messages,
@@ -279,6 +273,8 @@ function ChatView() {
     sendMessage,
     uploadFile,
   } = onboarding;
+
+  const stageLabel = useStageLabel(uiStage);
 
   const [inputValue, setInputValue] = useState("");
   const [showStartOver, setShowStartOver] = useState(false);
@@ -342,7 +338,7 @@ function ChatView() {
         <div className="flex items-center gap-2">
           <Orb size={20} />
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-            {STAGE_LABELS[uiStage]}
+            {stageLabel}
           </span>
         </div>
         <div className="flex gap-4">
@@ -351,14 +347,14 @@ function ChatView() {
             onClick={finishLater}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            Finish later
+            {t("finish_later")}
           </button>
           <button
             type="button"
             onClick={() => setShowStartOver(true)}
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
-            Start over
+            {t("start_over")}
           </button>
         </div>
       </div>
@@ -395,7 +391,7 @@ function ChatView() {
                     transition={{ duration: 0.18 }}
                   >
                     <div className="px-4 py-2.5 border-b border-border/40">
-                      <p className="text-xs font-medium text-muted-foreground">Please choose</p>
+                      <p className="text-xs font-medium text-muted-foreground">{t("please_choose")}</p>
                     </div>
                     {activeActions.map((action, idx) => (
                       <button
@@ -428,7 +424,7 @@ function ChatView() {
                 >
                   <div className="px-4 py-2.5 border-b border-border/40">
                     <p className="text-xs font-medium text-muted-foreground">
-                      {"multiSelect" in activeQuestion && activeQuestion.multiSelect ? "Select all that apply" : "Please choose"}
+                      {"multiSelect" in activeQuestion && activeQuestion.multiSelect ? t("select_all_that_apply") : t("please_choose")}
                     </p>
                   </div>
                   {activeQuestion.chips.map((chip, idx) => {
@@ -477,7 +473,7 @@ function ChatView() {
                       }}
                       className="flex w-full items-center justify-center gap-2 mx-4 my-2 px-4 py-2.5 text-sm font-medium text-indigo-200 rounded-xl bg-indigo-600/30 transition-colors hover:bg-indigo-600/50"
                     style={{ width: "calc(100% - 2rem)" }}>
-                      Continue with {selectedChips.length} selected
+                      {t("continue_with_selected", { count: selectedChips.length })}
                     </button>
                   )}
                   {"skipAllowed" in activeQuestion && activeQuestion.skipAllowed && (
@@ -490,7 +486,7 @@ function ChatView() {
                       <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-600/20 text-xs font-mono text-indigo-300">
                         —
                       </span>
-                      Skip for now
+                      {t("skip_for_now")}
                     </button>
                   )}
                 </motion.div>
@@ -515,7 +511,7 @@ function ChatView() {
                     }
                   }}
                   placeholder={
-                    activeActions || activeQuestion ? "Or reply directly…" : "Type a message…"
+                    activeActions || activeQuestion ? t("input_placeholder_with_options") : t("input_placeholder_default")
                   }
                   disabled={loading}
                   rows={1}
@@ -557,10 +553,8 @@ function ChatView() {
       {showStartOver && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm">
           <div className="rounded-2xl border border-border bg-card p-6 max-w-sm w-full mx-4 space-y-4">
-            <p className="font-medium text-foreground">Start over?</p>
-            <p className="text-sm text-muted-foreground">
-              This will clear your profile and start fresh.
-            </p>
+            <p className="font-medium text-foreground">{t("start_over_confirm_title")}</p>
+            <p className="text-sm text-muted-foreground">{t("start_over_confirm_body")}</p>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -570,14 +564,14 @@ function ChatView() {
                 }}
                 className="flex-1 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
               >
-                Start over
+                {t("start_over_confirm_action")}
               </button>
               <button
                 type="button"
                 onClick={() => setShowStartOver(false)}
                 className="flex-1 rounded-full border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
               >
-                Cancel
+                {t("cancel")}
               </button>
             </div>
           </div>
@@ -599,10 +593,8 @@ function ChatView() {
           >
             <Orb size={64} animate />
           </motion.div>
-          <p className="mt-7 text-3xl font-semibold tracking-tight text-foreground">Thank you</p>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Your Retuned profile is complete. Opening your dashboard...
-          </p>
+          <p className="mt-7 text-3xl font-semibold tracking-tight text-foreground">{t("complete_title")}</p>
+          <p className="mt-2 text-sm text-muted-foreground">{t("complete_body")}</p>
         </motion.div>
       )}
     </div>
